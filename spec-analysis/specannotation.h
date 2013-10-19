@@ -7,6 +7,12 @@ enum spec_anno_type {
 };
 
 typedef
+spec_pair {
+	int left;
+	int right;
+} spec_pair;
+
+typedef
 struct spec_annotation {
 	spec_anno_type type;
 	void *annotation;
@@ -25,17 +31,10 @@ struct anno_HB_init {
 } anno_HB_init;
 
 typedef
-struct anno_interface_begin {
+struct anno_interface_boundary {
 	int interface_num;
 	uint64_t call_sequence_num;
-} anno_interface_begin;
-
-
-typedef
-struct anno_interface_end {
-	int interface_num;
-	uint64_t call_sequence_num;
-} anno_interface_end;
+} anno_interface_boundary;
 
 typedef
 struct anno_id {

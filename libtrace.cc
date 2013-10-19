@@ -43,7 +43,7 @@ uint64_t get_prev_value(thread_id_t tid) {
 	Pass the corresponding label of the @Commit_point_define, and it checks if
 	that potential commit point is satisfied.
 */
-bool potential_commit_point_satisfied(const char *label) {
+bool potential_commit_point_satisfied(int cp, int potentialCP) {
 	//...
 	return true;
 }
