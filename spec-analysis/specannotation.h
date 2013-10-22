@@ -3,7 +3,7 @@
 
 enum spec_anno_type {
 	HB_INIT, INTERFACE_BEGIN, POTENTIIAL_CP_DEFINE, CP_DEFINE, CP_DEFINE_CHECK,
-	HB_CONDITION, POST_CHECK, INTERFACE_END, ID
+	HB_CONDITION, INTERFACE_END 
 };
 
 typedef
@@ -17,7 +17,6 @@ struct spec_annotation {
 	spec_anno_type type;
 	void *annotation;
 } spec_anno_t;
-
 
 /**
 	The interfaces and their HB conditions are represented by integers.
@@ -35,12 +34,6 @@ struct anno_interface_boundary {
 	int interface_num;
 	uint64_t call_sequence_num;
 } anno_interface_boundary;
-
-typedef
-struct anno_id {
-	int interface_num;
-	uint64_t id;
-} anno_id;
 
 typedef
 struct anno_potential_cp_define {
@@ -73,12 +66,5 @@ struct anno_hb_condition {
 	uint64_t id;
 	uint64_t call_sequence_num;
 } anno_hb_condition;
-
-typedef
-struct anno_post_check {
-	bool check_passed;
-	int interface_num;
-	uint64_t call_sequence_num;
-} anno_post_check;
 
 #endif
