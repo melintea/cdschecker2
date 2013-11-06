@@ -192,11 +192,6 @@ bool ModelAction::is_initialization() const
 	return type == ATOMIC_INIT;
 }
 
-bool ModelAction::is_annotation() const
-{
-	return type == ATOMIC_ANNOTATION;
-}
-
 bool ModelAction::is_relaxed() const
 {
 	return order == std::memory_order_relaxed;
@@ -552,8 +547,7 @@ const char * ModelAction::get_type_str() const
 		case ATOMIC_TRYLOCK: return "trylock";
 		case ATOMIC_WAIT: return "wait";
 		case ATOMIC_NOTIFY_ONE: return "notify one";
-	  case ATOMIC_NOTIFY_ALL: return "notify all";
-	  case ATOMIC_ANNOTATION: return "atomic annotation";
+		case ATOMIC_NOTIFY_ALL: return "notify all";
 		default: return "unknown type";
 	};
 }
