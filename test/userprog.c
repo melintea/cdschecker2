@@ -9,15 +9,23 @@ atomic_int y;
 
 static void a(void *obj)
 {
+	int a;
+	_Z11cdsannotatemPv(0, &a);
 	int r1=atomic_load_explicit(&y, memory_order_relaxed);
+	_Z11cdsannotatemPv(0, &r1);
 	atomic_store_explicit(&x, r1, memory_order_relaxed);
+	_Z11cdsannotatemPv(0, &r1);
 	printf("r1=%d\n",r1);
 }
 
 static void b(void *obj)
 {
+	int a;
+	_Z11cdsannotatemPv(0, &a);
 	int r2=atomic_load_explicit(&x, memory_order_relaxed);
+	_Z11cdsannotatemPv(0, &r2);
 	atomic_store_explicit(&y, 42, memory_order_relaxed);
+	_Z11cdsannotatemPv(0, &r2);
 	printf("r2=%d\n",r2);
 }
 

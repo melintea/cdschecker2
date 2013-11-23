@@ -4,9 +4,9 @@ OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   nodestack.o clockvector.o main.o snapshot-interface.o cyclegraph.o \
 	   datarace.o impatomic.o cmodelint.o \
 	   snapshot.o malloc.o mymemory.o common.o mutex.o promise.o conditionvariable.o \
-	   context.o scanalysis.o execution.o plugins.o libannotate.o
+	   context.o scanalysis.o execution.o plugins.o libannotate.o testanalysis.o specanalysis.o
 
-CPPFLAGS += -Iinclude -I.
+CPPFLAGS += -g -Iinclude -I. -Ispec-analysis
 LDFLAGS := -ldl -lrt -rdynamic
 SHARED := -shared
 

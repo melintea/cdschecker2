@@ -1,70 +1,79 @@
 #ifndef _SPECANNOTATION_H
 #define _SPECANNOTATION_H
+#include "spec_lib.h"
 
-enum spec_anno_type {
-	HB_INIT, INTERFACE_BEGIN, POTENTIIAL_CP_DEFINE, CP_DEFINE, CP_DEFINE_CHECK,
-	HB_CONDITION, INTERFACE_END 
-};
+const unsigned int SPEC_ANALYSIS = 1 << 31;
 
-typedef
-spec_pair {
-	int left;
-	int right;
-} spec_pair;
+typedef call_id_t (*id_func_t)();
+typedef bool (*check_action_func_t)(void *info, call_id_t id);
+
+typedef enum spec_anno_type {
+	FUNC_TABLE_INIT, HB_INIT, INTERFACE_BEGIN, POTENTIAL_CP_DEFINE, CP_DEFINE,
+	CP_DEFINE_CHECK, INTERFACE_END, HB_CONDITION
+} spec_anno_type;
 
 typedef
 struct spec_annotation {
 	spec_anno_type type;
 	void *annotation;
-} spec_anno_t;
+} spec_annotation;
+
+typedef
+struct anno_func_table_init {
+	int size;
+	void **table;
+} anno_func_table_init;
 
 /**
 	The interfaces and their HB conditions are represented by integers.
 */
 typedef
-struct anno_HB_init {
+struct anno_hb_init {
 	int interface_num_before;
 	int hb_condition_num_before;
 	int interface_num_after;
 	int hb_condition_num_after;
-} anno_HB_init;
+} anno_hb_init;
 
 typedef
-struct anno_interface_boundary {
+struct anno_interface_begin {
 	int interface_num;
-	uint64_t call_sequence_num;
-} anno_interface_boundary;
+	char *msg; // For debugging only
+} anno_interface_begin;
+
+/* 
+	The follwoing function pointers can be put in a static table, not
+	necessarily stored in every function call.
+
+	id_func_t id;
+	check_action_func_t check_action;
+*/
+typedef
+struct anno_interface_end {
+	int interface_num;
+	void *info; // Return value & arguments
+} anno_interface_end;
 
 typedef
 struct anno_potential_cp_define {
-	int interface_num;
 	int label_num;
-	uint64_t call_sequence_num;
 } anno_potential_cp_define;
 
 typedef
 struct anno_cp_define {
-	bool check_passed;
-	int interface_num;
 	int label_num;
 	int potential_cp_label_num;
-	uint64_t call_sequence_num;
 } anno_cp_define;
 
 typedef
 struct anno_cp_define_check {
-	bool check_passed;
-	int interface_num;
 	int label_num;
-	uint64_t call_sequence_num;
 } anno_cp_define_check;
 
 typedef
 struct anno_hb_condition {
 	int interface_num;
 	int hb_condition_num;
-	uint64_t id;
-	uint64_t call_sequence_num;
 } anno_hb_condition;
 
 #endif
