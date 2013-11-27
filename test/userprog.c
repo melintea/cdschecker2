@@ -1,7 +1,9 @@
 #include "userprog.h"
+#include "spec_lib.h"
 
 int user_main(int argc, char **argv)
 {
+	//spec_list *list = init_spec_list();
 	thrd_t t1, t2;
 
 	atomic_init(&x, 0);

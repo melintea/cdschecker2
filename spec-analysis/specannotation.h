@@ -1,5 +1,6 @@
 #ifndef _SPECANNOTATION_H
 #define _SPECANNOTATION_H
+
 #include "spec_lib.h"
 
 const unsigned int SPEC_ANALYSIS = 1 << 31;

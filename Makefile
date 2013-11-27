@@ -1,10 +1,14 @@
 include common.mk
 
+SPEC_DIR := spec-analysis
+
 OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   nodestack.o clockvector.o main.o snapshot-interface.o cyclegraph.o \
 	   datarace.o impatomic.o cmodelint.o \
 	   snapshot.o malloc.o mymemory.o common.o mutex.o promise.o conditionvariable.o \
-	   context.o scanalysis.o execution.o plugins.o libannotate.o testanalysis.o specanalysis.o
+	   context.o scanalysis.o execution.o plugins.o libannotate.o
+
+SPEC_OBJ := $(SPEC_DIR)/specanalysis.o $(SPEC_DIR)/testanalysis.o
 
 CPPFLAGS += -g -Iinclude -I. -Ispec-analysis
 LDFLAGS := -ldl -lrt -rdynamic
@@ -33,7 +37,10 @@ README.html: README.md
 	$(MARKDOWN) $< > $@
 
 $(LIB_SO): $(OBJECTS)
-	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(LDFLAGS)
+	$(MAKE) -C $(SPEC_DIR)
+	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(SPEC_OBJ) $(LDFLAGS)
+
+#$(SPEC_DIR)/%.o:
 
 malloc.o: malloc.c
 	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPFLAGS) -Wno-unused-variable
@@ -50,6 +57,7 @@ PHONY += clean
 clean:
 	rm -f *.o *.so .*.d *.pdf *.dot
 	$(MAKE) -C $(TESTS_DIR) clean
+	$(MAKE) -C $(SPEC_DIR) clean
 
 PHONY += mrclean
 mrclean: clean
