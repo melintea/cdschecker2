@@ -321,7 +321,7 @@ bool ModelChecker::next_execution()
 
 	execution_number++;
 
-	if (params.maxexecutions != 0 && stats.num_complete >= params.maxexecutions)
+	if (params.maxexecutions != 0 && stats.num_complete >= (int)params.maxexecutions)
 		return false;
 
 	reset_to_initial_state();
