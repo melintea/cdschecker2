@@ -1,12 +1,14 @@
 include common.mk
 
+SPEC_DIR := spec-analysis
+
 OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   nodestack.o clockvector.o main.o snapshot-interface.o cyclegraph.o \
 	   datarace.o impatomic.o cmodelint.o \
 	   snapshot.o malloc.o mymemory.o common.o mutex.o promise.o conditionvariable.o \
 	   context.o scanalysis.o execution.o plugins.o libannotate.o
 
-CPPFLAGS += -Iinclude -I.
+CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR)
 LDFLAGS := -ldl -lrt -rdynamic
 SHARED := -shared
 
@@ -32,7 +34,14 @@ docs: *.c *.cc *.h README.html
 README.html: README.md
 	$(MARKDOWN) $< > $@
 
-$(LIB_SO): $(OBJECTS)
+
+SPEC_PLUGIN := $(SPEC_DIR)/specanalysis.o 
+SPEC_LIB := $(SPEC_DIR)/spec_lib.o 
+
+$(SPEC_PLUGIN):
+	$(MAKE) -C $(SPEC_DIR) # compile the specanalysis first
+
+$(LIB_SO): $(OBJECTS) $(SPEC_PLUGIN)
 	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(LDFLAGS)
 
 malloc.o: malloc.c
@@ -50,6 +59,7 @@ PHONY += clean
 clean:
 	rm -f *.o *.so .*.d *.pdf *.dot
 	$(MAKE) -C $(TESTS_DIR) clean
+	$(MAKE) -C $(SPEC_DIR) clean
 
 PHONY += mrclean
 mrclean: clean
