@@ -436,6 +436,27 @@ void SCAnalysis::computeCV(action_list_t *list) {
 			if (cv == NULL) {
 				cv = new ClockVector(NULL, act);
 				cvmap.put(act, cv);
+
+				/* Prioritize sc edges */
+				if (act->is_seqcst()) {
+					ModelAction *last_conflict_sc =
+						execution->get_last_seq_cst_conflict(act);
+					if (last_conflict_sc) {
+						merge(cv, act, last_conflict_sc);
+					}
+				}
+
+				/* Prioritize hb (by rel sequence) */
+				if (act->is_read() && act->is_acquire()) {
+					rel_heads_list_t *heads = new rel_heads_list_t();
+					execution->get_release_seq_heads(act, act, heads);
+					for (rel_heads_list_t::iterator it = heads->begin(); it !=
+						heads->end(); it++) {
+						const ModelAction *head = *it;
+						merge(cv, act, head);
+					}
+				}
+
 			}
 			if (lastact != NULL) {
 				merge(cv, act, lastact);

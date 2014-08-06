@@ -2268,6 +2268,35 @@ ModelAction * ModelExecution::get_last_fence_release(thread_id_t tid) const
 }
 
 /**
+ * Gets the last conflicting memory_order_seq_cst action (in the total global
+ * sequence) performed on a particular object (i.e., memory location).
+ * @param curr The current ModelAction; also denotes the object location to
+ * check
+ * @return The last conflicting seq_cst action
+ */
+ModelAction * ModelExecution::get_last_seq_cst_conflict(ModelAction *curr) const
+{
+	ASSERT (curr->is_seqcst());
+
+	void *location = curr->get_location();
+	action_list_t *list = obj_map.get(location);
+
+	action_list_t::reverse_iterator rit;
+	for (rit = list->rbegin(); (*rit) != curr; rit++)
+		;
+	rit++; /* Skip past curr */
+	for ( ; rit != list->rend(); rit++) {
+		ModelAction *act = *rit;
+		if ((curr->is_write() && act->is_seqcst()) ||
+			curr->is_read() && act->is_write() && act->is_seqcst())
+			return act;
+	}
+	return NULL;
+}
+
+
+
+/**
  * Gets the last memory_order_seq_cst write (in the total global sequence)
  * performed on a particular object (i.e., memory location), not including the
  * current action.

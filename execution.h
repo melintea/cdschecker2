@@ -118,6 +118,10 @@ public:
 
 	CycleGraph* get_mo_graph() { return mo_graph; }
 
+	ModelAction * get_last_seq_cst_conflict(ModelAction *curr) const;
+	
+	void get_release_seq_heads(ModelAction *acquire, ModelAction *read, rel_heads_list_t *release_heads);
+
 	SNAPSHOTALLOC
 private:
 	int get_execution_number() const;
@@ -184,7 +188,6 @@ private:
 	bool r_modification_order(ModelAction *curr, const rf_type *rf);
 
 	bool w_modification_order(ModelAction *curr, ModelVector<ModelAction *> *send_fv);
-	void get_release_seq_heads(ModelAction *acquire, ModelAction *read, rel_heads_list_t *release_heads);
 	bool release_seq_heads(const ModelAction *rf, rel_heads_list_t *release_heads, struct release_seq *pending) const;
 	void propagate_clockvector(ModelAction *acquire, work_queue_t *work);
 	bool resolve_release_sequences(void *location, work_queue_t *work_queue);
