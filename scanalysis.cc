@@ -372,13 +372,17 @@ bool SCAnalysis::updateConstraints(ModelAction *act) {
 	return changed;
 }
 
-bool SCAnalysis::processRead(ModelAction *read, ClockVector *cv) {
+bool SCAnalysis::processRead(ModelAction *read, ClockVector *cv, bool * updatefuture) {
 	bool changed = false;
 
 	/* Merge in the clock vector from the write */
 	const ModelAction *write = read->get_reads_from();
 	ClockVector *writecv = cvmap.get(write);
-	changed |= merge(cv, read, write) && (*read < *write);
+	if ((*write < *read) || ! *updatefuture) {
+		bool status = merge(cv, read, write) && (*read < *write);
+		changed |= status;
+		*updatefuture |= status;
+	}
 
 	for (int i = 0; i <= maxthreads; i++) {
 		thread_id_t tid = int_to_id(i);
@@ -402,7 +406,11 @@ bool SCAnalysis::processRead(ModelAction *read, ClockVector *cv) {
 				 write -rf-> R =>
 				 R -sc-> write2 */
 			if (write2cv->synchronized_since(write)) {
-				changed |= merge(write2cv, write2, read);
+				if ((*read < *write2) || ! *updatefuture) {
+					bool status = merge(write2cv, write2, read);
+					changed |= status;
+					*updatefuture |= status && (*write2 < *read);
+				}
 			}
 
 			//looking for earliest write2 in iteration to satisfy this
@@ -410,7 +418,11 @@ bool SCAnalysis::processRead(ModelAction *read, ClockVector *cv) {
 				 write -rf-> R =>
 				 write2 -sc-> write */
 			if (cv->synchronized_since(write2)) {
-				changed |= writecv == NULL || merge(writecv, write, write2);
+				if ((*write2 < *write) || ! *updatefuture) {
+					bool status = writecv == NULL || merge(writecv, write, write2);
+					changed |= status;
+					*updatefuture |= status && (*write < *write2);
+				}
 				break;
 			}
 		}
@@ -425,6 +437,7 @@ void SCAnalysis::computeCV(action_list_t *list) {
 	while (changed) {
 		changed = changed&firsttime;
 		firsttime = false;
+		bool updatefuture=false;
 
 		for (action_list_t::iterator it = list->begin(); it != list->end(); it++) {
 			ModelAction *act = *it;
@@ -467,7 +480,7 @@ void SCAnalysis::computeCV(action_list_t *list) {
 				changed |= merge(cv, act, finish);
 			}
 			if (act->is_read()) {
-				changed |= processRead(act, cv);
+				changed |= processRead(act, cv, &updatefuture);
 			}
 		}
 		/* Reset the last action array */

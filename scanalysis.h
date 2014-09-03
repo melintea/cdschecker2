@@ -29,7 +29,7 @@ class SCAnalysis : public TraceAnalysis {
 	bool updateConstraints(ModelAction *act);
 	void computeCV(action_list_t *);
 	action_list_t * generateSC(action_list_t *);
-	bool processRead(ModelAction *read, ClockVector *cv);
+	bool processRead(ModelAction *read, ClockVector *cv, bool * updatefuture);
 	int getNextActions(ModelAction **array);
 	bool merge(ClockVector *cv, const ModelAction *act, const ModelAction *act2);
 	void check_rf(action_list_t *list);
