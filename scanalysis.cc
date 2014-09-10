@@ -104,10 +104,11 @@ void SCAnalysis::analyze(action_list_t *actions) {
 	struct timeval finish;
 	if (time)
 		gettimeofday(&start, NULL);
-	fastVersion = true;
+	fastVersion = false;
 	action_list_t *list = generateSC(actions);
 	if (cyclic) {
-		delete list;
+		reset(actions);
+		list->clear();
 		fastVersion = false;
 		list = generateSC(actions);
 	}
@@ -156,16 +157,12 @@ bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelActio
 		bool merged;
 		if (allowNonSC) {
 			merged = cv->merge(cv2);
-			model_print("allowNonSC: %d -> %d\n", act2->get_seq_number(),
-				act->get_seq_number());
 			if (merged)
 				allowNonSC = false;
 			return merged;
 		} else {
 			if (act2->happens_before(act) ||
 				(act->is_seqcst() && act2->is_seqcst() && *act2 < *act)) {
-				model_print("disAllowNonSC: %d -> %d\n", act2->get_seq_number(),
-					act->get_seq_number());
 				return cv->merge(cv2);
 			}
 		}
