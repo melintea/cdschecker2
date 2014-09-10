@@ -109,6 +109,7 @@ void SCAnalysis::analyze(action_list_t *actions) {
 	if (cyclic) {
 		reset(actions);
 		list->clear();
+		delete list;
 		fastVersion = false;
 		list = generateSC(actions);
 	}
@@ -279,7 +280,8 @@ ModelAction * SCAnalysis::pruneArray(ModelAction **array,int count) {
 
 action_list_t * SCAnalysis::generateSC(action_list_t *list) {
  	int numactions=buildVectors(list);
-	stats->actions+=numactions;
+	if (fastVersion)
+		stats->actions+=numactions;
 
 	computeCV(list);
 
