@@ -29,7 +29,8 @@ class SCAnalysis : public TraceAnalysis {
 	bool updateConstraints(ModelAction *act);
 	void computeCV(action_list_t *);
 	action_list_t * generateSC(action_list_t *);
-	bool processRead(ModelAction *read, ClockVector *cv, bool * updatefuture);
+	bool processReadFast(ModelAction *read, ClockVector *cv);
+	bool processReadSlow(ModelAction *read, ClockVector *cv, bool * updatefuture);
 	int getNextActions(ModelAction **array);
 	bool merge(ClockVector *cv, const ModelAction *act, const ModelAction *act2);
 	void check_rf(action_list_t *list);
@@ -43,6 +44,8 @@ class SCAnalysis : public TraceAnalysis {
 	HashTable<void *, const ModelAction *, uintptr_t, 4 > lastwrmap;
 	SnapVector<action_list_t> threadlists;
 	ModelExecution *execution;
+	bool allowNonSC;
+	bool fastVersion;
 	bool print_always;
 	bool print_buggy;
 	bool print_nonsc;

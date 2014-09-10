@@ -13,6 +13,8 @@ SCAnalysis::SCAnalysis() :
 	lastwrmap(),
 	threadlists(1),
 	execution(NULL),
+	fastVersion(true),
+	allowNonSC(false),
 	print_always(false),
 	print_buggy(true),
 	print_nonsc(false),
@@ -102,7 +104,13 @@ void SCAnalysis::analyze(action_list_t *actions) {
 	struct timeval finish;
 	if (time)
 		gettimeofday(&start, NULL);
+	fastVersion = true;
 	action_list_t *list = generateSC(actions);
+	if (cyclic) {
+		delete list;
+		fastVersion = false;
+		list = generateSC(actions);
+	}
 	check_rf(list);
 	if (print_always || (print_buggy && execution->have_bug_reports())|| (print_nonsc && cyclic))
 		print_list(list);
@@ -142,8 +150,28 @@ bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelActio
 		//refuse to introduce cycles into clock vectors
 		return false;
 	}
+	if (fastVersion) {
+		return cv->merge(cv2);
+	} else {
+		bool merged;
+		if (allowNonSC) {
+			merged = cv->merge(cv2);
+			model_print("allowNonSC: %d -> %d\n", act2->get_seq_number(),
+				act->get_seq_number());
+			if (merged)
+				allowNonSC = false;
+			return merged;
+		} else {
+			if (act2->happens_before(act) ||
+				(act->is_seqcst() && act2->is_seqcst() && *act2 < *act)) {
+				model_print("disAllowNonSC: %d -> %d\n", act2->get_seq_number(),
+					act->get_seq_number());
+				return cv->merge(cv2);
+			}
+		}
+	}
+	
 
-	return cv->merge(cv2);
 }
 
 int SCAnalysis::getNextActions(ModelAction ** array) {
@@ -372,7 +400,53 @@ bool SCAnalysis::updateConstraints(ModelAction *act) {
 	return changed;
 }
 
-bool SCAnalysis::processRead(ModelAction *read, ClockVector *cv, bool * updatefuture) {
+bool SCAnalysis::processReadFast(ModelAction *read, ClockVector *cv) {
+	bool changed = false;
+
+	/* Merge in the clock vector from the write */
+	const ModelAction *write = read->get_reads_from();
+	ClockVector *writecv = cvmap.get(write);
+	changed |= merge(cv, read, write) && (*read < *write);
+
+	for (int i = 0; i <= maxthreads; i++) {
+		thread_id_t tid = int_to_id(i);
+		if (tid == read->get_tid())
+			continue;
+		if (tid == write->get_tid())
+			continue;
+		action_list_t *list = execution->get_actions_on_obj(read->get_location(), tid);
+		if (list == NULL)
+			continue;
+		for (action_list_t::reverse_iterator rit = list->rbegin(); rit != list->rend(); rit++) {
+			ModelAction *write2 = *rit;
+			if (!write2->is_write())
+				continue;
+
+			ClockVector *write2cv = cvmap.get(write2);
+			if (write2cv == NULL)
+				continue;
+
+			/* write -sc-> write2 &&
+				 write -rf-> R =>
+				 R -sc-> write2 */
+			if (write2cv->synchronized_since(write)) {
+				changed |= merge(write2cv, write2, read);
+			}
+
+			//looking for earliest write2 in iteration to satisfy this
+			/* write2 -sc-> R &&
+				 write -rf-> R =>
+				 write2 -sc-> write */
+			if (cv->synchronized_since(write2)) {
+				changed |= writecv == NULL || merge(writecv, write, write2);
+				break;
+			}
+		}
+	}
+	return changed;
+}
+
+bool SCAnalysis::processReadSlow(ModelAction *read, ClockVector *cv, bool * updatefuture) {
 	bool changed = false;
 
 	/* Merge in the clock vector from the write */
@@ -451,13 +525,14 @@ void SCAnalysis::computeCV(action_list_t *list) {
 				cvmap.put(act, cv);
 
 				/* Prioritize sc edges */
+				/*
 				if (act->is_seqcst()) {
 					ModelAction *last_conflict_sc =
 						execution->get_last_seq_cst_conflict(act);
 					if (last_conflict_sc) {
 						merge(cv, act, last_conflict_sc);
 					}
-				}
+				}*/
 
 				/* Prioritize hb (by rel sequence) */
 				if (act->is_read() && act->is_acquire()) {
@@ -480,12 +555,24 @@ void SCAnalysis::computeCV(action_list_t *list) {
 				changed |= merge(cv, act, finish);
 			}
 			if (act->is_read()) {
-				changed |= processRead(act, cv, &updatefuture);
+				if (fastVersion)
+					changed |= processReadFast(act, cv);
+				else
+					changed |= processReadSlow(act, cv, &updatefuture);
 			}
 		}
 		/* Reset the last action array */
 		if (changed) {
 			bzero(last_act, (maxthreads + 1) * sizeof(ModelAction *));
+		} else {
+			if (!fastVersion) {
+				if (!allowNonSC) {
+					allowNonSC = true;
+					changed = true;
+				} else {
+					break;
+				}
+			}
 		}
 	}
 	model_free(last_act);
