@@ -6,7 +6,7 @@
 namespace std {
 
 condition_variable::condition_variable() {
-		
+	state.reserved=0;
 }
 
 condition_variable::~condition_variable() {

@@ -15,7 +15,7 @@ namespace std {
 		void notify_one();
 		void notify_all();
 		void wait(mutex& lock);
-		
+
 	private:
 		struct condition_variable_state state;
 	};
