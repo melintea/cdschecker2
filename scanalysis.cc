@@ -108,7 +108,6 @@ void SCAnalysis::analyze(action_list_t *actions) {
 	action_list_t *list = generateSC(actions);
 	if (cyclic) {
 		reset(actions);
-		list->clear();
 		delete list;
 		fastVersion = false;
 		list = generateSC(actions);
