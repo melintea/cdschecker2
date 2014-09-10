@@ -104,7 +104,7 @@ void SCAnalysis::analyze(action_list_t *actions) {
 	struct timeval finish;
 	if (time)
 		gettimeofday(&start, NULL);
-	fastVersion = false;
+	fastVersion = true;
 	action_list_t *list = generateSC(actions);
 	if (cyclic) {
 		reset(actions);
