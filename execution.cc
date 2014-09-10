@@ -2300,7 +2300,7 @@ ModelAction * ModelExecution::get_last_seq_cst_conflict(ModelAction *curr) const
 	for ( ; rit != list->rend(); rit++) {
 		ModelAction *act = *rit;
 		if ((curr->is_write() && act->is_seqcst()) ||
-			curr->is_read() && act->is_write() && act->is_seqcst())
+				(curr->is_read() && act->is_write() && act->is_seqcst()))
 			return act;
 	}
 	return NULL;

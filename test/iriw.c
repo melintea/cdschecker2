@@ -27,12 +27,14 @@ static void c(void *obj)
 {
 	int r1=atomic_load_explicit(&x, memory_order_relaxed);
 	int r2=atomic_load_explicit(&y, memory_order_seq_cst);
+	printf("r1=%d r2=%d\n", r1, r2);
 }
 
 static void d(void *obj)
 {
 	int r3=atomic_load_explicit(&y, memory_order_relaxed);
 	int r4=atomic_load_explicit(&x, memory_order_seq_cst);
+	printf("r3=%d r4=%d\n", r3, r4);
 }
 
 int user_main(int argc, char **argv)

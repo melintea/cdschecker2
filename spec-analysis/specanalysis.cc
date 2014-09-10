@@ -70,7 +70,7 @@ bool SPECAnalysis::check(node_list_t *sorted_commit_points) {
 		passed = check_action(info, __ID__);
 		if (!passed) {
 			model_print("%d interface call failded\n", interface_num);
-			model_print("ID: %d\n", __ID__);
+			model_print("ID: %llu\n", __ID__);
 			model_print("Error exists in simple check!!\n");
 			return false;
 		}
@@ -416,7 +416,6 @@ void SPECAnalysis::traverseActions(action_list_t *actions) {
 			return;
 		}
 		anno_hb_init *hb_rule = NULL;
-		commit_point_node *node;
 		anno_func_table_init *func_table_init;
 
 		anno_interface_begin *begin_anno;
