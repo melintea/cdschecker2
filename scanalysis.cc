@@ -164,6 +164,8 @@ bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelActio
 			if (act2->happens_before(act) ||
 				(act->is_seqcst() && act2->is_seqcst() && *act2 < *act)) {
 				return cv->merge(cv2);
+			} else {
+				return false;
 			}
 		}
 	}

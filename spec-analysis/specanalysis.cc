@@ -70,7 +70,7 @@ bool SPECAnalysis::check(node_list_t *sorted_commit_points) {
 		passed = check_action(info, __ID__);
 		if (!passed) {
 			model_print("%d interface call failded\n", interface_num);
-			model_print("ID: %llu\n", __ID__);
+			model_print("ID: %lu\n", __ID__);
 			model_print("Error exists in simple check!!\n");
 			return false;
 		}

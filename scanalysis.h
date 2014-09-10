@@ -44,8 +44,8 @@ class SCAnalysis : public TraceAnalysis {
 	HashTable<void *, const ModelAction *, uintptr_t, 4 > lastwrmap;
 	SnapVector<action_list_t> threadlists;
 	ModelExecution *execution;
-	bool allowNonSC;
 	bool fastVersion;
+	bool allowNonSC;
 	bool print_always;
 	bool print_buggy;
 	bool print_nonsc;
