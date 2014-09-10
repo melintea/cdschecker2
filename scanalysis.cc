@@ -535,13 +535,15 @@ void SCAnalysis::computeCV(action_list_t *list) {
 				}*/
 
 				/* Prioritize hb (by rel sequence) */
-				if (act->is_read() && act->is_acquire()) {
-					rel_heads_list_t *heads = new rel_heads_list_t();
-					execution->get_release_seq_heads(act, act, heads);
-					for (rel_heads_list_t::iterator it = heads->begin(); it !=
-						heads->end(); it++) {
-						const ModelAction *head = *it;
-						merge(cv, act, head);
+				if (!fastVersion) {
+					if (act->is_read() && act->is_acquire()) {
+						rel_heads_list_t *heads = new rel_heads_list_t();
+						execution->get_release_seq_heads(act, act, heads);
+						for (rel_heads_list_t::iterator it = heads->begin(); it !=
+							heads->end(); it++) {
+							const ModelAction *head = *it;
+							merge(cv, act, head);
+						}
 					}
 				}
 
