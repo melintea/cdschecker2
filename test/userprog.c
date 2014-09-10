@@ -1,9 +1,28 @@
-#include "userprog.h"
-#include "spec_lib.h"
+#include <stdio.h>
+#include <threads.h>
+#include <stdatomic.h>
+
+#include "librace.h"
+
+atomic_int x;
+atomic_int y;
+
+static void a(void *obj)
+{
+	int r1=atomic_load_explicit(&y, memory_order_relaxed);
+	atomic_store_explicit(&x, r1, memory_order_relaxed);
+	printf("r1=%d\n",r1);
+}
+
+static void b(void *obj)
+{
+	int r2=atomic_load_explicit(&x, memory_order_relaxed);
+	atomic_store_explicit(&y, 42, memory_order_relaxed);
+	printf("r2=%d\n",r2);
+}
 
 int user_main(int argc, char **argv)
 {
-	//spec_list *list = init_spec_list();
 	thrd_t t1, t2;
 
 	atomic_init(&x, 0);
