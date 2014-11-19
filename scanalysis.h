@@ -10,6 +10,24 @@ struct sc_statistics {
 	unsigned long long actions;
 };
 
+struct action_node;
+
+typedef SnapList<action_node*> act_node_list_t;
+
+typedef struct action_node {
+	ModelAction *sb;
+	ModelAction *fromReads;
+	act_node_list_t *otherActs;
+
+	action_node() {
+		sb = NULL;
+		fromReads = NULL;
+		otherActs = NULL;
+	}
+
+	SNAPSHOTALLOC
+} action_node;
+
 class SCAnalysis : public TraceAnalysis {
  public:
 	SCAnalysis();
@@ -28,6 +46,7 @@ class SCAnalysis : public TraceAnalysis {
 	int buildVectors(action_list_t *);
 	bool updateConstraints(ModelAction *act);
 	void computeCV(action_list_t *);
+	void changeBasedComputeCV(action_list_t *);
 	action_list_t * generateSC(action_list_t *);
 	bool processReadFast(ModelAction *read, ClockVector *cv);
 	bool processReadSlow(ModelAction *read, ClockVector *cv, bool * updatefuture);
@@ -44,8 +63,20 @@ class SCAnalysis : public TraceAnalysis {
 	HashTable<void *, const ModelAction *, uintptr_t, 4 > lastwrmap;
 	SnapVector<action_list_t> threadlists;
 	ModelExecution *execution;
+	/** fastVersion -> at first, we don't care whether we prioritize the SC or hb
+	 *  edges and just randomly add any edges that we can.
+	    !fastVersion -> when we later find that it's not SC, we destroy
+	    everything and run the slower version, where we prioritize SC and hb.
+	*/
 	bool fastVersion;
+	/** In the slow version mode, we first add those SC and hb edges (with
+	 * allowNonSC to be false). When no more SC and hb edges are left, we set
+	 * allowNonSC to be true to let it add any edges that we can add.
+	*/
 	bool allowNonSC;
+
+	HashTable<const ModelAction *, action_node*, uintptr_t, 4 > nodeMap;
+
 	bool print_always;
 	bool print_buggy;
 	bool print_nonsc;

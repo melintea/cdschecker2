@@ -104,11 +104,13 @@ void SCAnalysis::analyze(action_list_t *actions) {
 	struct timeval finish;
 	if (time)
 		gettimeofday(&start, NULL);
+	/* Run as the fast version at first */
 	fastVersion = true;
 	action_list_t *list = generateSC(actions);
 	if (cyclic) {
 		reset(actions);
 		delete list;
+		/* Now we found that this is not SC, we run the slow version */
 		fastVersion = false;
 		list = generateSC(actions);
 	}
@@ -156,15 +158,18 @@ bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelActio
 	} else {
 		bool merged;
 		if (allowNonSC) {
+			/* Now we can add any edges */
 			merged = cv->merge(cv2);
 			if (merged)
 				allowNonSC = false;
 			return merged;
 		} else {
+			/* We are still only allowed to add SC and hb edges */
 			if (act2->happens_before(act) ||
 				(act->is_seqcst() && act2->is_seqcst() && *act2 < *act)) {
 				return cv->merge(cv2);
 			} else {
+				/* Don't add non-SC or non-hb edges yet */
 				return false;
 			}
 		}
@@ -502,6 +507,58 @@ bool SCAnalysis::processReadSlow(ModelAction *read, ClockVector *cv, bool * upda
 		}
 	}
 	return changed;
+}
+
+void SCAnalysis::changeBasedComputeCV(action_list_t *list) {
+	bool changed = true;
+	bool firsttime = true;
+	ModelAction **last_act = (ModelAction **)model_calloc(1, (maxthreads + 1) * sizeof(ModelAction *));
+	while (changed) {
+		changed = changed&firsttime;
+		firsttime = false;
+		bool updatefuture=false;
+
+		for (action_list_t::iterator it = list->begin(); it != list->end(); it++) {
+			ModelAction *act = *it;
+			ModelAction *lastact = last_act[id_to_int(act->get_tid())];
+			if (act->is_thread_start())
+				lastact = execution->get_thread(act)->get_creation();
+			last_act[id_to_int(act->get_tid())] = act;
+			ClockVector *cv = cvmap.get(act);
+			if (cv == NULL) {
+				cv = new ClockVector(act->get_cv(), act);
+				cvmap.put(act, cv);
+			}
+			if (lastact != NULL) {
+				merge(cv, act, lastact);
+			}
+			if (act->is_thread_join()) {
+				Thread *joinedthr = act->get_thread_operand();
+				ModelAction *finish = execution->get_last_action(joinedthr->get_id());
+				changed |= merge(cv, act, finish);
+			}
+			if (act->is_read()) {
+				if (fastVersion)
+					changed |= processReadFast(act, cv);
+				else
+					changed |= processReadSlow(act, cv, &updatefuture);
+			}
+		}
+		/* Reset the last action array */
+		if (changed) {
+			bzero(last_act, (maxthreads + 1) * sizeof(ModelAction *));
+		} else {
+			if (!fastVersion) {
+				if (!allowNonSC) {
+					allowNonSC = true;
+					changed = true;
+				} else {
+					break;
+				}
+			}
+		}
+	}
+	model_free(last_act);
 }
 
 void SCAnalysis::computeCV(action_list_t *list) {
