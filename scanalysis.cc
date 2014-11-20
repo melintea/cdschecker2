@@ -147,10 +147,6 @@ void SCAnalysis::check_rf(action_list_t *list) {
 
 
 bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelAction *act2) {
-	merge(cv, act, act2, false);
-}
-
-bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelAction *act2, bool addEdge) {
 	bool status;
 	ClockVector *cv2 = cvmap.get(act2);
 	if (cv2 == NULL)
@@ -162,11 +158,6 @@ bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelActio
 	}
 	if (fastVersion) {
 		status = cv->merge(cv2);
-		if (status && addEdge) {
-			model_print("abc%d\n", act2);
-			action_node *node2 = nodeMap.get(act2);
-			node2->addOtherAction(act);
-		}
 		return status;
 	} else {
 		bool merged;
@@ -388,7 +379,7 @@ int SCAnalysis::buildVectors(action_list_t *list) {
 		/* Add the rf edge */
 		if (act->is_read()) {
 			const ModelAction *write = act->get_reads_from();
-			if (write->get_tid() != act->get_tid()) {
+			if (write->get_seq_number() != 0 && write->get_tid() != act->get_tid()) {
 				/* All the read actions that read from a different thread */
 				updateSet->push_back(write);
 				action_node *writeNode = nodeMap.get(write);
@@ -402,12 +393,14 @@ int SCAnalysis::buildVectors(action_list_t *list) {
 		/* thrd_create->thrd_start */
 		if (act->is_thread_start()) {
 			ModelAction *create = execution->get_thread(act)->get_creation();
-			action_node *createNode = nodeMap.get(create);
-			if (createNode == NULL) {
-				createNode = new action_node;
-				nodeMap.put(create, createNode);
+			if (create != NULL) { // Not the very first main thread
+				action_node *createNode = nodeMap.get(create);
+				if (createNode == NULL) {
+					createNode = new action_node;
+					nodeMap.put(create, createNode);
+				}
+				createNode->specialEdge = act;
 			}
-			createNode->specialEdge = act;
 		}
 		/* thrd_finish->thrd_join */
 		if (act->is_thread_join()) {
@@ -457,7 +450,7 @@ bool SCAnalysis::updateConstraints(ModelAction *act) {
 				break;
 			if (write->get_location() == act->get_location()) {
 				//write is sc after act
-				merge(writecv, write, act, true);
+				merge(writecv, write, act);
 				changed = true;
 				break;
 			}
@@ -466,13 +459,13 @@ bool SCAnalysis::updateConstraints(ModelAction *act) {
 	return changed;
 }
 
-bool SCAnalysis::processReadFast(ModelAction *read, ClockVector *cv) {
+bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 	bool changed = false;
+	bool status = false;
 
 	/* Merge in the clock vector from the write */
 	const ModelAction *write = read->get_reads_from();
 	ClockVector *writecv = cvmap.get(write);
-	changed |= merge(cv, read, write, false) && (*read < *write);
 
 	for (int i = 0; i <= maxthreads; i++) {
 		thread_id_t tid = int_to_id(i);
@@ -496,7 +489,10 @@ bool SCAnalysis::processReadFast(ModelAction *read, ClockVector *cv) {
 				 write -rf-> R =>
 				 R -sc-> write2 */
 			if (write2cv->synchronized_since(write)) {
-				changed |= merge(write2cv, write2, read, write2->get_tid() != read->get_tid());
+				status = merge(write2cv, write2, read);
+				if (status)
+					passChange(write2);
+				changed |= status;
 			}
 
 			//looking for earliest write2 in iteration to satisfy this
@@ -504,7 +500,10 @@ bool SCAnalysis::processReadFast(ModelAction *read, ClockVector *cv) {
 				 write -rf-> R =>
 				 write2 -sc-> write */
 			if (cv->synchronized_since(write2)) {
-				changed |= writecv == NULL || merge(writecv, write, write2, write2->get_tid() != write->get_tid());
+				status = merge(writecv, write, write2);
+				if (status)
+					passChange(write);
+				changed |= status;
 				break;
 			}
 		}
@@ -570,6 +569,30 @@ bool SCAnalysis::processReadSlow(ModelAction *read, ClockVector *cv, bool * upda
 	return changed;
 }
 
+void SCAnalysis::passChange(const ModelAction *act) {
+	/* Update the CV of the to node */
+	action_node *node = nodeMap.get(act);
+	if (node == NULL)
+		return;
+	const ModelAction *nextAct = node->sb;
+	if (nextAct)
+		if (merge(cvmap.get(nextAct), nextAct, act))
+			updateSet->push_back(nextAct);
+	nextAct = node->specialEdge;
+	if (nextAct)
+		if (merge(cvmap.get(nextAct), nextAct, act))
+			updateSet->push_back(nextAct);
+	if (node->otherActs) {
+		for (const_actions_t::iterator it = node->otherActs->begin(); it !=
+			node->otherActs->end(); it++) {
+			nextAct = *it;
+			if (merge(cvmap.get(nextAct), nextAct, act))
+				updateSet->push_back(nextAct);
+		}
+	}
+}
+
+
 void SCAnalysis::changeBasedComputeCV(action_list_t *list) {
 	bool changed = true;
 	/* We now only use this approach for the fast version */
@@ -579,37 +602,25 @@ void SCAnalysis::changeBasedComputeCV(action_list_t *list) {
 		changed = false;
 		bool updatefuture=false;
 
-		ModelAction *act = list->front();
-		list->pop_front();
-		action_node *node = nodeMap.get(act);
-
-		ClockVector *cv;
-		const ModelAction *nextAct;
+		const ModelAction *act = updateSet->front();
+		updateSet->pop_front();
 
 		/* Update the CV of the to node */
-		nextAct = node->sb;
-		if (nextAct)
-			if (merge(cvmap.get(nextAct), nextAct, act))
-				updateSet->push_back(nextAct);
-		nextAct = node->specialEdge;
-		if (nextAct)
-			if (merge(cvmap.get(nextAct), nextAct, act))
-				updateSet->push_back(nextAct);
-		if (node->otherActs) {
-			for (const_actions_t::iterator it = node->otherActs->begin(); it !=
-				node->otherActs->end(); it++) {
-				nextAct = *it;
-				if (merge(cvmap.get(nextAct), nextAct, act))
-					updateSet->push_back(nextAct);
-			}
-		}
-		if (nextAct->is_read()) {
-			changed |= processReadFast(act, cv);
+		passChange(act);
+		if (act->is_read()) {
+			changed |= processReadFast(act, cvmap.get(act));
 		}
 	}
 }
 
 void SCAnalysis::computeCV(action_list_t *list) {
+	if (fastVersion)
+		changeBasedComputeCV(list);
+	else
+		normalComputeCV(list);
+}
+
+void SCAnalysis::normalComputeCV(action_list_t *list) {
 	bool changed = true;
 	bool firsttime = true;
 	ModelAction **last_act = (ModelAction **)model_calloc(1, (maxthreads + 1) * sizeof(ModelAction *));
