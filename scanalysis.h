@@ -28,7 +28,7 @@ typedef struct action_node {
 		otherActs = NULL;
 	}
 
-	bool addOtherAction(ModelAction *act) {
+	bool addOtherAction(const ModelAction *act) {
 		if (otherActs == NULL)
 			otherActs = new const_actions_t;
 		for (const_actions_t::iterator it = otherActs->begin(); it !=
@@ -67,6 +67,7 @@ class SCAnalysis : public TraceAnalysis {
 	bool processReadFast(ModelAction *read, ClockVector *cv);
 	bool processReadSlow(ModelAction *read, ClockVector *cv, bool * updatefuture);
 	int getNextActions(ModelAction **array);
+	bool merge(ClockVector *cv, const ModelAction *act, const ModelAction *act2, bool addEdge);
 	bool merge(ClockVector *cv, const ModelAction *act, const ModelAction *act2);
 	void check_rf(action_list_t *list);
 	void reset(action_list_t *list);
