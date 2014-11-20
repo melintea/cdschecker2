@@ -10,19 +10,35 @@ struct sc_statistics {
 	unsigned long long actions;
 };
 
+typedef ModelList<const ModelAction*> const_actions_t;
+
 struct action_node;
 
 typedef SnapList<action_node*> act_node_list_t;
 
 typedef struct action_node {
 	ModelAction *sb;
-	ModelAction *fromReads;
-	act_node_list_t *otherActs;
+	/* Can be reads_from, thrd_create->thrd_start & thrd_finish->thrd_join */
+	ModelAction *specialEdge; 
+	const_actions_t *otherActs;
 
 	action_node() {
 		sb = NULL;
-		fromReads = NULL;
+		specialEdge = NULL;
 		otherActs = NULL;
+	}
+
+	bool addOtherAction(ModelAction *act) {
+		if (otherActs == NULL)
+			otherActs = new const_actions_t;
+		for (const_actions_t::iterator it = otherActs->begin(); it !=
+			otherActs->end(); it++) {
+			const ModelAction *elem = *it;
+			if (elem == act)
+				return false;
+		}
+		otherActs->push_back(act);
+		return true;
 	}
 
 	SNAPSHOTALLOC
@@ -76,6 +92,7 @@ class SCAnalysis : public TraceAnalysis {
 	bool allowNonSC;
 
 	HashTable<const ModelAction *, action_node*, uintptr_t, 4 > nodeMap;
+	const_actions_t *updateSet;
 
 	bool print_always;
 	bool print_buggy;
