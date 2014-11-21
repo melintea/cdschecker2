@@ -582,6 +582,7 @@ void SCAnalysis::passChange(const ModelAction *act) {
 	if (nextAct)
 		if (merge(cvmap.get(nextAct), nextAct, act))
 			updateSet->push_back(nextAct);
+	/*
 	if (node->otherActs) {
 		for (const_actions_t::iterator it = node->otherActs->begin(); it !=
 			node->otherActs->end(); it++) {
@@ -590,25 +591,22 @@ void SCAnalysis::passChange(const ModelAction *act) {
 				updateSet->push_back(nextAct);
 		}
 	}
+	*/
 }
 
 
 void SCAnalysis::changeBasedComputeCV(action_list_t *list) {
-	bool changed = true;
 	/* We now only use this approach for the fast version */
 
 	/* A BFS-like approach */
 	while (updateSet->size() > 0) {
-		changed = false;
-		bool updatefuture=false;
-
 		const ModelAction *act = updateSet->front();
 		updateSet->pop_front();
 
 		/* Update the CV of the to node */
 		passChange(act);
 		if (act->is_read()) {
-			changed |= processReadFast(act, cvmap.get(act));
+			processReadFast(act, cvmap.get(act));
 		}
 	}
 }
