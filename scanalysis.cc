@@ -158,12 +158,6 @@ bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelActio
 	}
 	if (fastVersion) {
 		status = cv->merge(cv2);
-		if (act2->get_seq_number() != 0) {
-			model_print("%d -> %d\n", act2->get_seq_number(),
-				act->get_seq_number());
-			cv2->print();
-			cv->print();
-		}
 		return status;
 	} else {
 		bool merged;
@@ -363,8 +357,11 @@ int SCAnalysis::buildVectors(action_list_t *list) {
 	for (action_list_t::iterator it = list->begin(); it != list->end(); it++) {
 		ModelAction *act = *it;
 
-		ClockVector *cv = new ClockVector(NULL, act);
-		cvmap.put(act, cv);
+		ClockVector *cv = cvmap.get(act);
+		if (cv == NULL) {
+			cv = new ClockVector(NULL, act);
+			cvmap.put(act, cv);
+		}
 
 		numactions++;
 		int threadid = id_to_int(act->get_tid());
@@ -385,9 +382,16 @@ int SCAnalysis::buildVectors(action_list_t *list) {
 		/* Add the rf edge */
 		if (act->is_read()) {
 			const ModelAction *write = act->get_reads_from();
-			if (write->get_seq_number() != 0 && write->get_tid() != act->get_tid()) {
+			if (write->get_seq_number() != 0) {
 				/* All the read actions that read from a different thread */
-				updateSet->push_back(write);
+				ClockVector *writeCV = cvmap.get(write);
+				if (writeCV == NULL) {
+					writeCV = new ClockVector(NULL, write);
+					cvmap.put(write, writeCV);
+				}
+				merge(cv, act, write);
+				updateSet->push_back(act);
+
 				action_node *writeNode = nodeMap.get(write);
 				if (writeNode == NULL) {
 					writeNode = new action_node;
@@ -456,7 +460,10 @@ bool SCAnalysis::updateConstraints(ModelAction *act) {
 				break;
 			if (write->get_location() == act->get_location()) {
 				//write is sc after act
-				merge(writecv, write, act);
+				bool status = merge(writecv, write, act);
+				if (status) {
+					passChange(write);
+				}
 				changed = true;
 				break;
 			}

@@ -13,7 +13,7 @@ class ModelAction;
 
 class ClockVector {
 public:
-	ClockVector(ClockVector *parent = NULL, ModelAction *act = NULL);
+	ClockVector(ClockVector *parent = NULL, const ModelAction *act = NULL);
 	~ClockVector();
 	bool merge(const ClockVector *cv);
 	bool synchronized_since(const ModelAction *act) const;
