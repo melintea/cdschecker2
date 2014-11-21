@@ -158,6 +158,12 @@ bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelActio
 	}
 	if (fastVersion) {
 		status = cv->merge(cv2);
+		if (act2->get_seq_number() != 0) {
+			model_print("%d -> %d\n", act2->get_seq_number(),
+				act->get_seq_number());
+			cv2->print();
+			cv->print();
+		}
 		return status;
 	} else {
 		bool merged;
