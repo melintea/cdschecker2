@@ -60,19 +60,27 @@ class SCAnalysis : public TraceAnalysis {
 	void update_stats();
 	void print_list(action_list_t *list);
 	int buildVectors(action_list_t *);
+	int buildVectorsSlow(action_list_t *);
+	int buildVectorsFast(action_list_t *);
 	bool updateConstraints(ModelAction *act);
 	void computeCV(action_list_t *);
-	void normalComputeCV(action_list_t *);
-	void changeBasedComputeCV(action_list_t *);
+	void computeCVSlow(action_list_t *);
+	void computeCVFast(action_list_t *);
 	action_list_t * generateSC(action_list_t *);
 	bool processReadFast(const ModelAction *read, ClockVector *cv);
-	bool processReadSlow(ModelAction *read, ClockVector *cv, bool * updatefuture);
+	bool processReadSlow(const ModelAction *read, ClockVector *cv);
 	int getNextActions(ModelAction **array);
 	bool merge(ClockVector *cv, const ModelAction *act, const ModelAction *act2);
 	void check_rf(action_list_t *list);
 	void reset(action_list_t *list);
 	ModelAction* pruneArray(ModelAction**, int);
 	
+	/** Extract the set of reads to the list */
+	void getWriteActions(const_actions_t *list);
+	
+	/** Only pass the new change through the edges of sb, rf, create->start and
+	 *  finish->join edges
+	 */
 	void passChange(const ModelAction *act);
 
 	int maxthreads;
@@ -89,10 +97,16 @@ class SCAnalysis : public TraceAnalysis {
 	*/
 	bool fastVersion;
 	/** In the slow version mode, we first add those SC and hb edges (with
-	 * allowNonSC to be false). When no more SC and hb edges are left, we set
-	 * allowNonSC to be true to let it add any edges that we can add.
+	 *  allowNonSC to be false). When no more SC and hb edges are left, we set
+	 *  allowNonSC to be true to let it add any edges that we can add.
 	*/
 	bool allowNonSC;
+	/** When allowNonSC is true, we only allow updating those future edges for
+	 * the first time.
+	*/
+	bool updateFuture;
+	/** Mark whether clock vectors have changed */
+	bool cvChanged;
 
 	HashTable<const ModelAction *, action_node*, uintptr_t, 4 > nodeMap;
 	const_actions_t *updateSet;

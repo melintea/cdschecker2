@@ -110,7 +110,8 @@ void SCAnalysis::analyze(action_list_t *actions) {
 	action_list_t *list = generateSC(actions);
 	if (cyclic) {
 		reset(actions);
-		delete list;
+		if (list)
+			delete list;
 		/* Now we found that this is not SC, we run the slow version */
 		fastVersion = false;
 		list = generateSC(actions);
@@ -164,8 +165,10 @@ bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelActio
 		if (allowNonSC) {
 			/* Now we can add any edges */
 			merged = cv->merge(cv2);
-			if (merged)
+			if (merged) {
 				allowNonSC = false;
+				cvChanged = true;
+			}
 			return merged;
 		} else {
 			/* We are still only allowed to add SC and hb edges */
@@ -288,10 +291,14 @@ ModelAction * SCAnalysis::pruneArray(ModelAction **array,int count) {
 
 action_list_t * SCAnalysis::generateSC(action_list_t *list) {
  	int numactions=buildVectors(list);
-	if (fastVersion)
-		stats->actions+=numactions;
-
 	computeCV(list);
+
+	if (fastVersion) {
+		stats->actions+=numactions;
+		/* A quick return for fast non-SC detection */
+		if (cyclic)
+			return NULL;
+	}
 
 	action_list_t *sclist = new action_list_t();
 	ModelAction **array = (ModelAction **)model_calloc(1, (maxthreads + 1) * sizeof(ModelAction *));
@@ -341,6 +348,9 @@ action_list_t * SCAnalysis::generateSC(action_list_t *list) {
 					computeCV(list);
 					sclist->clear();
 					continue;
+				} else { // We found that it is non-SC
+					fastVersion = false;
+					return sclist;
 				}
 			}
 		}
@@ -352,6 +362,14 @@ action_list_t * SCAnalysis::generateSC(action_list_t *list) {
 }
 
 int SCAnalysis::buildVectors(action_list_t *list) {
+	if (fastVersion)
+		return buildVectorsFast(list);
+	else
+		return buildVectorsSlow(list);
+
+}
+
+int SCAnalysis::buildVectorsFast(action_list_t *list) {
 	maxthreads = 0;
 	int numactions = 0;
 	for (action_list_t::iterator it = list->begin(); it != list->end(); it++) {
@@ -422,6 +440,29 @@ int SCAnalysis::buildVectors(action_list_t *list) {
 				nodeMap.put(finish, finishNode);
 			}
 			finishNode->specialEdge = act;
+		}
+		threadlists[threadid].push_back(act);
+	}
+	return numactions;
+}
+
+int SCAnalysis::buildVectorsSlow(action_list_t *list) {
+	maxthreads = 0;
+	int numactions = 0;
+	for (action_list_t::iterator it = list->begin(); it != list->end(); it++) {
+		ModelAction *act = *it;
+
+		ClockVector *cv = cvmap.get(act);
+		if (cv == NULL) {
+			cv = new ClockVector(NULL, act);
+			cvmap.put(act, cv);
+		}
+
+		numactions++;
+		int threadid = id_to_int(act->get_tid());
+		if (threadid > maxthreads) {
+			threadlists.resize(threadid + 1);
+			maxthreads = threadid;
 		}
 		threadlists[threadid].push_back(act);
 	}
@@ -524,17 +565,27 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 	return changed;
 }
 
-bool SCAnalysis::processReadSlow(ModelAction *read, ClockVector *cv, bool * updatefuture) {
+void SCAnalysis::getWriteActions(const_actions_t *list) {
+	if (list == NULL) {
+		list = new const_actions_t;
+	}
+
+	for (const_actions_t::iterator it = list->begin(); it != list->end(); it++) {
+		const ModelAction *act = *it;
+		if (act->is_read()) {
+			const ModelAction *write = act->get_reads_from();
+			list->push_back(write);
+		}
+	}
+}
+
+
+bool SCAnalysis::processReadSlow(const ModelAction *read, ClockVector *cv) {
 	bool changed = false;
 
 	/* Merge in the clock vector from the write */
 	const ModelAction *write = read->get_reads_from();
 	ClockVector *writecv = cvmap.get(write);
-	if ((*write < *read) || ! *updatefuture) {
-		bool status = merge(cv, read, write) && (*read < *write);
-		changed |= status;
-		*updatefuture |= status;
-	}
 
 	for (int i = 0; i <= maxthreads; i++) {
 		thread_id_t tid = int_to_id(i);
@@ -558,10 +609,12 @@ bool SCAnalysis::processReadSlow(ModelAction *read, ClockVector *cv, bool * upda
 				 write -rf-> R =>
 				 R -sc-> write2 */
 			if (write2cv->synchronized_since(write)) {
-				if ((*read < *write2) || ! *updatefuture) {
+				if ((*read < *write2) || ! updateFuture) {
 					bool status = merge(write2cv, write2, read);
+					if (status) 
+						passChange(write2);
 					changed |= status;
-					*updatefuture |= status && (*write2 < *read);
+					updateFuture |= status && (*write2 < *read);
 				}
 			}
 
@@ -570,10 +623,12 @@ bool SCAnalysis::processReadSlow(ModelAction *read, ClockVector *cv, bool * upda
 				 write -rf-> R =>
 				 write2 -sc-> write */
 			if (cv->synchronized_since(write2)) {
-				if ((*write2 < *write) || ! *updatefuture) {
+				if ((*write2 < *write) || ! updateFuture) {
 					bool status = writecv == NULL || merge(writecv, write, write2);
+					if (status) 
+						passChange(write2);
 					changed |= status;
-					*updatefuture |= status && (*write < *write2);
+					updateFuture |= status && (*write < *write2);
 				}
 				break;
 			}
@@ -595,22 +650,10 @@ void SCAnalysis::passChange(const ModelAction *act) {
 	if (nextAct)
 		if (merge(cvmap.get(nextAct), nextAct, act))
 			updateSet->push_back(nextAct);
-	/*
-	if (node->otherActs) {
-		for (const_actions_t::iterator it = node->otherActs->begin(); it !=
-			node->otherActs->end(); it++) {
-			nextAct = *it;
-			if (merge(cvmap.get(nextAct), nextAct, act))
-				updateSet->push_back(nextAct);
-		}
-	}
-	*/
 }
 
 
-void SCAnalysis::changeBasedComputeCV(action_list_t *list) {
-	/* We now only use this approach for the fast version */
-
+void SCAnalysis::computeCVFast(action_list_t *list) {
 	/* A BFS-like approach */
 	while (updateSet->size() > 0) {
 		const ModelAction *act = updateSet->front();
@@ -626,59 +669,33 @@ void SCAnalysis::changeBasedComputeCV(action_list_t *list) {
 
 void SCAnalysis::computeCV(action_list_t *list) {
 	if (fastVersion)
-		changeBasedComputeCV(list);
+		computeCVFast(list);
 	else
-		normalComputeCV(list);
+		computeCVSlow(list);
 }
 
-void SCAnalysis::normalComputeCV(action_list_t *list) {
-	bool changed = true;
-	bool firsttime = true;
-	ModelAction **last_act = (ModelAction **)model_calloc(1, (maxthreads + 1) * sizeof(ModelAction *));
-	while (changed) {
-		changed = changed&firsttime;
-		firsttime = false;
-		bool updatefuture=false;
+void SCAnalysis::computeCVSlow(action_list_t *list) {
+	/* A BFS-like approach */
+	allowNonSC = false;
+	while (true) {
+		cvChanged = false;
+		getWriteActions(updateSet);
+		while (updateSet->size() > 0) {
+			const ModelAction *act = updateSet->front();
+			updateSet->pop_front();
 
-		for (action_list_t::iterator it = list->begin(); it != list->end(); it++) {
-			ModelAction *act = *it;
-			ModelAction *lastact = last_act[id_to_int(act->get_tid())];
-			if (act->is_thread_start())
-				lastact = execution->get_thread(act)->get_creation();
-			last_act[id_to_int(act->get_tid())] = act;
-			ClockVector *cv = cvmap.get(act);
-			if (cv == NULL) {
-				cv = new ClockVector(act->get_cv(), act);
-				cvmap.put(act, cv);
-			}
-			if (lastact != NULL) {
-				merge(cv, act, lastact);
-			}
-			if (act->is_thread_join()) {
-				Thread *joinedthr = act->get_thread_operand();
-				ModelAction *finish = execution->get_last_action(joinedthr->get_id());
-				changed |= merge(cv, act, finish);
-			}
+			/* Update the CV of the to node */
+			passChange(act);
 			if (act->is_read()) {
-				if (fastVersion)
-					changed |= processReadFast(act, cv);
-				else
-					changed |= processReadSlow(act, cv, &updatefuture);
+				processReadSlow(act, cvmap.get(act));
 			}
 		}
-		/* Reset the last action array */
-		if (changed) {
-			bzero(last_act, (maxthreads + 1) * sizeof(ModelAction *));
-		} else {
-			if (!fastVersion) {
-				if (!allowNonSC) {
-					allowNonSC = true;
-					changed = true;
-				} else {
-					break;
-				}
-			}
+		if (!allowNonSC) {
+			allowNonSC = true;
+		}
+		/* Done when no changes happen when we allow non-SC */
+		if (allowNonSC && !cvChanged) {
+			break;
 		}
 	}
-	model_free(last_act);
 }
