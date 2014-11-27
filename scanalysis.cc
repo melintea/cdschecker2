@@ -368,6 +368,10 @@ int SCAnalysis::buildVectors(action_list_t *list) {
 
 }
 
+void SCAnalysis::pushChange(const ModelAction *act) {
+	updateSet->push_back(act);
+}
+
 int SCAnalysis::buildVectorsFast(action_list_t *list) {
 	maxthreads = 0;
 	int numactions = 0;
@@ -407,7 +411,7 @@ int SCAnalysis::buildVectorsFast(action_list_t *list) {
 					cvmap.put(write, writeCV);
 				}
 				merge(cv, act, write);
-				updateSet->push_back(act);
+				pushChange(act);
 
 				action_node *writeNode = nodeMap.get(write);
 				if (writeNode == NULL) {
@@ -644,11 +648,11 @@ void SCAnalysis::passChange(const ModelAction *act) {
 	const ModelAction *nextAct = node->sb;
 	if (nextAct)
 		if (merge(cvmap.get(nextAct), nextAct, act))
-			updateSet->push_back(nextAct);
+			pushChange(act);
 	nextAct = node->specialEdge;
 	if (nextAct)
 		if (merge(cvmap.get(nextAct), nextAct, act))
-			updateSet->push_back(nextAct);
+			pushChange(act);
 }
 
 
