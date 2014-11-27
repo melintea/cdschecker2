@@ -100,7 +100,6 @@ void SCAnalysis::print_list(action_list_t *list) {
 }
 
 void SCAnalysis::analyze(action_list_t *actions) {
-
 	struct timeval start;
 	struct timeval finish;
 	if (time)
@@ -626,7 +625,7 @@ bool SCAnalysis::processReadSlow(const ModelAction *read, ClockVector *cv) {
 				if ((*write2 < *write) || ! updateFuture) {
 					bool status = writecv == NULL || merge(writecv, write, write2);
 					if (status) 
-						passChange(write2);
+						passChange(write);
 					changed |= status;
 					updateFuture |= status && (*write < *write2);
 				}
