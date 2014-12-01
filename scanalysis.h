@@ -14,7 +14,7 @@ struct sc_statistics {
 	/* The number of actions in the write lists */
 	unsigned long long writeLists;
 	/* The number of push to the update list */
-	unsigned long long pushCount
+	unsigned long long pushCount;
 };
 
 typedef ModelList<const ModelAction*> const_actions_t;
