@@ -43,12 +43,16 @@ void SCAnalysis::finish() {
 	model_print("SC count: %u\n", stats->sccount);
 	model_print("Non-SC count: %u\n", stats->nonsccount);
 	model_print("Total actions: %llu\n", stats->actions);
-	unsigned long long actionperexec=(stats->actions)/(stats->sccount+stats->nonsccount);
+	unsigned long long execCount = stats->sccount + stats->nonsccount;
+	unsigned long long actionperexec=(stats->actions) / execCount;
 	model_print("Actions per execution: %llu\n", actionperexec);
 
-	model_print("Push per execution: %llu\n", (stats->pushCount / (stats->sccount+stats->nonsccount)));
-	model_print("Writes calculated per processed read: %llu\n", (stats->processedWrites / stats->processedReads));
-	model_print("Read actions per execution: %llu\n", (stats->reads/ (stats->sccount+stats->nonsccount)));
+	model_print("Read actions per execution: %llu\n", stats->reads / execCount);
+	model_print("Write actions per execution: %llu\n", stats->writes / execCount);
+	model_print("Push per execution: %llu\n", stats->pushCount / execCount);
+	model_print("Processed read actions per execution: %llu\n", stats->processedReads / execCount);
+	model_print("Processed writes calculated per processed read: %llu\n", stats->processedWrites / stats->processedReads);
+	model_print("Length of write lists per processed read: %llu\n", stats->writeListsLength / stats->processedReads);
 }
 
 bool SCAnalysis::option(char * opt) {
@@ -399,6 +403,9 @@ int SCAnalysis::buildVectorsFast(action_list_t *list) {
 		
 		/* Building the write lists */
 		if (act->is_write()) {
+			/* To record the number of write actions in the executions */
+			stats->writes++;
+
 			void *loc = act->get_location();
 			SnapVector<action_list_t*> *writeLists = writeMap.get(loc);
 			if (!writeLists) {
@@ -428,7 +435,7 @@ int SCAnalysis::buildVectorsFast(action_list_t *list) {
 		}
 		/* Add the rf edge */
 		if (act->is_read()) {
-			/* To record the number of read actions that has been calculated */
+			/* To record the number of read actions in the executions */
 			stats->reads++;
 
 			const ModelAction *write = act->get_reads_from();
@@ -553,7 +560,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 	const ModelAction *write = read->get_reads_from();
 	ClockVector *writecv = cvmap.get(write);
 
-	/* To record the number of read actions that has been calculated */
+	/* To record the number of read actions that has been processed */
 	stats->processedReads++;
 
 	SnapVector<action_list_t*> *writeLists = writeMap.get(read->get_location());
@@ -566,6 +573,10 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		action_list_t *writeList = (*writeLists)[i];
 		if (!writeList)
 			continue;
+
+		/* To record the number of write actions in the writeList */
+		stats->writeListsLength++;
+
 		for (action_list_t::reverse_iterator rit = writeList->rbegin(); rit !=
 			writeList->rend(); rit++) {
 			ModelAction *write2 = *rit;
