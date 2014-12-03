@@ -47,7 +47,7 @@ void SCAnalysis::finish() {
 	model_print("Actions per execution: %llu\n", actionperexec);
 
 	model_print("Push per execution: %llu\n", (stats->pushCount / (stats->sccount+stats->nonsccount)));
-	model_print("Writes to calculated per processed read: %llu\n", (stats->writeLists / stats->processedReads));
+	model_print("Writes calculated per processed read: %llu\n", (stats->processedWrites / stats->processedReads));
 	model_print("Read actions per execution: %llu\n", (stats->reads/ (stats->sccount+stats->nonsccount)));
 }
 
@@ -405,10 +405,15 @@ int SCAnalysis::buildVectorsFast(action_list_t *list) {
 				writeLists = new SnapVector<action_list_t*>;
 				writeMap.put(loc, writeLists);
 			}
-			if (writeLists->size() < threadid) {
+			if (writeLists->size() <= threadid) {
 				writeLists->resize(threadid + 1);
 			}
-			(*writeLists)[threadid]->push_back(act);
+			action_list_t *writeList = (*writeLists)[threadid];
+			if (!writeList) {
+				writeList = new action_list_t;
+				(*writeLists)[threadid] = writeList;
+			}
+			writeList->push_back(act);
 		}
 
 		ModelAction *lastAct = threadlists[threadid].back();
@@ -551,16 +556,18 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 	/* To record the number of read actions that has been calculated */
 	stats->processedReads++;
 
+	SnapVector<action_list_t*> *writeLists = writeMap.get(read->get_location());
 	for (int i = 0; i <= maxthreads; i++) {
 		thread_id_t tid = int_to_id(i);
 		if (tid == read->get_tid())
 			continue;
 		if (tid == write->get_tid())
 			continue;
-		action_list_t *list = execution->get_actions_on_obj(read->get_location(), tid);
-		if (list == NULL)
+		action_list_t *writeList = (*writeLists)[i];
+		if (!writeList)
 			continue;
-		for (action_list_t::reverse_iterator rit = list->rbegin(); rit != list->rend(); rit++) {
+		for (action_list_t::reverse_iterator rit = writeList->rbegin(); rit !=
+			writeList->rend(); rit++) {
 			ModelAction *write2 = *rit;
 			if (!write2->is_write())
 				continue;
@@ -570,7 +577,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 				continue;
 
 			/* To record the number of write actions that have been calculated */
-			stats->writeLists++;
+			stats->processedWrites++;
 
 			/* write -sc-> write2 &&
 				 write -rf-> R =>

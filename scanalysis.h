@@ -14,7 +14,7 @@ struct sc_statistics {
 	/* The number of processed read actions */
 	unsigned long long processedReads;
 	/* The number of actions in the write lists */
-	unsigned long long writeLists;
+	unsigned long long processedWrites;
 	/* The number of push to the update list */
 	unsigned long long pushCount;
 };
