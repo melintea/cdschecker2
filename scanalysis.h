@@ -8,13 +8,15 @@ struct sc_statistics {
 	unsigned int sccount;
 	unsigned int nonsccount;
 	unsigned long long actions;
-
+	
 	/* The number of read actions */
 	unsigned long long reads;
+	/* The number of processed read actions */
+	unsigned long long processedReads;
 	/* The number of actions in the write lists */
 	unsigned long long writeLists;
 	/* The number of push to the update list */
-	unsigned long long pushCount
+	unsigned long long pushCount;
 };
 
 typedef ModelList<const ModelAction*> const_actions_t;
@@ -120,6 +122,8 @@ class SCAnalysis : public TraceAnalysis {
 	bool cvChanged;
 
 	HashTable<const ModelAction *, action_node*, uintptr_t, 4 > nodeMap;
+	/** The list of write operations per location/thread */
+	HashTable<void *, SnapVector<action_list_t*>*, uintptr_t, 4 > writeMap;
 	const_actions_t *updateSet;
 
 	bool print_always;
