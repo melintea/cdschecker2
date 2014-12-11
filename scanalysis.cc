@@ -407,17 +407,17 @@ int SCAnalysis::buildVectorsFast(action_list_t *list) {
 			stats->writes++;
 
 			void *loc = act->get_location();
-			SnapVector<action_list_t*> *writeLists = writeMap.get(loc);
+			SnapVector<SnapVector<ModelAction*>*> *writeLists = writeMap.get(loc);
 			if (!writeLists) {
-				writeLists = new SnapVector<action_list_t*>;
+				writeLists = new SnapVector<SnapVector<ModelAction*>*>;
 				writeMap.put(loc, writeLists);
 			}
 			if (writeLists->size() <= threadid) {
 				writeLists->resize(threadid + 1);
 			}
-			action_list_t *writeList = (*writeLists)[threadid];
+			SnapVector<ModelAction*> *writeList = (*writeLists)[threadid];
 			if (!writeList) {
-				writeList = new action_list_t;
+				writeList = new SnapVector<ModelAction*>;
 				(*writeLists)[threadid] = writeList;
 			}
 			writeList->push_back(act);
@@ -563,21 +563,111 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 	/* To record the number of read actions that has been processed */
 	stats->processedReads++;
 
-	SnapVector<action_list_t*> *writeLists = writeMap.get(read->get_location());
+	SnapVector<SnapVector<ModelAction*>*> *writeLists = writeMap.get(read->get_location());
 	for (int i = 0; i <= maxthreads; i++) {
 		thread_id_t tid = int_to_id(i);
 		if (tid == read->get_tid())
 			continue;
 		if (tid == write->get_tid())
 			continue;
-		action_list_t *writeList = (*writeLists)[i];
+		SnapVector<ModelAction*> *writeList = (*writeLists)[i];
 		if (!writeList)
 			continue;
 
 		/* To record the number of write actions in the writeList */
-		stats->writeListsLength++;
+		stats->writeListsLength += writeList->size();
 
-		for (action_list_t::reverse_iterator rit = writeList->rbegin(); rit !=
+		// Use binary search to reduce searching time
+		int low = 0, high = writeList->size() - 1, mid;
+		int earliestPos = -1;
+		ClockVector *write2cv;
+		// Find the earliest write2 (write2 -> read) in the list
+		ModelAction *write2;
+		while (low + 1 < high) {
+			// The number of processed write actions
+			stats->processedWrites++;
+
+			mid = (low + high) / 2;
+			write2 = (*writeList)[mid];
+			write2cv = cvmap.get(write2);
+			if (write2cv && cv->synchronized_since(write2)) {
+				low = mid;
+			} else {
+				high = mid - 1;
+			}
+		}
+		write2 = (*writeList)[high];
+		write2cv = cvmap.get(write2);
+
+		// The number of processed write actions
+		stats->processedWrites++;
+		if (write2cv && cv->synchronized_since(write2)) { // Found it
+			status = merge(writecv, write, write2);
+			if (status)
+				passChange(write);
+			changed |= status;
+			earliestPos = high;
+		} else if (low != high) {
+			// The number of processed write actions
+			stats->processedWrites++;
+
+			write2 = (*writeList)[low];
+			write2cv = cvmap.get(write2);
+			if (write2cv && cv->synchronized_since(write2)) {
+				status = merge(writecv, write, write2);
+				if (status)
+					passChange(write);
+				changed |= status;		
+				earliestPos = low;
+			}
+		}
+		
+		// Find the latest write2 (write -> write2) in the list
+		low = earliestPos + 1;
+		if (low == writeList->size()) {
+			// In case where only 1 action is in the list
+			low = 0;
+		}
+		high = writeList->size() - 1;
+		while (low + 1 < high) {
+			// The number of processed write actions
+			stats->processedWrites++;
+
+			mid = (low + high) / 2;
+			write2 = (*writeList)[mid];
+			write2cv = cvmap.get(write2);
+			if (write2cv && write2cv->synchronized_since(write)) {
+				high = mid;
+			} else {
+				low = mid + 1;
+			}
+		}
+		write2 = (*writeList)[low];
+		write2cv = cvmap.get(write2);
+
+		// The number of processed write actions
+		stats->processedWrites++;
+		if (write2cv && write2cv->synchronized_since(write)) { // Found it
+			status = merge(write2cv, write2, read);
+			if (status)
+				passChange(write2);
+			changed |= status;
+		} else if (high != low) {
+			// The number of processed write actions
+			stats->processedWrites++;
+
+			write2 = (*writeList)[high];
+			write2cv = cvmap.get(write2);
+			if (write2cv && write2cv->synchronized_since(write)) {
+				status = merge(write2cv, write2, read);
+				if (status)
+					passChange(write2);
+				changed |= status;		
+			}
+		}
+
+		/*
+		for (SnapVector<ModelAction*>::reverse_iterator rit = writeList->rbegin(); rit !=
 			writeList->rend(); rit++) {
 			ModelAction *write2 = *rit;
 			if (!write2->is_write())
@@ -587,12 +677,12 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 			if (write2cv == NULL)
 				continue;
 
-			/* To record the number of write actions that have been calculated */
+			// To record the number of write actions that have been calculated
 			stats->processedWrites++;
 
-			/* write -sc-> write2 &&
-				 write -rf-> R =>
-				 R -sc-> write2 */
+			// write -sc-> write2 &&
+			//	 write -rf-> R =>
+			//	 R -sc-> write2 
 			if (write2cv->synchronized_since(write)) {
 				status = merge(write2cv, write2, read);
 				if (status)
@@ -601,9 +691,9 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 			}
 
 			//looking for earliest write2 in iteration to satisfy this
-			/* write2 -sc-> R &&
-				 write -rf-> R =>
-				 write2 -sc-> write */
+			// write2 -sc-> R &&
+			//	 write -rf-> R =>
+			//	 write2 -sc-> write
 			if (cv->synchronized_since(write2)) {
 				status = merge(writecv, write, write2);
 				if (status)
@@ -612,6 +702,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 				break;
 			}
 		}
+		*/
 	}
 	return changed;
 }

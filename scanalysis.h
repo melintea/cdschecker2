@@ -127,7 +127,7 @@ class SCAnalysis : public TraceAnalysis {
 
 	HashTable<const ModelAction *, action_node*, uintptr_t, 4 > nodeMap;
 	/** The list of write operations per location/thread */
-	HashTable<void *, SnapVector<action_list_t*>*, uintptr_t, 4 > writeMap;
+	HashTable<void *, SnapVector<SnapVector<ModelAction*>*>*, uintptr_t, 4 > writeMap;
 	const_actions_t *updateSet;
 
 	bool print_always;
