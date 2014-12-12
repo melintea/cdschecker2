@@ -8,6 +8,13 @@ struct sc_statistics {
 	unsigned int sccount;
 	unsigned int nonsccount;
 	unsigned long long actions;
+
+	/* The time elapsed for each part */
+	unsigned long long buildVectorTime;
+	unsigned long long computeCVTime;
+	unsigned long long computeCVOtherTime;
+	unsigned long long passChangeTime;
+	unsigned long long processReadTime;
 	
 	/* The number of read actions */
 	unsigned long long reads;
@@ -21,6 +28,8 @@ struct sc_statistics {
 	unsigned long long processedWrites;
 	/* The number of push to the update list */
 	unsigned long long pushCount;
+	/* The number of merge called */
+	unsigned long long mergeCount;
 };
 
 typedef ModelList<const ModelAction*> const_actions_t;
@@ -99,6 +108,7 @@ class SCAnalysis : public TraceAnalysis {
 	/** A wrapper for pushing changes to the updateSet for the purpose of
 	 * collecting statistics */
 	void pushChange(const ModelAction *act);
+	void popUpdateSet();
 
 	int maxthreads;
 	HashTable<const ModelAction *, ClockVector *, uintptr_t, 4 > cvmap;
@@ -129,6 +139,7 @@ class SCAnalysis : public TraceAnalysis {
 	/** The list of write operations per location/thread */
 	HashTable<void *, SnapVector<SnapVector<ModelAction*>*>*, uintptr_t, 4 > writeMap;
 	const_actions_t *updateSet;
+	unsigned int updateSetSize;
 
 	bool print_always;
 	bool print_buggy;

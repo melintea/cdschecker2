@@ -22,6 +22,7 @@ SCAnalysis::SCAnalysis() :
 	stats((struct sc_statistics *)model_calloc(1, sizeof(struct sc_statistics)))
 {
 	updateSet = new const_actions_t;
+	updateSetSize = 0;
 }
 
 SCAnalysis::~SCAnalysis() {
@@ -45,11 +46,19 @@ void SCAnalysis::finish() {
 	model_print("Total actions: %llu\n", stats->actions);
 	unsigned long long execCount = stats->sccount + stats->nonsccount;
 	unsigned long long actionperexec=(stats->actions) / execCount;
+
+	model_print("Elapsed time in buildVector %llu\n", stats->buildVectorTime);
+	model_print("Elapsed time in computeCV %llu\n", stats->computeCVTime);
+	model_print("Elapsed time in computeCVOther %llu\n", stats->computeCVOtherTime);
+	model_print("Elapsed time in processRead %llu\n", stats->processReadTime);
+	model_print("Elapsed time in passChange %llu\n", stats->passChangeTime);
+
 	model_print("Actions per execution: %llu\n", actionperexec);
 
 	model_print("Read actions per execution: %llu\n", stats->reads / execCount);
 	model_print("Write actions per execution: %llu\n", stats->writes / execCount);
 	model_print("Push per execution: %llu\n", stats->pushCount / execCount);
+	model_print("Merge per execution: %llu\n", stats->mergeCount / execCount);
 	model_print("Processed read actions per execution: %llu\n", stats->processedReads / execCount);
 	model_print("Processed writes calculated per processed read: %llu\n", stats->processedWrites / stats->processedReads);
 	model_print("Length of write lists per processed read: %llu\n", stats->writeListsLength / stats->processedReads);
@@ -155,6 +164,9 @@ void SCAnalysis::check_rf(action_list_t *list) {
 
 
 bool SCAnalysis::merge(ClockVector *cv, const ModelAction *act, const ModelAction *act2) {
+	// Record the number merge called
+	stats->mergeCount++;
+
 	bool status;
 	ClockVector *cv2 = cvmap.get(act2);
 	if (cv2 == NULL)
@@ -297,8 +309,18 @@ ModelAction * SCAnalysis::pruneArray(ModelAction **array,int count) {
 }
 
 action_list_t * SCAnalysis::generateSC(action_list_t *list) {
+	struct timeval start;
+	struct timeval finish;
+
+	gettimeofday(&start, NULL);
  	int numactions=buildVectors(list);
+	gettimeofday(&finish, NULL);
+	stats->buildVectorTime += ((finish.tv_sec*1000000+finish.tv_usec)-(start.tv_sec*1000000+start.tv_usec));
+
+	//gettimeofday(&start, NULL);
 	computeCV(list);
+	//gettimeofday(&finish, NULL);
+	//stats->computeCVTime += ((finish.tv_sec*1000000+finish.tv_usec)-(start.tv_sec*1000000+start.tv_usec));
 
 	if (fastVersion) {
 		stats->actions+=numactions;
@@ -380,6 +402,13 @@ void SCAnalysis::pushChange(const ModelAction *act) {
 	/* To record the number of overall push to the update set */
 	stats->pushCount++;
 	updateSet->push_back(act);
+	updateSetSize++;
+}
+
+
+void SCAnalysis::popUpdateSet() {
+	updateSet->pop_front();
+	updateSetSize--;
 }
 
 int SCAnalysis::buildVectorsFast(action_list_t *list) {
@@ -780,8 +809,11 @@ bool SCAnalysis::processReadSlow(const ModelAction *read, ClockVector *cv) {
 }
 
 void SCAnalysis::passChange(const ModelAction *act) {
+	//struct timeval start;
+	//struct timeval finish;
 	/* Update the CV of the to node */
 	action_node *node = nodeMap.get(act);
+
 	if (node == NULL)
 		return;
 	const ModelAction *nextAct = node->sb;
@@ -796,24 +828,44 @@ void SCAnalysis::passChange(const ModelAction *act) {
 
 
 void SCAnalysis::computeCVFast(action_list_t *list) {
+	struct timeval start;
+	struct timeval finish;
+
 	/* A BFS-like approach */
-	while (updateSet->size() > 0) {
+	while (updateSetSize > 0) {
+		gettimeofday(&start, NULL);
 		const ModelAction *act = updateSet->front();
-		updateSet->pop_front();
+		//updateSet->pop_front();
+		popUpdateSet();
+		gettimeofday(&finish, NULL);
+		stats->computeCVOtherTime += ((finish.tv_sec*1000000+finish.tv_usec)-(start.tv_sec*1000000+start.tv_usec));
 
 		/* Update the CV of the to node */
+		gettimeofday(&start, NULL);
 		passChange(act);
+		gettimeofday(&finish, NULL);
+		stats->passChangeTime += ((finish.tv_sec*1000000+finish.tv_usec)-(start.tv_sec*1000000+start.tv_usec));
+
 		if (act->is_read()) {
+			gettimeofday(&start, NULL);
 			processReadFast(act, cvmap.get(act));
+			gettimeofday(&finish, NULL);
+			stats->processReadTime += ((finish.tv_sec*1000000+finish.tv_usec)-(start.tv_sec*1000000+start.tv_usec));
 		}
 	}
 }
 
 void SCAnalysis::computeCV(action_list_t *list) {
+	struct timeval start;
+	struct timeval finish;
+
+	gettimeofday(&start, NULL);
 	if (fastVersion)
 		computeCVFast(list);
 	else
 		computeCVSlow(list);
+	gettimeofday(&finish, NULL);
+	stats->computeCVTime += ((finish.tv_sec*1000000+finish.tv_usec)-(start.tv_sec*1000000+start.tv_usec));
 }
 
 void SCAnalysis::computeCVSlow(action_list_t *list) {
