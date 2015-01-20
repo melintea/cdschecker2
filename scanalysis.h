@@ -24,6 +24,9 @@ struct sc_statistics {
 	unsigned long long processedReads;
 	/* The number of actions in the write lists */
 	unsigned long long writeListsLength;
+	/* The maximum number of actions in the write lists */
+	unsigned long long writeListsMaxLength;
+	unsigned long long writeListMaxSearchTime;
 	/* The number of processed actions in the write lists */
 	unsigned long long processedWrites;
 	/* The number of push to the update list */

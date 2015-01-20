@@ -62,6 +62,7 @@ void SCAnalysis::finish() {
 	model_print("Processed read actions per execution: %llu\n", stats->processedReads / execCount);
 	model_print("Processed writes calculated per processed read: %llu\n", stats->processedWrites / stats->processedReads);
 	model_print("Length of write lists per processed read: %llu\n", stats->writeListsLength / stats->processedReads);
+	model_print("Maximum length of write lists: %llu\n", stats->writeListsMaxLength);
 }
 
 bool SCAnalysis::option(char * opt) {
@@ -592,6 +593,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 	/* To record the number of read actions that has been processed */
 	stats->processedReads++;
 
+	int writeAccessCount = 0;
 	SnapVector<SnapVector<ModelAction*>*> *writeLists = writeMap.get(read->get_location());
 	for (int i = 0; i <= maxthreads; i++) {
 		thread_id_t tid = int_to_id(i);
@@ -606,6 +608,10 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		/* To record the number of write actions in the writeList */
 		stats->writeListsLength += writeList->size();
 
+		/* To record the maximum number of write actions in the writeList */
+		if (stats->writeListsMaxLength < writeList->size())
+			stats->writeListsMaxLength = writeList->size();
+
 		// Use binary search to reduce searching time
 		int low = 0, high = writeList->size() - 1, mid;
 		int earliestPos = -1;
@@ -615,6 +621,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		while (low + 1 < high) {
 			// The number of processed write actions
 			stats->processedWrites++;
+			writeAccessCount++;
 
 			mid = (low + high) / 2;
 			write2 = (*writeList)[mid];
@@ -630,6 +637,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 
 		// The number of processed write actions
 		stats->processedWrites++;
+		writeAccessCount++;
 		if (write2cv && cv->synchronized_since(write2)) { // Found it
 			status = merge(writecv, write, write2);
 			if (status)
@@ -639,6 +647,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		} else if (low != high) {
 			// The number of processed write actions
 			stats->processedWrites++;
+			writeAccessCount++;
 
 			write2 = (*writeList)[low];
 			write2cv = cvmap.get(write2);
@@ -661,6 +670,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		while (low + 1 < high) {
 			// The number of processed write actions
 			stats->processedWrites++;
+			writeAccessCount++;
 
 			mid = (low + high) / 2;
 			write2 = (*writeList)[mid];
@@ -676,6 +686,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 
 		// The number of processed write actions
 		stats->processedWrites++;
+		writeAccessCount++;
 		if (write2cv && write2cv->synchronized_since(write)) { // Found it
 			status = merge(write2cv, write2, read);
 			if (status)
@@ -684,6 +695,7 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		} else if (high != low) {
 			// The number of processed write actions
 			stats->processedWrites++;
+			writeAccessCount++;
 
 			write2 = (*writeList)[high];
 			write2cv = cvmap.get(write2);
@@ -732,6 +744,8 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 			}
 		}
 		*/
+		//model_print("writeListLength: %d\n", writeList->size());
+		//model_print("writeCount: %d\n", writeAccessCount);
 	}
 	return changed;
 }
