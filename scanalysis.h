@@ -93,7 +93,7 @@ class SCAnalysis : public TraceAnalysis {
 	void computeCVFast(action_list_t *);
 	action_list_t * generateSC(action_list_t *);
 	bool processReadFast(const ModelAction *read, ClockVector *cv);
-	bool processReadSlow(const ModelAction *read, ClockVector *cv);
+	bool processReadSlow(const ModelAction *read, ClockVector *cv, bool *updateFuture);
 	int getNextActions(ModelAction **array);
 	bool merge(ClockVector *cv, const ModelAction *act, const ModelAction *act2);
 	void check_rf(action_list_t *list);

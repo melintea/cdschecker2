@@ -107,6 +107,7 @@ void SCAnalysis::print_list(action_list_t *list) {
 			if (badrfset.contains(act))
 				model_print("BRF ");
 			act->print();
+			cvmap.get(act)->print();
 			if (badrfset.contains(act)) {
 				model_print("Desired Rf: %u \n", badrfset.get(act)->get_seq_number());
 			}
@@ -126,10 +127,12 @@ void SCAnalysis::analyze(action_list_t *actions) {
 	fastVersion = true;
 	action_list_t *list = generateSC(actions);
 	if (cyclic) {
+		//print_list(list);
+		
 		reset(actions);
 		if (list)
 			delete list;
-		/* Now we found that this is not SC, we run the slow version */
+		// Now we found that this is not SC, we run the slow version
 		fastVersion = false;
 		list = generateSC(actions);
 	}
@@ -152,14 +155,25 @@ void SCAnalysis::update_stats() {
 }
 
 void SCAnalysis::check_rf(action_list_t *list) {
+	bool hasBadRF = false;
 	for (action_list_t::iterator it = list->begin(); it != list->end(); it++) {
 		const ModelAction *act = *it;
 		if (act->is_read()) {
-			if (act->get_reads_from() != lastwrmap.get(act->get_location()))
+			if (act->get_reads_from() != lastwrmap.get(act->get_location())) {
 				badrfset.put(act, lastwrmap.get(act->get_location()));
+				hasBadRF = true;
+			}
 		}
 		if (act->is_write())
 			lastwrmap.put(act->get_location(), act);
+	}
+	if (hasBadRF != cyclic) {
+		model_print("cyclic=%d\n", cyclic);
+		print_list(list);
+		ASSERT (false);
+	} else {
+		//model_print("SC\n");
+		//print_list(list);
 	}
 }
 
@@ -430,27 +444,31 @@ int SCAnalysis::buildVectorsFast(action_list_t *list) {
 			threadlists.resize(threadid + 1);
 			maxthreads = threadid;
 		}
-		
+	
+		void *loc = act->get_location();
+		SnapVector<SnapVector<ModelAction*>*> *writeLists = writeMap.get(loc);
+		if (!writeLists) {
+			writeLists = new SnapVector<SnapVector<ModelAction*>*>;
+			writeMap.put(loc, writeLists);
+		}
+		if (writeLists->size() <= threadid) {
+			writeLists->resize(threadid + 1);
+		}
+		SnapVector<ModelAction*> *writeList = (*writeLists)[threadid];
+		if (!writeList) {
+			writeList = new SnapVector<ModelAction*>;
+			(*writeLists)[threadid] = writeList;
+		}
+
 		/* Building the write lists */
 		if (act->is_write()) {
 			/* To record the number of write actions in the executions */
 			stats->writes++;
 
-			void *loc = act->get_location();
-			SnapVector<SnapVector<ModelAction*>*> *writeLists = writeMap.get(loc);
-			if (!writeLists) {
-				writeLists = new SnapVector<SnapVector<ModelAction*>*>;
-				writeMap.put(loc, writeLists);
-			}
-			if (writeLists->size() <= threadid) {
-				writeLists->resize(threadid + 1);
-			}
-			SnapVector<ModelAction*> *writeList = (*writeLists)[threadid];
-			if (!writeList) {
-				writeList = new SnapVector<ModelAction*>;
-				(*writeLists)[threadid] = writeList;
-			}
 			writeList->push_back(act);
+			//model_print("writelists size=%d\n", writeLists->size());
+			//model_print("maxthreads=%d\n", maxthreads);
+			//act->print();
 		}
 
 		ModelAction *lastAct = threadlists[threadid].back();
@@ -497,6 +515,7 @@ int SCAnalysis::buildVectorsFast(action_list_t *list) {
 					nodeMap.put(create, createNode);
 				}
 				createNode->specialEdge = act;
+				pushChange(create);
 			}
 		}
 		/* thrd_finish->thrd_join */
@@ -509,6 +528,7 @@ int SCAnalysis::buildVectorsFast(action_list_t *list) {
 				nodeMap.put(finish, finishNode);
 			}
 			finishNode->specialEdge = act;
+			pushChange(finish);
 		}
 		threadlists[threadid].push_back(act);
 	}
@@ -599,12 +619,12 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		thread_id_t tid = int_to_id(i);
 		if (tid == read->get_tid())
 			continue;
-		if (tid == write->get_tid())
-			continue;
+		if (writeLists->size() == i)
+			break;
 		SnapVector<ModelAction*> *writeList = (*writeLists)[i];
-		if (!writeList)
+		if (!writeList || writeList->size() == 0)
 			continue;
-
+	
 		/* To record the number of write actions in the writeList */
 		stats->writeListsLength += writeList->size();
 
@@ -618,6 +638,29 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		ClockVector *write2cv;
 		// Find the earliest write2 (write2 -> read) in the list
 		ModelAction *write2;
+		
+		if (tid == write->get_tid()) {
+			// Update the read->write2 atomatically
+			for (int i = writeList->size() - 1; i >= 0; i--) {
+				if (write == (*writeList)[i] && (i + 1) != writeList->size()) {
+					write2 = (*writeList)[i + 1];
+					//model_print("corner case\n");
+					//write->print();
+					//read->print();
+					//write2->print();
+					write2cv = cvmap.get(write2);
+					if (write2cv) {
+						status = merge(write2cv, write2, read);
+						if (status)
+							passChange(write);
+						changed |= status;
+					}
+					break;
+				}
+			}
+			continue;
+		}
+
 		while (low + 1 < high) {
 			// The number of processed write actions
 			stats->processedWrites++;
@@ -765,25 +808,32 @@ void SCAnalysis::getWriteActions(const_actions_t *list) {
 }
 
 
-bool SCAnalysis::processReadSlow(const ModelAction *read, ClockVector *cv) {
+bool SCAnalysis::processReadSlow(const ModelAction *read, ClockVector *cv, bool *updateFuture) {
 	bool changed = false;
-
+	
 	/* Merge in the clock vector from the write */
 	const ModelAction *write = read->get_reads_from();
 	ClockVector *writecv = cvmap.get(write);
+	if ((*write < *read) || ! *updateFuture) {
+		bool status = merge(cv, read, write) && (*read < *write);
+		changed |= status;
+		*updateFuture = status;
+	}
 
 	for (int i = 0; i <= maxthreads; i++) {
 		thread_id_t tid = int_to_id(i);
 		if (tid == read->get_tid())
 			continue;
-		if (tid == write->get_tid())
-			continue;
+		//if (tid == write->get_tid())
+		//	continue;
 		action_list_t *list = execution->get_actions_on_obj(read->get_location(), tid);
 		if (list == NULL)
 			continue;
 		for (action_list_t::reverse_iterator rit = list->rbegin(); rit != list->rend(); rit++) {
 			ModelAction *write2 = *rit;
 			if (!write2->is_write())
+				continue;
+			if (write2 == write)
 				continue;
 
 			ClockVector *write2cv = cvmap.get(write2);
@@ -794,12 +844,10 @@ bool SCAnalysis::processReadSlow(const ModelAction *read, ClockVector *cv) {
 				 write -rf-> R =>
 				 R -sc-> write2 */
 			if (write2cv->synchronized_since(write)) {
-				if ((*read < *write2) || ! updateFuture) {
+				if ((*read < *write2) || ! *updateFuture) {
 					bool status = merge(write2cv, write2, read);
-					if (status) 
-						passChange(write2);
 					changed |= status;
-					updateFuture |= status && (*write2 < *read);
+					*updateFuture |= status && (*write2 < *read);
 				}
 			}
 
@@ -808,12 +856,10 @@ bool SCAnalysis::processReadSlow(const ModelAction *read, ClockVector *cv) {
 				 write -rf-> R =>
 				 write2 -sc-> write */
 			if (cv->synchronized_since(write2)) {
-				if ((*write2 < *write) || ! updateFuture) {
+				if ((*write2 < *write) || ! *updateFuture) {
 					bool status = writecv == NULL || merge(writecv, write, write2);
-					if (status) 
-						passChange(write);
 					changed |= status;
-					updateFuture |= status && (*write < *write2);
+					*updateFuture |= status && (*write < *write2);
 				}
 				break;
 			}
@@ -831,13 +877,24 @@ void SCAnalysis::passChange(const ModelAction *act) {
 	if (node == NULL)
 		return;
 	const ModelAction *nextAct = node->sb;
-	if (nextAct)
-		if (merge(cvmap.get(nextAct), nextAct, act))
-			pushChange(act);
+	//model_print("pass change act:\n");
+	//act->print();
+	//cvmap.get(act)->print();
+	if (nextAct) {
+		//model_print("sb next:\n");
+		//nextAct->print();
+		ClockVector *nextCV = cvmap.get(nextAct);
+		if (merge(nextCV, nextAct, act))
+			pushChange(nextAct);
+	}
 	nextAct = node->specialEdge;
-	if (nextAct)
-		if (merge(cvmap.get(nextAct), nextAct, act))
-			pushChange(act);
+	if (nextAct) {
+		ClockVector *nextCV = cvmap.get(nextAct);
+		if (merge(nextCV, nextAct, act))
+			pushChange(nextAct);
+		//model_print("others next:\n");
+		//nextAct->print();
+	}
 }
 
 
@@ -883,27 +940,59 @@ void SCAnalysis::computeCV(action_list_t *list) {
 }
 
 void SCAnalysis::computeCVSlow(action_list_t *list) {
-	/* A BFS-like approach */
-	allowNonSC = false;
-	while (true) {
-		cvChanged = false;
-		getWriteActions(updateSet);
-		while (updateSet->size() > 0) {
-			const ModelAction *act = updateSet->front();
-			updateSet->pop_front();
+	bool changed = true;
+	bool firsttime = true;
+	ModelAction **last_act = (ModelAction **)model_calloc(1, (maxthreads + 1) * sizeof(ModelAction *));
 
-			/* Update the CV of the to node */
-			passChange(act);
+	while (changed) {
+		changed = changed&firsttime;
+		firsttime = false;
+		bool updateFuture = false;
+
+		for (action_list_t::iterator it = list->begin(); it != list->end(); it++) {
+			ModelAction *act = *it;
+			ModelAction *lastact = last_act[id_to_int(act->get_tid())];
+			if (act->is_thread_start())
+				lastact = execution->get_thread(act)->get_creation();
+			last_act[id_to_int(act->get_tid())] = act;
+			ClockVector *cv = cvmap.get(act);
+			if (cv == NULL) {
+				cv = new ClockVector(act->get_cv(), act);
+				cvmap.put(act, cv);
+			}
+			
+			if (lastact != NULL) {
+				merge(cv, act, lastact);
+			}
+			if (act->is_thread_join()) {
+				Thread *joinedthr = act->get_thread_operand();
+				ModelAction *finish = execution->get_last_action(joinedthr->get_id());
+				changed |= merge(cv, act, finish);
+			}
 			if (act->is_read()) {
-				processReadSlow(act, cvmap.get(act));
+				/*
+				if (fastVersion) {
+					changed |= processReadFast(act, cv);
+				} else if (annotatedReadSet.contains(act)) {
+					changed |= processAnnotatedReadSlow(act, cv, &updateFuture);
+				} else {
+					changed |= processReadSlow(act, cv, &updateFuture);
+				}
+				*/
+				changed |= processReadSlow(act, cv, &updateFuture);
 			}
 		}
-		if (!allowNonSC) {
-			allowNonSC = true;
-		}
-		/* Done when no changes happen when we allow non-SC */
-		if (allowNonSC && !cvChanged) {
-			break;
+		/* Reset the last action array */
+		if (changed) {
+			bzero(last_act, (maxthreads + 1) * sizeof(ModelAction *));
+		} else {
+			if (!allowNonSC) {
+				allowNonSC = true;
+				changed = true;
+			} else {
+				break;
+			}
 		}
 	}
+	model_free(last_act);
 }
