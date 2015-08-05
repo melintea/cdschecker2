@@ -157,7 +157,6 @@ void InferenceSet::addWeakerInference(Inference *curInfer) {
 
 	// An array of strengthened wildcards
 	SnapVector<int> *strengthened = new SnapVector<int>;
-	bool hasImposeSC = false;
 	model_print("Strengthened wildcards\n");
 	for (int i = 1; i <= curInfer->getSize(); i++) {
 		memory_order mo1 = (*curInfer)[i],
@@ -173,12 +172,9 @@ void InferenceSet::addWeakerInference(Inference *curInfer) {
 		model_print("wildcard %d -> %s (%s)\n", i, get_mo_str(mo1),
 			get_mo_str(mo2));
 		strengthened->push_back(i);
-		if (mo1 == memory_order_seq_cst && mo2 != memory_order_seq_cst)
-			hasImposeSC = true;
 	}
-	// Only apply weakening to the inferences that has imposed SC
 
-	for (int i = 0; i < strengthened->size(); i++) {
+	for (unsigned i = 0; i < strengthened->size(); i++) {
 		int w = (*strengthened)[i]; // The wildcard
 		memory_order mo1 = (*curInfer)[w];
 		memory_order mo2 = (*initialInfer)[w];

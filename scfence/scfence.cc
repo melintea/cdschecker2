@@ -186,28 +186,37 @@ void SCFence::initializeByFile() {
 	}
 	Inference *infer = NULL;
 	int curNum = 0;
-	memory_order mo;
+	memory_order mo = memory_order_relaxed;
 	char *str = (char *) malloc(sizeof(char) * (30 + 1));
 	bool isProcessing = false;
+	int ret = 0;
 	while (!feof(fp)) {
 		// Result #:
 		if (!isProcessing) {
-			fscanf(fp, "%s", str);
+			ret = fscanf(fp, "%s", str);
 		}
 		if (strcmp(str, "Result") == 0 || isProcessing) { // In an inference
-			fscanf(fp, "%s", str);
+			ret = fscanf(fp, "%s", str);
+			
 			infer = new Inference();
 			isProcessing = false;
 			while (!feof(fp)) { // Processing a specific inference
 				// wildcard # -> memory_order
-				fscanf(fp, "%s", str); // wildcard
+				ret = fscanf(fp, "%s", str);
+					
 				if (strcmp(str, "Result") == 0) {
 					isProcessing = true;
 					break;
 				}
-				fscanf(fp, "%d", &curNum); // #
-				fscanf(fp, "%s", str); // ->
-				fscanf(fp, "%s", str);
+				ret = fscanf(fp, "%d", &curNum);
+				ret = fscanf(fp, "%s", str);
+				if (ret <= 0 && ret != -1) {
+					fprintf(stderr, "The input parameter assignment file has wrong format\n");
+					perror(name);
+					exit(EXIT_FAILURE);
+				}
+				ret = fscanf(fp, "%s", str);
+				 
 				if (strcmp(str, "memory_order_relaxed") == 0)
 					mo = memory_order_relaxed;
 				else if (strcmp(str, "memory_order_acquire") == 0)
@@ -660,8 +669,6 @@ bool SCFence::imposeSC(action_list_t * actions, InferenceList *inferList, const 
 
 	// Just impose SC on one fence
 	if (!twoFences) {
-		bool oneFence = false;
-		Inference *curInfer = getCurInference();
 		for (action_list_t::iterator fit = fences->begin(); fit != fences->end();
 			fit++) {
 			ModelAction *fence = *fit;
@@ -669,20 +676,12 @@ bool SCFence::imposeSC(action_list_t * actions, InferenceList *inferList, const 
 			fence->print();
 			p = new Patch(act1, memory_order_seq_cst, fence, memory_order_seq_cst);
 			if (p->isApplicable()) {
-				memory_order mo1 = (*curInfer)[get_wildcard_id(act1->get_original_mo())];
-				memory_order mo2 = (*curInfer)[get_wildcard_id(fence->get_original_mo())];
 				// We can avoid this by adding two fences
-				if (mo1 != memory_order_seq_cst || mo2 != memory_order_seq_cst)
-					oneFence = true;
 				patches->push_back(p);
 			}
 			p = new Patch(act2, memory_order_seq_cst, fence, memory_order_seq_cst);
 			if (p->isApplicable()) {
-				memory_order mo1 = (*curInfer)[get_wildcard_id(act2->get_original_mo())];
-				memory_order mo2 = (*curInfer)[get_wildcard_id(fence->get_original_mo())];
 				// We can avoid this by adding two fences
-				if (mo1 != memory_order_seq_cst || mo2 != memory_order_seq_cst)
-					oneFence = true;
 				patches->push_back(p);
 			}
 		}
@@ -735,6 +734,8 @@ InferenceList* SCFence::getFixesFromPatternA(action_list_t *list, action_list_t:
 		itWrite2 != write2s->end(); itWrite2++) {
 		InferenceList *tmpCandidates = new InferenceList;
 		write2 = *itWrite2;
+		// Whether the write and the write2 originally have modification order
+		bool isWritesMO = false;
 		FENCE_PRINT("write2:\n");
 		ACT_PRINT(write2);
 		// write1->write2 (write->write2)
@@ -755,6 +756,9 @@ InferenceList* SCFence::getFixesFromPatternA(action_list_t *list, action_list_t:
 				imposeSC(list, tmpCandidates, write, write2);
 			}
 		} else {
+			if (!write->happens_before(write2)) {
+				isWritesMO = true;
+			}
 			FENCE_PRINT("write1 mo before write2. \n");
 		}
 
@@ -771,6 +775,23 @@ InferenceList* SCFence::getFixesFromPatternA(action_list_t *list, action_list_t:
 				ACT_PRINT(write2);
 				ACT_PRINT(read);
 				imposeSC(list, tmpCandidates, write2, read);
+				if (isWritesMO) {
+					// Also need to make sure write -sc/hb-> write2
+					FENCE_PRINT("Also have to impose hb/sc on write & write2: \n");
+					ACT_PRINT(write);
+					ACT_PRINT(write2);
+					paths1 = get_rf_sb_paths(write, write2);
+					if (paths1->size() > 0) {
+						FENCE_PRINT("Impose hb, from write1 to write2: \n");
+						print_rf_sb_paths(paths1, write, write2);
+						imposeSync(tmpCandidates, paths1, write, write2);
+					} else {
+						FENCE_PRINT("Also have to impose sc on write1 & write2: \n");
+						ACT_PRINT(write);
+						ACT_PRINT(write2);
+						imposeSC(list, tmpCandidates, write, write2);
+					}
+				}
 			}
 		} else {
 			FENCE_PRINT("write2 hb before read. \n");
