@@ -571,13 +571,10 @@ bool SCFence::imposeSync(InferenceList *inferList,
 	for (path_t::iterator it = path->begin(); it != path->end(); it++) {
 		const ModelAction *read = *it,
 			*write = read->get_reads_from(),
-			*prevRead, *nextRead;
+			*prevRead = NULL, *nextRead;
 		
 		const ModelAction *readBound = NULL,
 			*writeBound = NULL;
-		if (it == path->begin()) {
-			prevRead = NULL;
-		}
 		nextRead = *++it;
 		if (it == path->end()) {
 			nextRead = NULL;

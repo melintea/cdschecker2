@@ -319,7 +319,7 @@ int Inference::compareTo(const Inference *infer) const {
 	int subResult;
 
 	for (int i = 0; i <= smallerSize; i++) {
-		int mo1 = orders[i],
+		memory_order mo1 = orders[i],
 			mo2 = infer->orders[i];
 		if ((mo1 == memory_order_acquire && mo2 == memory_order_release) ||
 			(mo1 == memory_order_release && mo2 == memory_order_acquire)) {
