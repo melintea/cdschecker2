@@ -10,9 +10,11 @@ typedef call_id_t (*id_func_t)(void *info, thread_id_t tid);
 typedef bool (*check_action_func_t)(void *info, call_id_t id, thread_id_t tid);
 //typedef bool (*check_action_func_t)(void *info, call_id_t id);
 
+typedef bool (*check_commutativity_t)(void *info1, void *info);
+
 typedef enum spec_anno_type {
 	INIT, INTERFACE_BEGIN, POTENTIAL_CP_DEFINE, CP_DEFINE,
-	CP_DEFINE_CHECK, CP_CLEAR, INTERFACE_END, HB_CONDITION
+	CP_DEFINE_CHECK, CP_CLEAR, INTERFACE_END, HB_CONDITION, COMMUTATIVITY_RULE
 } spec_anno_type;
 
 typedef
@@ -34,12 +36,31 @@ struct anno_hb_init {
 } anno_hb_init;
 
 
+/**
+	This struct contains a commutativity rule: two method calls represented by
+	two unique integers and a function that takes two "info" pointers (with the
+	return value and the arguments) and returns a boolean to represent whether
+	the two method calls are commutable.
+*/
+typedef
+struct anno_commutativity_rule {
+	int interface_num_before;
+	int interface_num_after;
+	check_commutativity_t condition;
+} anno_commutativity_rule;
+
+
 typedef
 struct anno_init {
 	void **func_table;
 	int func_table_size;
+	
 	anno_hb_init **hb_init_table;
 	int hb_init_table_size;
+
+	// For commutativity rules
+	anno_commutativity_rule **commutativity_rule_table;
+	int commutativity_rule_size;
 } anno_init;
 
 
