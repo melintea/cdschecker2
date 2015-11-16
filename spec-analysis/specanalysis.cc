@@ -12,6 +12,7 @@
 SPECAnalysis::SPECAnalysis()
 {
 	execution = NULL;
+	stats = (struct spec_stats*) model_calloc(1, sizeof(struct spec_stats));
 }
 
 SPECAnalysis::~SPECAnalysis() {
@@ -28,6 +29,15 @@ const char * SPECAnalysis::name() {
 
 void SPECAnalysis::finish() {
 	model_print("SPECAnalysis finished!\n");
+	model_print("Among %d executions, %d of them are admissible.\n", stats->traceCnt,
+		stats->traceCnt - stats->inadmissibilityCnt);
+	if (stats->passCnt == stats->traceCnt) {
+		model_print("All executions (%d) have passed the specification.\n",
+			stats->traceCnt);	
+	} else {
+		model_print("%d executions have NOT passed the specification.\n",
+			stats->traceCnt - stats->passCnt);	
+	}
 }
 
 bool SPECAnalysis::option(char * opt) {
@@ -35,11 +45,14 @@ bool SPECAnalysis::option(char * opt) {
 }
 
 void SPECAnalysis::analyze(action_list_t *actions) {
+	stats->traceCnt++;
 	CPGraph *cpGraph = new CPGraph(execution);
 	cpGraph->build(actions);
 	cpGraph->printGraph();
 	if (!cpGraph->checkAdmissibility()) {
 		model_print("This execution is not admissible\n");
+		stats->inadmissibilityCnt++;
+		return;
 	}
 	
 	CPNodeListVector *sortings = cpGraph->generateAllSortings();
@@ -49,5 +62,8 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	cpGraph->printOneSorting(list);
 	if (!cpGraph->checkOne(list)) {
 		model_print("This execution is NOT consistent with the spec.\n");
+	} else {
+		stats->passCnt++;
 	}
+
 }

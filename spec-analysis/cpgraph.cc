@@ -397,9 +397,9 @@ CPNode* CPGraph::extractCPNode(action_list_t *actions, action_list_t::iterator &
 				//model_print("INTERFACE_END\n");
 				annoEnd = (anno_interface_end*) anno->annotation;
 				if (!hasCommitPoint) {
-					model_print("Exception: %d, tid_%d\tinterface %d does not "
-						"have commit points!\n", act->get_seq_number(),\
-						node->getBegin()->get_tid(), node->getInterfaceNum());
+					model_print("No commit point exception: ");
+					printNode(node);
+					model_print("\n");
 					return NULL;
 				} else {
 					// Don't forget to finsh the left
@@ -504,7 +504,10 @@ void CPGraph::printNode(CPNode *n) {
 	model_print("%s_%d (T%d): ", interfaceName, begin->get_seq_number(), tid);
 	CPList::iterator iter = list->begin();
 	CommitPoint *cp = *iter;
-	model_print("%s_%d", cp->labelName, cp->operation->get_seq_number());
+	if (cp)
+		model_print("%s_%d", cp->labelName, cp->operation->get_seq_number());
+	else
+		model_print("%s_%d", n->getInterfaceName(), n->getBegin()->get_seq_number());
 	iter++;
 	for (; iter != list->end(); iter++) {
 		CommitPoint *cp = *iter;

@@ -12,6 +12,17 @@
 #include "common.h"
 #include "cpgraph.h"
 
+struct spec_stats {
+	/** The number of traces that have passed the checking */
+	unsigned passCnt;
+
+	/** The number of inadmissible traces */
+	unsigned inadmissibilityCnt;
+	
+	/** The number of all checked traces */
+	unsigned traceCnt;
+};
+
 class SPECAnalysis : public TraceAnalysis {
  public:
 	SPECAnalysis();
@@ -23,6 +34,9 @@ class SPECAnalysis : public TraceAnalysis {
 	virtual bool option(char *);
 	virtual void finish();
 
+	/** Some stats */
+	spec_stats *stats;
+
 	SNAPSHOTALLOC
  private:
  	/** The execution */
@@ -30,6 +44,7 @@ class SPECAnalysis : public TraceAnalysis {
 
 	/** The commit point graph */
 	CPGraph *graph;
+	
 };
 
 
