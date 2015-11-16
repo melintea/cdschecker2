@@ -41,4 +41,12 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	if (!cpGraph->checkAdmissibility()) {
 		model_print("This execution is not admissible\n");
 	}
+	
+	CPNodeListVector *sortings = cpGraph->generateAllSortings();
+	cpGraph->printAllSortings(sortings);
+
+	//CPNodeList *list= cpGraph->generateOneSorting();
+	//cpGraph->printOneSorting(list);
+
+
 }

@@ -48,8 +48,9 @@ typedef enum CPEdgeType {
 } CPEdgeType;
 
 typedef HashTable<ModelAction*, CPNode*, uintptr_t, 4> CPNodeTable;
-typedef SnapList<CPNode*> CPNodeList;
-typedef SnapList<CPEdge*> CPEdgeList;
+typedef SnapVector<CPNode*> CPNodeList;
+typedef SnapVector<CPEdge*> CPEdgeList;
+typedef SnapVector<CPNodeList*> CPNodeListVector;
 
 typedef SnapList<PotentialCPInfo*> PotentialCPList;
 typedef SnapList<CommitPoint*> CPList;
@@ -61,14 +62,14 @@ typedef HashTable<call_id_t, CPNodeList*, uintptr_t, 4> ID2NodesTable;
 class CPEdge {
 	private:
 	CPEdgeType type;
-	CPNode *nextNode;
+	CPNode *node;
 
 	public:
-	CPEdge(CPEdgeType t, CPNode *next);
+	CPEdge(CPEdgeType t, CPNode *node);
 
 	CPEdgeType getType();
 
-	CPNode* getNextNode();
+	CPNode* getNode();
 
 	SNAPSHOTALLOC
 };
@@ -91,8 +92,14 @@ class CPNode {
 	// The pointer that points to the struct with the __RET__ and arguments
 	void *info;
 
-	// The list of edges from this node
-	CPEdgeList *edges;
+	// The list of outgoing edges from this node
+	CPEdgeList *outEdges;
+	
+	// The list of incoming edges to this node
+	CPEdgeList *inEdges;
+
+	// Logically exist (for topological sort)
+	bool exist;
 
 	// For DFS
 	int color; // 0 -> undiscovered; 1 -> discovered; 2 -> visited
@@ -131,15 +138,21 @@ class CPNode {
 
 	void setInfo(void *ptr);
 
+	bool getExist();
+
+	void setExist(bool e);
+
 	int getColor();
 
 	void setColor(int c);
 
-	CPEdgeList* getEdgeList();
+	CPEdgeList* getOutgoingEdgeList();
+
+	CPEdgeList* getIncomingEdgeList();
 
 	/** More functions for building up and traverse the graph */
 
-	void addEdge(CPNode *next, CPEdgeType type);
+	void addEdge(CPNode *node, CPEdgeType type);
 
 	SNAPSHOTALLOC
 };
@@ -159,6 +172,23 @@ class CPGraph {
 
 	// Check whether the execution is admmisible
 	bool checkAdmissibility();
+
+	// Print a random sorting
+	void printOneSorting(CPNodeList *list);
+
+	// Print all the possible sortings
+	void printAllSortings(CPNodeListVector *sortings);
+
+	/** A helper function that will be called recursively to generate all
+	 * topological sortings */
+	void generateAllSortingsHelper(CPNodeListVector* results,
+		CPNodeList *curList, int &numLiveNodes, bool generateOne, bool &found);
+
+	/** Generate all topological sortings */
+	CPNodeListVector* generateAllSortings();
+
+	/** Generate one random topological sorting */
+	CPNodeList* generateOneSorting();
 
 	// Check basic specifications by the sequential version
 	bool checkSequentialSpec();
@@ -197,6 +227,9 @@ class CPGraph {
 
 	// Whether this is a broken graph
 	bool isBroken;
+
+	// Whether there is a cycle in the graph
+	bool hasCycle;
 
 	// The annotation block that has the information of init_func, func_table,
 	// hb_init_table and commutativity_rule_table 
@@ -237,6 +270,18 @@ class CPGraph {
 	CPNode* extractCPNode(action_list_t *actions, action_list_t::iterator &iter);
 
 	void buildThreadLists(action_list_t *actions);
+
+	/** Based on the current situation of node existence, get a list of nodes
+	 * that do not have any incoming edges */
+	CPNodeList* getRootNodes();
+
+	bool checkSequentialSpec(CPNodeList *nodes);
+
+	bool checkSynchronization(CPNodeList *nodes);
+
+	bool checkRandom();
+
+	bool checkAll();
 };
 
 #endif

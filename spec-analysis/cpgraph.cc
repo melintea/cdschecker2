@@ -33,17 +33,17 @@ CommitPoint::CommitPoint(ModelAction *op, char *label, int num) :
 
 
 /********************    CPEdge    ********************/
-CPEdge::CPEdge(CPEdgeType t, CPNode *next) {
+CPEdge::CPEdge(CPEdgeType t, CPNode *n) {
 	type = t;
-	nextNode = next;
+	node = n;
 }
 
 CPEdgeType CPEdge::getType() {
 	return type;
 }
 
-CPNode* CPEdge::getNextNode() {
-	return nextNode;
+CPNode* CPEdge::getNode() {
+	return node;
 }
 
 
@@ -56,7 +56,10 @@ CPNode* CPEdge::getNextNode() {
 CPNode::CPNode() {
 	commitPoints = new CPList;
 	hbConditions = new HBConditionList;
-	edges = new CPEdgeList;
+	outEdges = new CPEdgeList;
+	inEdges = new CPEdgeList;
+	// Nodes initially exist
+	exist = true;
 }
 
 ModelAction* CPNode::getBegin() {
@@ -117,6 +120,14 @@ void CPNode::setInfo(void *ptr) {
 	info = ptr;
 }
 
+bool CPNode::getExist() {
+	return exist;
+}
+
+void CPNode::setExist(bool e) {
+	exist = e;
+}
+
 int CPNode::getColor() {
 	return color;
 }
@@ -126,23 +137,27 @@ void CPNode::setColor(int c) {
 }
 
 
-CPEdgeList* CPNode::getEdgeList() {
-	return edges;
+CPEdgeList* CPNode::getOutgoingEdgeList() {
+	return outEdges;
+}
+
+CPEdgeList* CPNode::getIncomingEdgeList() {
+	return inEdges;
 }
 
 void CPNode::addEdge(CPNode *next, CPEdgeType type)
 {
-	// MODEL_ASSERT (edges != NULL); // always be true
-
 	// First check if this edge is already added
-	for (CPEdgeList::iterator iter = edges->begin(); iter != edges->end();
+	for (CPEdgeList::iterator iter = outEdges->begin(); iter != outEdges->end();
 		iter++) {
 		CPEdge *e = *iter;
-		if (e->getNextNode() == next && e->getType() == type)
+		if (e->getNode() == next && e->getType() == type)
 			return;
 	}
 	CPEdge *newEdge = new CPEdge(type, next);
-	edges->push_back(newEdge);
+	CPEdge *oppositeEdge = new CPEdge(type, this);
+	outEdges->push_back(newEdge);
+	next->getIncomingEdgeList()->push_back(oppositeEdge);
 }
 
 
@@ -159,6 +174,9 @@ CPGraph::CPGraph(ModelExecution *e) {
 
 	hbRules = new HBRuleList;
 	commuteRules = new CommuteRuleList;
+
+	isBroken = false;
+	hasCycle = false;
 }
 
 /**
@@ -500,11 +518,11 @@ void CPGraph::printNode(CPNode *n) {
 	"-> Enqueue_20 (T3)"
 */
 void CPGraph::printEdges(CPNode *n) {
-	CPEdgeList *edges = n->getEdgeList();
+	CPEdgeList *edges = n->getOutgoingEdgeList();
 	for (CPEdgeList::iterator iter = edges->begin(); iter != edges->end();
 		iter++) {
 		CPEdge *e = *iter;
-		CPNode *next = e->getNextNode();
+		CPNode *next = e->getNode();
 		ModelAction *begin = next->getBegin();
 		int tid = id_to_int(begin->get_tid());
 		model_print("\t-> %s_%d (T%d)\n", next->getInterfaceName(),
@@ -578,10 +596,10 @@ void CPGraph::build(action_list_t *actions) {
 }
 
 bool CPGraph::hasEdge(CPNode *n1, CPNode *n2) {
-	CPEdgeList *edges = n1->getEdgeList();
+	CPEdgeList *edges = n1->getOutgoingEdgeList();
 	for (CPEdgeList::iterator i = edges->begin(); i != edges->end(); i++) {
 		CPEdge *e = *i;
-		CPNode *next = e->getNextNode();
+		CPNode *next = e->getNode();
 		if (next == n2) {
 			return true;
 		}
@@ -654,14 +672,140 @@ bool CPGraph::checkAdmissibility() {
 	return admissible;
 }
 
+CPNodeList* CPGraph::getRootNodes() {
+	CPNodeList *list= new CPNodeList;
+	for (CPNodeList::iterator it = nodeList->begin(); it != nodeList->end();
+		it++) {
+		CPNode *n = *it;
+		if (!n->getExist())
+			continue;
+		CPEdgeList *inEdges = n->getIncomingEdgeList();
+		if (inEdges->size() == 0) { // Fast check (natural root node)
+			list->push_back(n);
+			continue;
+		}
+		bool isRoot = true;
+		for (unsigned int i = 0; i < inEdges->size(); i++) {
+			CPEdge *e = (*inEdges)[i];
+			CPNode *prev = e->getNode();
+			if (prev->getExist()) { // It has an incoming edge
+				isRoot = false;
+				break;
+			}
+		}
+		// It does not have an incoming edge now
+		if (isRoot)
+			list->push_back(n);
+	}
+	return list;
+}
 
-bool CPGraph::checkSequentialSpec() {
+void CPGraph::printOneSorting(CPNodeList *list) {
+	model_print("-------------    A random sorting    -------------\n");
+	for (unsigned int j = 0; j < list->size(); j++) {
+		CPNode *n = (*list)[j];
+		model_print("%d. ", j + 1);
+		printNode(n);
+		model_print("\n");
+	}
+	model_print("-------------    A random sorting (end)    -------------\n");
+}
+
+void CPGraph::printAllSortings(CPNodeListVector *sortings) {
+	model_print("-------------    All sortings    -------------\n");
+	for (unsigned int i = 0; i < sortings->size(); i++) {
+		model_print("-------------    # %d    -------------\n", i + 1);
+		CPNodeList *list = (*sortings)[i];
+		for (unsigned int j = 0; j < list->size(); j++) {
+			CPNode *n = (*list)[j];
+			model_print("%d. ", j + 1);
+			printNode(n);
+			model_print("\n");
+		}
+		model_print("\n");
+	}
+	model_print("-------------    All sortings (end)    -------------\n");
+}
+
+
+void CPGraph::generateAllSortingsHelper(CPNodeListVector* results, CPNodeList
+	*curList, int &numLiveNodes, bool generateOne, bool &found) {
+	if (hasCycle)
+		return;
+
+	if (generateOne && found) {
+		return;
+	}
+
+	CPNodeList *roots = getRootNodes();
+	if (numLiveNodes == 0) { // Found one sorting
+		found = true;
+		results->push_back(new CPNodeList(*curList));
+		return;
+	}
+	
+	if (roots->size() == 0) { // Cycle exists
+		hasCycle = true;
+		return;
+	}
+
+	for (unsigned int i = 0; i < roots->size(); i++) {
+		CPNode *n = (*roots)[i];
+		n->setExist(false);
+		numLiveNodes--;
+		CPNodeList *newList = new CPNodeList(*curList);
+		newList->push_back(n);
+
+		generateAllSortingsHelper(results, newList, numLiveNodes, generateOne,
+			found);
+
+		// Recover
+		n->setExist(true);
+		numLiveNodes++;
+		delete newList;
+	}
+	delete roots;
+}
+
+
+CPNodeListVector* CPGraph::generateAllSortings() {
+	CPNodeListVector *results = new CPNodeListVector;
+	CPNodeList *curList = new CPNodeList;
+	int numLiveNodes = nodeList->size();
+	bool generateOne = false;
+	bool found = false;
+	generateAllSortingsHelper(results, curList, numLiveNodes, generateOne, found);
+	
+	return results;
+}
+
+CPNodeList* CPGraph::generateOneSorting() {
+	CPNodeListVector *results = new CPNodeListVector;
+	CPNodeList *curList = new CPNodeList;
+	int numLiveNodes = nodeList->size();
+	bool generateOne = true;
+	bool found = false;
+	generateAllSortingsHelper(results, curList, numLiveNodes, generateOne, found);
+	
+	return (*results)[0];
+}
+
+bool CPGraph::checkSequentialSpec(CPNodeList *nodes) {
 	return false;
 }
 
-bool CPGraph::checkSynchronization() {
+bool CPGraph::checkSynchronization(CPNodeList *nodes) {
 	return false;
 }
+
+bool CPGraph::checkRandom() {
+	return false;
+}
+
+bool CPGraph::checkAll() {
+	return false;
+}
+
 
 bool CPGraph::getBroken() {
 	return isBroken;
