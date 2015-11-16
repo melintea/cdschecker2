@@ -34,14 +34,9 @@ docs: *.c *.cc *.h README.html
 README.html: README.md
 	$(MARKDOWN) $< > $@
 
+include $(SPEC_DIR)/Makefile
 
-SPEC_PLUGIN := $(SPEC_DIR)/specanalysis.o 
-SPEC_LIB := $(SPEC_DIR)/spec_lib.o 
-
-$(SPEC_PLUGIN):
-	$(MAKE) -C $(SPEC_DIR) # compile the specanalysis first
-
-$(LIB_SO): $(OBJECTS) $(SPEC_PLUGIN)
+$(LIB_SO): $(OBJECTS)
 	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(LDFLAGS)
 
 malloc.o: malloc.c
@@ -57,9 +52,8 @@ malloc.o: malloc.c
 
 PHONY += clean
 clean:
-	rm -f *.o *.so .*.d *.pdf *.dot
+	rm -f *.o *.so .*.d *.pdf *.dot $(OBJECTS)
 	$(MAKE) -C $(TESTS_DIR) clean
-	$(MAKE) -C $(SPEC_DIR) clean
 
 PHONY += mrclean
 mrclean: clean
