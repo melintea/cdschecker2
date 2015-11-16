@@ -38,4 +38,7 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	CPGraph *cpGraph = new CPGraph(execution);
 	cpGraph->build(actions);
 	cpGraph->printGraph();
+	if (!cpGraph->checkAdmissibility()) {
+		model_print("This execution is not admissible\n");
+	}
 }

@@ -491,7 +491,6 @@ void CPGraph::printNode(CPNode *n) {
 	for (; iter != list->end(); iter++) {
 		CommitPoint *cp = *iter;
 		model_print(" + %s (%d)", cp->labelName, cp->operation->get_seq_number()); }
-	model_print("\n");
 }
 
 
@@ -522,6 +521,7 @@ void CPGraph::printGraph() {
 		CPNode *n = *iter;
 		/* Print the info the this node */
 		printNode(n);
+		model_print("\n");
 		/* Print the info the edges directly from this node */
 		printEdges(n);
 	}
@@ -591,38 +591,67 @@ bool CPGraph::hasEdge(CPNode *n1, CPNode *n2) {
 
 bool CPGraph::checkAdmissibility() {
 	CPNodeList::iterator iter1, iter2;
+	bool admissible = true;
 	for (iter1 = nodeList->begin(); iter1 != nodeList->end(); iter1++) {
 		CPNode *n1 = *iter1;
-		iter2 = iter1++;
+		iter1++;
+		iter2 = iter1;
 		iter1--;
 		for (; iter2 != nodeList->end(); iter2++) {
 			CPNode *n2 = *iter2;
-			bool isEdge = hasEdge(n1, n2);
-			if (!isEdge)
-				isEdge = hasEdge(n2, n1);
-			if (isEdge)
+			if (hasEdge(n1, n2) || hasEdge(n2, n1))
 				continue;
-
+			
 			/* Now we need to check whether we have a commutativity rule */
+			bool commute = false;
 			for (CommuteRuleList::iterator ruleIter = commuteRules->begin();
 				ruleIter != commuteRules->end(); ruleIter++) {
 				commutativity_rule *rule = *ruleIter;
-				if (n1->getInterfaceNum() != rule->interface_num_before ||
-					n2->getInterfaceNum() != rule->interface_num_after)
-					continue;
-				/* Check whether condition is satisfied */
+				int num1 = n1->getInterfaceNum();
+				int num2 = n2->getInterfaceNum();
 				check_commutativity_t func = rule->condition;
 				void *info1 = n1->getInfo();
 				void *info2 = n2->getInfo();
-				bool satisfied = (*func)(info1, info2);
-				if (satisfied) { // The rule allows commutativity
-					return true;
+				bool satisfied = false;
+				/* Check whether condition is satisfied */
+				if ((num1 == rule->interface_num_before &&
+					num2 == rule->interface_num_after)) { // The normal order
+					info1 = n1->getInfo();
+					info2 = n2->getInfo();
+					satisfied = (*func)(info1, info2);
+				} else if (num1 == rule->interface_num_after &&
+					num2 == rule->interface_num_before) {// The flipped order
+					info1 = n2->getInfo();
+					info2 = n1->getInfo();
+					satisfied = (*func)(info1, info2);
+				} else { // Not this rule
+					continue;
 				}
+				if (satisfied) { // The rule allows commutativity
+					commute = true;
+					break;
+				}
+			}
+			// We have no rules at all or the condition of the rules is not satisfied
+			if (!commute) {
+				admissible = false;
+				model_print("These two nodes should not commute:\n");
+				model_print("\t");
+				ModelAction *begin1 = n1->getBegin();
+				ModelAction *begin2 = n2->getBegin();
+				int tid1 = id_to_int(begin1->get_tid());
+				int tid2 = id_to_int(begin2->get_tid());
+				model_print("%s_%d (T%d)", n1->getInterfaceName(),
+					begin1->get_seq_number(), tid1);
+				model_print(" <-> ");
+				model_print("%s_%d (T%d)", n2->getInterfaceName(),
+					begin2->get_seq_number(), tid2);
+				model_print("\n");
 			}
 		}
 	}
-	// We have no rules at all or the condition of the rules is not satisfied
-	return false;
+
+	return admissible;
 }
 
 

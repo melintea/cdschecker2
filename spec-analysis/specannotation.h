@@ -46,6 +46,7 @@ typedef
 struct commutativity_rule {
 	int interface_num_before;
 	int interface_num_after;
+	char *rule; // The plain text of the rule (debugging purpose)
 	check_commutativity_t condition;
 } commutativity_rule;
 
