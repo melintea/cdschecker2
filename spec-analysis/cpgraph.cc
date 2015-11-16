@@ -791,7 +791,28 @@ CPNodeList* CPGraph::generateOneSorting() {
 }
 
 bool CPGraph::checkSequentialSpec(CPNodeList *nodes) {
-	return false;
+	// First of all run the initialize code
+	(*initFunc)();
+
+	for (unsigned int i = 0; i < nodes->size(); i++) {
+		CPNode *n = (*nodes)[i];
+		int num = n->getInterfaceNum();
+		thread_id_t tid = n->getBegin()->get_tid();
+		void *info = n->getInfo();
+		id_func_t idFunc = (id_func_t) funcTable[2 * num];
+		check_action_func_t checkFunc = (check_action_func_t) funcTable[2 * num + 1];
+		call_id_t id = (*idFunc)(info, tid);
+		n->setID(id);
+		bool checked = (*checkFunc)(info, id, tid);
+		if (!checked) {
+			model_print("There is a basic sequential inconsistency:\n");
+			model_print("\t");
+			printNode(n);
+			model_print("\n");
+			return false;
+		}
+	}
+	return true;
 }
 
 bool CPGraph::checkSynchronization(CPNodeList *nodes) {

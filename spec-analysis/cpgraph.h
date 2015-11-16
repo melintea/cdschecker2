@@ -191,10 +191,10 @@ class CPGraph {
 	CPNodeList* generateOneSorting();
 
 	// Check basic specifications by the sequential version
-	bool checkSequentialSpec();
+	bool checkSequentialSpec(CPNodeList *list);
 
 	// Check the synchronization properties
-	bool checkSynchronization();
+	bool checkSynchronization(CPNodeList *list);
 
 	// Check whether this is a broken execution 
 	bool getBroken();
@@ -274,10 +274,6 @@ class CPGraph {
 	/** Based on the current situation of node existence, get a list of nodes
 	 * that do not have any incoming edges */
 	CPNodeList* getRootNodes();
-
-	bool checkSequentialSpec(CPNodeList *nodes);
-
-	bool checkSynchronization(CPNodeList *nodes);
 
 	bool checkRandom();
 
