@@ -175,8 +175,10 @@ CPGraph::CPGraph(ModelExecution *e) {
 	hbRules = new HBRuleList;
 	commuteRules = new CommuteRuleList;
 
+	oneSorting = NULL;
+
 	isBroken = false;
-	hasCycle = false;
+	cyclic = false;
 }
 
 /**
@@ -511,7 +513,7 @@ void CPGraph::printNode(CPNode *n) {
 	iter++;
 	for (; iter != list->end(); iter++) {
 		CommitPoint *cp = *iter;
-		model_print(" + %s (%d)", cp->labelName, cp->operation->get_seq_number()); }
+		model_print(" + %s_%d", cp->labelName, cp->operation->get_seq_number()); }
 }
 
 
@@ -535,7 +537,7 @@ void CPGraph::printEdges(CPNode *n) {
 
 void CPGraph::printGraph() {
 	model_print("\n");
-	model_print("------------------  Commit Point Graph (%d)"
+	model_print("------------------  Commit Point Graph (exec #%d)"
 	"  ------------------\n", execution->get_execution_number());
 	for (CPNodeList::iterator iter = nodeList->begin(); iter != nodeList->end();
 		iter++) {
@@ -546,7 +548,7 @@ void CPGraph::printGraph() {
 		/* Print the info the edges directly from this node */
 		printEdges(n);
 	}
-	model_print("------------------  End Graph (%d)"
+	model_print("------------------  End Graph (exec #%d)"
 	"  ------------------\n", execution->get_execution_number());
 	model_print("\n");
 }
@@ -715,9 +717,10 @@ void CPGraph::printOneSorting(CPNodeList *list) {
 }
 
 void CPGraph::printAllSortings(CPNodeListVector *sortings) {
-	model_print("-------------    All sortings    -------------\n");
+	model_print("-------------    All sortings (exec #%d)    -------------\n",
+		execution->get_execution_number());
 	for (unsigned int i = 0; i < sortings->size(); i++) {
-		model_print("-------------    # %d    -------------\n", i + 1);
+		model_print("***********************    # %d    ***********************\n", i + 1);
 		CPNodeList *list = (*sortings)[i];
 		for (unsigned int j = 0; j < list->size(); j++) {
 			CPNode *n = (*list)[j];
@@ -725,15 +728,17 @@ void CPGraph::printAllSortings(CPNodeListVector *sortings) {
 			printNode(n);
 			model_print("\n");
 		}
-		model_print("\n");
+		if (i != sortings->size() - 1)
+			model_print("\n");
 	}
-	model_print("-------------    All sortings (end)    -------------\n");
+	model_print("-------------    All sortings (exec #%d) (end) "
+		"-------------\n", execution->get_execution_number());
 }
 
 
 void CPGraph::generateAllSortingsHelper(CPNodeListVector* results, CPNodeList
 	*curList, int &numLiveNodes, bool generateOne, bool &found) {
-	if (hasCycle)
+	if (cyclic)
 		return;
 
 	if (generateOne && found) {
@@ -748,7 +753,7 @@ void CPGraph::generateAllSortingsHelper(CPNodeListVector* results, CPNodeList
 	}
 	
 	if (roots->size() == 0) { // Cycle exists
-		hasCycle = true;
+		cyclic = true;
 		return;
 	}
 
@@ -782,7 +787,17 @@ CPNodeListVector* CPGraph::generateAllSortings() {
 	return results;
 }
 
+
+/**
+	We only generate one random topological sorting once, and store it in 
+	the oneSorting list. So for callers of these functions,
+	if (oneSorting) -> cyclic == false;
+	if (cyclic) -> oneSorting == NULL;
+*/
 CPNodeList* CPGraph::generateOneSorting() {
+	if (oneSorting || cyclic)
+		return oneSorting;
+
 	CPNodeListVector *results = new CPNodeListVector;
 	CPNodeList *curList = new CPNodeList;
 	int numLiveNodes = nodeList->size();
@@ -790,7 +805,19 @@ CPNodeList* CPGraph::generateOneSorting() {
 	bool found = false;
 	generateAllSortingsHelper(results, curList, numLiveNodes, generateOne, found);
 	
-	return (*results)[0];
+	if (results->size() > 0)
+		return (*results)[0];
+	else
+		return NULL; // To indicate there is a cycle
+}
+
+bool CPGraph::hasCycle() {
+	if (cyclic)
+		return true;
+	if (oneSorting)
+		return false;
+	oneSorting = generateOneSorting();
+	return cyclic;
 }
 
 bool CPGraph::checkSequentialSpec(CPNodeList *nodes) {
@@ -808,7 +835,8 @@ bool CPGraph::checkSequentialSpec(CPNodeList *nodes) {
 		n->setID(id);
 		bool checked = (*checkFunc)(info, id, tid);
 		if (!checked) {
-			model_print("There is a basic sequential inconsistency:\n");
+			model_print("There is a basic sequential inconsistency in execution "
+				"#%d:\n", execution->get_execution_number());
 			model_print("\t");
 			printNode(n);
 			model_print("\n");
@@ -887,7 +915,7 @@ bool CPGraph::checkOne(CPNodeList *list) {
 }
 
 bool CPGraph::checkAll(CPNodeListVector *sortings) {
-	for (int i = 0; i < sortings->size(); i++) {
+	for (unsigned i = 0; i < sortings->size(); i++) {
 		CPNodeList *list = (*sortings)[i];
 		if (!checkOne(list))
 			return false;

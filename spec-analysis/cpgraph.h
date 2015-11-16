@@ -206,6 +206,8 @@ class CPGraph {
 	// Check whether this is a broken execution 
 	bool getBroken();
 
+	bool hasCycle();
+
 	// Reset the isBroken variable to be false again 
 	void resetBroken();
 
@@ -232,11 +234,14 @@ class CPGraph {
 	// (from ModelAction* [begin annotation] -> CPNode) 
 	CPNodeTable *nodeTable;
 
+	// One random topological sortings, initially a NULL pointer
+	CPNodeList *oneSorting;
+
 	// Whether this is a broken graph
 	bool isBroken;
 
 	// Whether there is a cycle in the graph
-	bool hasCycle;
+	bool cyclic;
 
 	// The annotation block that has the information of init_func, func_table,
 	// hb_init_table and commutativity_rule_table 

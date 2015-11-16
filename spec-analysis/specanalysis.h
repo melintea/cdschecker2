@@ -21,6 +21,12 @@ struct spec_stats {
 	
 	/** The number of all checked traces */
 	unsigned traceCnt;
+
+	/** The number of traces with a cyclic graph */
+	unsigned cyclicCnt;
+
+	/** The number of traces with broken graphs */
+	unsigned brokenCnt;
 };
 
 class SPECAnalysis : public TraceAnalysis {
@@ -44,6 +50,16 @@ class SPECAnalysis : public TraceAnalysis {
 
 	/** The commit point graph */
 	CPGraph *graph;
+
+	/** A few useful options */
+	/* Print out the graphs of all executions */
+	bool print_always;
+	/* Print out the graphs of the inadmissible traces */
+	bool print_inadmissible;
+	/* Never print out the graphs of any traces */
+	bool quiet;
+	/* Only check one random topological sorting */
+	bool check_one;
 	
 };
 
