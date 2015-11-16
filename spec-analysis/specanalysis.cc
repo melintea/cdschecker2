@@ -42,12 +42,12 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 		model_print("This execution is not admissible\n");
 	}
 	
-	//CPNodeListVector *sortings = cpGraph->generateAllSortings();
+	CPNodeListVector *sortings = cpGraph->generateAllSortings();
 	//cpGraph->printAllSortings(sortings);
 
 	CPNodeList *list= cpGraph->generateOneSorting();
 	cpGraph->printOneSorting(list);
-	cpGraph->checkSequentialSpec(list);
-
-
+	if (!cpGraph->checkOne(list)) {
+		model_print("This execution is NOT consistent with the spec.\n");
+	}
 }

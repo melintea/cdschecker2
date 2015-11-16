@@ -56,7 +56,7 @@ typedef SnapList<PotentialCPInfo*> PotentialCPList;
 typedef SnapList<CommitPoint*> CPList;
 typedef SnapList<hb_rule*> HBRuleList;
 typedef SnapList<commutativity_rule*> CommuteRuleList;
-typedef SnapList<anno_hb_condition*> HBConditionList;
+typedef SnapVector<anno_hb_condition*> HBConditionList;
 typedef HashTable<call_id_t, CPNodeList*, uintptr_t, 4> ID2NodesTable;
 
 class CPEdge {
@@ -193,8 +193,15 @@ class CPGraph {
 	// Check basic specifications by the sequential version
 	bool checkSequentialSpec(CPNodeList *list);
 
+	// Whether we should check the syncrhonization property between n1->n2
+	bool shouldCheckSync(CPNode *n1, CPNode *n2);
+
 	// Check the synchronization properties
 	bool checkSynchronization(CPNodeList *list);
+
+	bool checkOne(CPNodeList *list);
+
+	bool checkAll(CPNodeListVector *sortings);
 
 	// Check whether this is a broken execution 
 	bool getBroken();
@@ -274,10 +281,6 @@ class CPGraph {
 	/** Based on the current situation of node existence, get a list of nodes
 	 * that do not have any incoming edges */
 	CPNodeList* getRootNodes();
-
-	bool checkRandom();
-
-	bool checkAll();
 };
 
 #endif

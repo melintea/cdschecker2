@@ -815,16 +815,81 @@ bool CPGraph::checkSequentialSpec(CPNodeList *nodes) {
 	return true;
 }
 
+// Whether we should check the syncrhonization property between n1->n2
+bool CPGraph::shouldCheckSync(CPNode *n1, CPNode *n2) {
+	if (n1->getID() != n2->getID()) // Look for the same ID
+		return false;
+	HBConditionList *hbConds1 = n1->getHBConditions();
+	if (hbConds1->size() == 0)
+		return false; // No happens-before condition 
+	HBConditionList *hbConds2 = n2->getHBConditions();
+	if (hbConds2->size() == 0)
+		return false; // No happens-before condition
+	
+	// Iterate against the conditions
+	for (unsigned i = 0; i < hbConds1->size(); i++) {
+		anno_hb_condition *hbCond1 = (*hbConds1)[i];
+		for (unsigned j = 0; j < hbConds2->size(); j++) {
+			anno_hb_condition *hbCond2 = (*hbConds2)[j];
+			// Finally check if that's a hb rule
+			for (HBRuleList::iterator it = hbRules->begin(); it !=
+				hbRules->end(); it++) {
+				hb_rule *rule = *it;
+				if (hbCond1->interface_num == rule->interface_num_before &&
+					hbCond1->hb_condition_num == rule->hb_condition_num_before &&
+					hbCond2->interface_num == rule->interface_num_after &&
+					hbCond2->hb_condition_num == rule->hb_condition_num_after)
+					return true; // Found it
+			}
+		}
+	}
+	return false;
+}
+
+// Check whether this execution 
 bool CPGraph::checkSynchronization(CPNodeList *nodes) {
-	return false;
+	if (hbRulesSize == 0) { // No need to check
+		model_print("No synchronization rules defined!\n");
+		return true;
+	}
+	// Iterate commit point nodes
+	for (unsigned i = 0; i < nodes->size(); i++) {
+		CPNode *n1 = (*nodes)[i];
+		for (unsigned j = i + 1; j < nodes->size(); j++) {
+			CPNode *n2 = (*nodes)[j];
+			if (!shouldCheckSync(n1, n2))
+				continue;
+			/** Now we need to check whether n1 -hb-> n2 */
+			ModelAction *begin = n1->getBegin();
+			ModelAction *end = n2->getEnd();
+			if (!begin->happens_before(end)) {
+				model_print("There is a synchronization inconsistency:\n");
+				model_print("\t");
+				printNode(n1);
+				model_print(" => ");
+				printNode(n2);
+				model_print("\n");
+			}
+		}
+	}
+	return true;
 }
 
-bool CPGraph::checkRandom() {
-	return false;
+bool CPGraph::checkOne(CPNodeList *list) {
+	bool checked = checkSequentialSpec(list);
+	if (checked) {
+		checked = checkSynchronization(list);
+	}
+	return checked;
 }
 
-bool CPGraph::checkAll() {
-	return false;
+bool CPGraph::checkAll(CPNodeListVector *sortings) {
+	for (int i = 0; i < sortings->size(); i++) {
+		CPNodeList *list = (*sortings)[i];
+		if (!checkOne(list))
+			return false;
+	}
+	return true;
 }
 
 
