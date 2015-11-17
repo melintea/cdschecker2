@@ -43,7 +43,7 @@ class CPNode;
 class CPGraph;
 
 typedef enum CPEdgeType {
-	HB, MO, RF, // Happens-before, Modification-order & Reads-from
+	HB, SC, MO, RF, // Happens-before, SC, Modification-order & Reads-from
 	RBW // Read-before-write(for RF)
 } CPEdgeType;
 
@@ -266,6 +266,9 @@ class CPGraph {
 	/** Process the initialization annotation block to initialize part of the
 	 * graph */
 	void processInitAnnotation(anno_init *annoInit);
+
+	/** Print a problematic thread list */
+	void printActions(action_list_t *actions);
 
 	/** Build the nodes from all the thread lists */
 	void buildNodesFromThreads();

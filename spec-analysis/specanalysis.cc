@@ -55,8 +55,8 @@ bool SPECAnalysis::option(char * opt) {
 	if (strcmp(opt, "verbose")==0) {
 		print_always=true;
 		return false;
-	} else if (strcmp(opt, "inadmissible-quiet")==0) {
-		print_inadmissible = false;
+	} else if (strcmp(opt, "inadmissible")==0) {
+		print_inadmissible = true;
 		return false;
 	}  else if (strcmp(opt, "quiet")==0) {
 		quiet = true;

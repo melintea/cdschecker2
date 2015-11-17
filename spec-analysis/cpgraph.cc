@@ -246,6 +246,7 @@ void CPGraph::buildThreadLists(action_list_t *actions) {
 	}
 }
 
+
 void CPGraph::buildNodesFromThreads() {
 	/* We start from the 1st real thread */
 	for (unsigned int i = 1; i < threadLists->size(); i++) {
@@ -401,8 +402,14 @@ CPNode* CPGraph::extractCPNode(action_list_t *actions, action_list_t::iterator &
 				//model_print("INTERFACE_END\n");
 				annoEnd = (anno_interface_end*) anno->annotation;
 				if (!hasCommitPoint) {
-					model_print("No commit point exception: ");
+					model_print("No commit point exception:\n");
 					printNode(node);
+					model_print("\n");
+					model_print("Begin annotation: %d\n",
+						node->getBegin()->get_seq_number());
+					model_print("End annotation: %d\n",
+						act->get_seq_number());
+					printActions(actions);
 					model_print("\n");
 					return NULL;
 				} else {
@@ -419,6 +426,21 @@ CPNode* CPGraph::extractCPNode(action_list_t *actions, action_list_t::iterator &
 	delete pcpList;
 	// The node does not have a closing end annotation
 	return NULL;
+}
+
+void CPGraph::printActions(action_list_t *actions) {
+	model_print("The problematic thread list:\n");
+	model_print("---------- thread list (begin) ---------\n");
+	for (action_list_t::iterator it = actions->begin(); it != actions->end();
+		it++) {
+		ModelAction *act = *it;
+		spec_annotation *anno = getAnnotation(act);
+		if (anno) {
+			model_print("%d -> ", anno->type);
+		}
+		act->print();
+	}
+	model_print("---------- thread list (end) ---------\n");
 }
 
 void CPGraph::buildNodesFromThread(action_list_t *actions) {
@@ -476,7 +498,9 @@ bool CPGraph::addEdge(CPNode *n1, CPNode *n2) {
 			CommitPoint *cp2 = *iter2;
 			ModelAction *act2 = cp2->operation;
 		
-			/** Currently use happens-before edge to order the commit points */
+			/** Currently use happens-before and SC edge to order the commit points */
+
+			/** For hb */
 			if (act1->happens_before(act2)) {
 				n1->addEdge(n2, HB);
 				forwardEdge = true;
@@ -484,11 +508,32 @@ bool CPGraph::addEdge(CPNode *n1, CPNode *n2) {
 				n2->addEdge(n1, HB);
 				backwardEdge = true;
 			}
+
+			/** For SC */
+			if (act1->is_seqcst() && act2->is_seqcst()) {
+				if (act1->get_seq_number() < act2->get_seq_number()) {
+					if (!act1->happens_before(act2)) {
+						n1->addEdge(n2, SC);
+						forwardEdge = true;
+					}
+				} else {
+					if (!act2->happens_before(act1)) {
+						n2->addEdge(n1, SC);
+						backwardEdge = true;
+					}
+				}
+			}
 		}
 	}
 
 	/** When done, check whether the edges are entangled */
 	if (forwardEdge && backwardEdge) {
+		model_print("Both forward and backward edges.\n");
+		printNode(n1);
+		model_print(" <-> ");
+		printNode(n2);
+		model_print("\n");
+
 		isBroken = true;
 		return false;
 	} else {
