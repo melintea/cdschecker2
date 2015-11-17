@@ -27,6 +27,9 @@ struct spec_stats {
 
 	/** The number of traces with broken graphs */
 	unsigned brokenCnt;
+
+	/** The number of traces that failed */
+	unsigned failedCnt;
 };
 
 class SPECAnalysis : public TraceAnalysis {
@@ -60,7 +63,6 @@ class SPECAnalysis : public TraceAnalysis {
 	bool quiet;
 	/* Only check one random topological sorting */
 	bool check_one;
-	
 };
 
 

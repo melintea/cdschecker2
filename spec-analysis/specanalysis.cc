@@ -39,10 +39,16 @@ void SPECAnalysis::finish() {
 	model_print("Broken graph: %d\n", stats->brokenCnt);
 	model_print("Cyclic graph: %d\n", stats->cyclicCnt);
 	model_print("Inadmissible executions: %d\n", stats->inadmissibilityCnt);
-	int failed = stats->traceCnt - stats->passCnt;
-	model_print("Failed executions: %d\n", failed);
-	if (failed == 0)
+	model_print("Failed executions: %d\n", stats->failedCnt);
+	if (stats->failedCnt == 0) {
 		model_print("Yay! All executions have passed the specification.\n");
+		if (stats->brokenCnt > 0)
+			model_print("However! You have executions with a broken graph.\n");
+		if (stats->cyclicCnt > 0)
+			model_print("However! You have executions with a cyclic graph.\n");
+		if (stats->inadmissibilityCnt > 0)
+			model_print("However! You have inadmissible executions.\n");
+	}
 }
 
 bool SPECAnalysis::option(char * opt) {
@@ -117,6 +123,9 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	}
 
 	if (!pass) {
+		/* One more failed trace */
+		stats->failedCnt++;
+
 		if (!quiet) {
 			model_print("This execution is NOT consistent with the spec.\n");
 			cpGraph->printGraph();
@@ -130,6 +139,7 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 		stats->passCnt++;
 
 		if (print_always && !quiet) { // By default not printing
+			model_print("This execution is consistent with the spec.\n");
 			cpGraph->printGraph();
 			if (check_one)
 				cpGraph->printOneSorting(list);

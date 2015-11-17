@@ -9,6 +9,7 @@
 #include <iterator>
 #include "modeltypes.h"
 #include "model-assert.h"
+#include "time.h"
 
 
 /********************    PotentialCPInfo    ********************/
@@ -198,6 +199,7 @@ spec_annotation* CPGraph::getAnnotation(ModelAction *act) {
 void CPGraph::processInitAnnotation(anno_init *annoInit) {
 	// Assign initialization function 
 	initFunc = annoInit->init_func;
+	cleanupFunc = annoInit->cleanup_func;
 	MODEL_ASSERT(initFunc);
 
 	// Assign the function table
@@ -732,7 +734,7 @@ void CPGraph::printAllSortings(CPNodeListVector *sortings) {
 			model_print("\n");
 	}
 	model_print("-------------    All sortings (exec #%d) (end) "
-		"-------------\n", execution->get_execution_number());
+		"-------------\n\n", execution->get_execution_number());
 }
 
 
@@ -758,7 +760,14 @@ void CPGraph::generateAllSortingsHelper(CPNodeListVector* results, CPNodeList
 	}
 
 	for (unsigned int i = 0; i < roots->size(); i++) {
-		CPNode *n = (*roots)[i];
+		CPNode *n;
+		if (generateOne) { // Just randomly pick one
+			srand (time(NULL));
+			int pick = rand() % roots->size();
+			n = (*roots)[pick];
+		} else {
+			n = (*roots)[i];
+		}
 		n->setExist(false);
 		numLiveNodes--;
 		CPNodeList *newList = new CPNodeList(*curList);
@@ -771,6 +780,10 @@ void CPGraph::generateAllSortingsHelper(CPNodeListVector* results, CPNodeList
 		n->setExist(true);
 		numLiveNodes++;
 		delete newList;
+		
+		// Early bail for the case of just generating one random sorting
+		if (generateOne) 
+			break;
 	}
 	delete roots;
 }
@@ -837,13 +850,22 @@ bool CPGraph::checkSequentialSpec(CPNodeList *nodes) {
 		if (!checked) {
 			model_print("There is a basic sequential inconsistency in execution "
 				"#%d:\n", execution->get_execution_number());
+			/*
+			model_print(">>>>>>>>>>>>> Problematic sorting begin"
+				"<<<<<<<<<<<<<\n");
+			printOneSorting(nodes);
+			model_print(">>>>>>>>>>>>> Problematic sorting end"
+				"<<<<<<<<<<<<<\n");
+			*/
 			model_print("\t");
 			printNode(n);
 			model_print("\n");
 			return false;
 		}
 	}
-	return true;
+
+	// Run the clean up function, it can still check
+	return (*cleanupFunc)();
 }
 
 // Whether we should check the syncrhonization property between n1->n2
@@ -900,6 +922,7 @@ bool CPGraph::checkSynchronization(CPNodeList *nodes) {
 				model_print(" => ");
 				printNode(n2);
 				model_print("\n");
+				return false;
 			}
 		}
 	}

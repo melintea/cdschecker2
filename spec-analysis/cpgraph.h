@@ -247,6 +247,8 @@ class CPGraph {
 	// hb_init_table and commutativity_rule_table 
 	void_func_t initFunc;
 
+	cleanup_func_t cleanupFunc;
+
 	void **funcTable;
 	int funcTableSize;
 

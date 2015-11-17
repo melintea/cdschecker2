@@ -8,7 +8,7 @@
 
 typedef call_id_t (*id_func_t)(void *info, thread_id_t tid);
 typedef bool (*check_action_func_t)(void *info, call_id_t id, thread_id_t tid);
-//typedef bool (*check_action_func_t)(void *info, call_id_t id);
+typedef bool (*cleanup_func_t)();
 
 typedef void (*void_func_t)();
 
@@ -54,7 +54,7 @@ struct commutativity_rule {
 typedef
 struct anno_init {
 	void_func_t init_func;
-	void_func_t cleanup_func;
+	cleanup_func_t cleanup_func;
 
 	void **func_table;
 	int func_table_size;

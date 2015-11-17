@@ -13,8 +13,8 @@ $(SPEC_DIR)/cpgraph.o: $(SPEC_DIR)/cpgraph.cc $(SPEC_DIR)/cpgraph.h
 	$(CXX) -c -fPIC -o $@ $< $(CPPFLAGS)
 
 # Non-model rules
-$(SPEC_DIR)/spec_lib.o: $(SPEC_DIR)/spec_lib.c $(SPEC_DIR)/spec_lib.h $(SPEC_DIR)/specannotation.h
-	$(CC) -fPIC -c -o $@ $< $(CPPFLAGS) -std=c99
+$(SPEC_DIR)/spec_lib.o: $(SPEC_DIR)/spec_lib.cc $(SPEC_DIR)/spec_lib.h $(SPEC_DIR)/specannotation.h
+	$(CXX) -fPIC -c -o $@ $< $(CPPFLAGS)
 
 
 
