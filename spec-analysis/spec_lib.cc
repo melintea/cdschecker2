@@ -8,8 +8,8 @@
 #include <algorithm> 
 #include <iterator> 
 
-typedef SnapList<int> StdIntList;
-typedef HashTable<int, int, int, 4 > MyIntTable;
+typedef SnapList<int64_t> StdIntList;
+typedef HashTable<int64_t, int64_t, int64_t, 4 > MyIntTable;
 
 /* Sequential List, wrap with a C++ std list of integer */
 
@@ -26,31 +26,31 @@ void destroyIntegerList(IntegerList *list) {
 	MODEL_FREE(list);
 }
 
-int front(IntegerList *list) {
+int64_t front(IntegerList *list) {
 	StdIntList *stdList = (StdIntList*) list->ptr;
 	if (stdList->empty())
 		return 0;
 	return stdList->front();
 }
 
-int back(IntegerList *list) {
+int64_t back(IntegerList *list) {
 	StdIntList *stdList = (StdIntList*) list->ptr;
 	if (stdList->empty())
 		return 0;
 	return stdList->back();
 }
 
-void push_back(IntegerList *list, int elem) {
+void push_back(IntegerList *list, int64_t elem) {
 	StdIntList *stdList = (StdIntList*) list->ptr;
 	stdList->push_back(elem);
 }
 
-void push_front(IntegerList *list, int elem) {
+void push_front(IntegerList *list, int64_t elem) {
 	StdIntList *stdList = (StdIntList*) list->ptr;
 	stdList->push_front(elem);
 }
 
-int size(IntegerList *list) {
+int64_t size(IntegerList *list) {
 	StdIntList *stdList = (StdIntList*) list->ptr;
 	return stdList->size();
 }
@@ -71,10 +71,10 @@ bool pop_front(IntegerList *list) {
 	return true;
 }
 
-int elem_at_index(IntegerList *list, int idx) {
+int64_t elem_at_index(IntegerList *list, int64_t idx) {
 	StdIntList *stdList = (StdIntList*) list->ptr;
 	StdIntList::iterator it = stdList->begin();
-	for (int i = 0; i < idx; i++) {
+	for (int64_t i = 0; i < idx; i++) {
 		it++;
 		if (it == stdList->end())
 			break;
@@ -85,7 +85,28 @@ int elem_at_index(IntegerList *list, int idx) {
 		return *it;
 }
 
-bool has_elem(IntegerList *list, int elem) {
+
+void do_by_value(IntegerList *list, voidFunc_t _func) {
+	StdIntList *stdList = (StdIntList*) list->ptr;
+	StdIntList::iterator it = stdList->begin();
+	for (; it != stdList->end(); it++) {
+		int64_t cur = *it;
+		(*_func)(cur);
+	}
+}
+
+bool has_elem_by_value(IntegerList *list, int64_t ptr, equalFunc_t _eq) {
+	StdIntList *stdList = (StdIntList*) list->ptr;
+	StdIntList::iterator it = stdList->begin();
+	for (; it != stdList->end(); it++) {
+		int64_t cur = *it;
+		if ((*_eq)(cur, ptr))
+			return true;
+	}
+	return false;
+}
+
+bool has_elem(IntegerList *list, int64_t elem) {
 	StdIntList *stdList = (StdIntList*) list->ptr;
 	StdIntList::iterator it = std::find(stdList->begin(), stdList->end(), elem);
 	return it != stdList->end();
@@ -109,16 +130,16 @@ void destroyIntegerMap(IntegerMap *m) {
 	MODEL_FREE(m);
 }
 
-int getIntegerMap(IntegerMap *m, int key) {
+int64_t getIntegerMap(IntegerMap *m, int64_t key) {
 	ASSERT (key);
 	MyIntTable *table = (MyIntTable*) m->ptr;
 	return table->get(key);
 }
 
-int putIntegerMap(IntegerMap *m, int key, int value) {
+int64_t putIntegerMap(IntegerMap *m, int64_t key, int64_t value) {
 	ASSERT (key);
 	MyIntTable *table = (MyIntTable*) m->ptr;
-	int old = table->get(key);
+	int64_t old = table->get(key);
 	table->put(key, value);
 	return old;
 }

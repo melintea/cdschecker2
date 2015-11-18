@@ -14,7 +14,7 @@ extern "C"{
 #endif
 
 /* ID of interface call */
-typedef int call_id_t;
+typedef int64_t call_id_t;
 
 #define DEFAULT_CALL_ID 0
 
@@ -29,23 +29,31 @@ IntegerList* createIntegerList();
 
 void destroyIntegerList(IntegerList *list);
 
-int front(IntegerList *list);
+int64_t front(IntegerList *list);
 
-int back(IntegerList *list);
+int64_t back(IntegerList *list);
 
-void push_back(IntegerList *list, int elem);
+void push_back(IntegerList *list, int64_t elem);
 
-void push_front(IntegerList *list, int elem);
+void push_front(IntegerList *list, int64_t elem);
 
-int size(IntegerList *list);
+int64_t size(IntegerList *list);
 
 bool pop_back(IntegerList *list);
 
 bool pop_front(IntegerList *list);
 
-int elem_at_index(IntegerList *list, int idx);
+int64_t elem_at_index(IntegerList *list, int64_t idx);
 
-bool has_elem(IntegerList *list, int elem);
+typedef bool (*voidFunc_t)(int64_t);
+void do_by_value(IntegerList *list, voidFunc_t _func);
+
+bool has_elem(IntegerList *list, int64_t elem);
+
+typedef bool (*equalFunc_t)(int64_t, int64_t);
+
+bool has_elem_by_value(IntegerList *list, int64_t elem, equalFunc_t _eq);
+
 /* End of sequential list */
 
 
@@ -58,9 +66,9 @@ IntegerMap* createIntegerMap();
 
 void destroyIntegerMap(IntegerMap *m);
 
-int getIntegerMap(IntegerMap *m, int key);
+int64_t getIntegerMap(IntegerMap *m, int64_t key);
 
-int putIntegerMap(IntegerMap *m, int key, int value);
+int64_t putIntegerMap(IntegerMap *m, int64_t key, int64_t value);
 	
 /* End of hashtable */
 
