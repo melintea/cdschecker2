@@ -35,7 +35,8 @@ void SPECAnalysis::finish() {
 	model_print("\n");
 	model_print(">>>>>>>> SPECAnalysis finished <<<<<<<<\n");
 
-	model_print("Total execution checked: %d\n", stats->traceCnt);
+	model_print("Total execution checked: %d\n", stats->bugfreeCnt);
+	model_print("Detected by CDSChecker: %d\n", stats->buggyCnt);
 	model_print("Broken graph: %d\n", stats->brokenCnt);
 	model_print("Cyclic graph: %d\n", stats->cyclicCnt);
 	model_print("Inadmissible executions: %d\n", stats->inadmissibilityCnt);
@@ -84,6 +85,14 @@ bool SPECAnalysis::option(char * opt) {
 void SPECAnalysis::analyze(action_list_t *actions) {
 	/* Count the number traces */
 	stats->traceCnt++;
+	if (execution->have_bug_reports()) {
+		/* Count the number traces */
+		stats->buggyCnt++;
+		return;
+	}
+
+	/* Count the number bug-free traces */
+	stats->bugfreeCnt++;
 
 	CPGraph *cpGraph = new CPGraph(execution);
 	cpGraph->build(actions);

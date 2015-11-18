@@ -30,6 +30,10 @@ struct spec_stats {
 
 	/** The number of traces that failed */
 	unsigned failedCnt;
+	
+	/** The number of buggy and bug-free traces (by CDSChecker) */
+	unsigned buggyCnt;
+	unsigned bugfreeCnt;
 };
 
 class SPECAnalysis : public TraceAnalysis {
