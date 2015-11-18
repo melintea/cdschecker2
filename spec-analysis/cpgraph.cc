@@ -337,8 +337,11 @@ CPNode* CPGraph::extractCPNode(action_list_t *actions, action_list_t::iterator &
 					break;
 				} else {
 					// Check if potential commit point has appeared
-					for (PotentialCPList::iterator pcpIter = pcpList->begin();
-						pcpIter != pcpList->end(); pcpIter++) {
+					// However, in the current version of spec, we take the most
+					// recent one in the list as the commit point (so we use
+					// reverse iterator)
+					for (PotentialCPList::reverse_iterator pcpIter = pcpList->rbegin();
+						pcpIter != pcpList->rend(); pcpIter++) {
 						pcpInfo = *pcpIter;
 						if (cpDefine->potential_cp_label_num == pcpInfo->labelNum) {
 							commitPoint = new CommitPoint(pcpInfo->operation,
