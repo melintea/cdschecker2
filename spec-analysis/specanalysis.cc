@@ -121,8 +121,8 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	}
 	
 	bool pass = false;
-	CPNodeList *list;
-	CPNodeListVector *sortings;
+	CPNodeList *list = NULL;
+	CPNodeListVector *sortings = NULL;
 	if (check_one) { // Only check one random sorting
 		list = cpGraph->generateOneSorting();
 		pass = cpGraph->checkOne(list);
