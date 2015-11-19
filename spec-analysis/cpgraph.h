@@ -283,6 +283,11 @@ class CPGraph {
 	/** Build the edges, should be called when nodes are built */
 	void buildEdges();
 
+
+	/** Find previous the acutal operation (commit point operation) starting from the current iterator */
+	ModelAction* findPrevCPAction(action_list_t *actions,
+		action_list_t::iterator iter);
+
 	/** Extract a commit point node starting from the current iterator */
 	CPNode* extractCPNode(action_list_t *actions, action_list_t::iterator &iter);
 

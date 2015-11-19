@@ -257,6 +257,15 @@ void CPGraph::buildNodesFromThreads() {
 }
 
 
+ModelAction* CPGraph::findPrevCPAction(action_list_t *actions, action_list_t::iterator iter) {
+	for (iter--; iter != actions->begin(); iter--) {
+		ModelAction *act = *iter;
+		if (act->get_type() != ATOMIC_ANNOTATION)
+			return act;
+	}
+	return NULL;;
+}
+
 /** 
 	When called, the current iter points to a beginning annotation; when done,
 	the iter points to either the end of the list or the end annotation. It's
@@ -308,10 +317,8 @@ CPNode* CPGraph::extractCPNode(action_list_t *actions, action_list_t::iterator &
 				// Make a faster check
 				pcpDefined = true;
 				pcpDefine = (anno_potential_cp_define*) anno->annotation;
-				iter--; // The previous elelment
-				operation = *iter;
-				iter++; // Reset the iterator to the current one
-				if (operation->get_type() == ATOMIC_ANNOTATION) {
+				operation = findPrevCPAction(actions, iter);
+				if (operation == NULL) {
 					model_print("Potential commit point should follow an atomic "
 						"operation.\n");
 					model_print("%s_%d\n", pcpDefine->label_name,
@@ -363,10 +370,8 @@ CPNode* CPGraph::extractCPNode(action_list_t *actions, action_list_t::iterator &
 					return NULL;
 				}
 				
-				iter--; // The previous elelment
-				operation = *iter;
-				iter++; // Reset the iterator to the current one
-				if (operation->get_type() == ATOMIC_ANNOTATION) {
+				operation = findPrevCPAction(actions, iter);
+				if (operation == NULL) {
 					model_print("Commit point (define check) should "
 						"follow an atomic operation.\n");
 					model_print("%s_%d\n", cpDefineCheck->label_name,
@@ -460,6 +465,7 @@ void CPGraph::buildNodesFromThread(action_list_t *actions) {
 		if (anno->type == INTERFACE_BEGIN) { // Beginning anno
 			CPNode *node = extractCPNode(actions, iter);
 			if (node != NULL) {
+				//MODEL_ASSERT (node->getCommitPoints()->size() == 1);
 				// Store the node in the graph
 				nodeTable->put(act, node);
 				nodeList->push_back(node);
