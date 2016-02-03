@@ -10,7 +10,7 @@
 #include "modeltypes.h"
 #include "action.h"
 #include "common.h"
-#include "cpgraph.h"
+#include "executiongraph.h"
 
 struct spec_stats {
 	/** The number of traces that have passed the checking */
@@ -55,8 +55,8 @@ class SPECAnalysis : public TraceAnalysis {
  	/** The execution */
 	ModelExecution *execution;
 
-	/** The commit point graph */
-	CPGraph *graph;
+	/** The execution graph */
+	ExecutionGraph *graph;
 
 	/** A few useful options */
 	/* Print out the graphs of all executions */

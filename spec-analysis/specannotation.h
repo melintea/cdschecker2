@@ -1,40 +1,64 @@
 #ifndef _SPECANNOTATION_H
 #define _SPECANNOTATION_H
 
-#include "spec_lib.h"
+#include <unordered_map>
 #include "modeltypes.h"
+#include "model-assert.h"
+#include "methodcall.h"
+#include "action.h"
 
 #define SPEC_ANALYSIS 1
 
-typedef call_id_t (*id_func_t)(void *info, thread_id_t tid);
-typedef bool (*check_action_func_t)(void *info, call_id_t id, thread_id_t tid);
-typedef bool (*cleanup_func_t)();
+using namespace std;
 
-typedef void (*void_func_t)();
+/** 
+	We can only pass a void* pointer from the real program execution to the
+	checking engine, so we need to wrap the key information into that pointer.
+	We use the SpecAnntotation struct to represent that info. Different types
+	here mean different annotations.
 
-typedef bool (*check_commutativity_t)(void *info1, void *info);
-
-typedef enum spec_anno_type {
-	INIT, INTERFACE_BEGIN, POTENTIAL_CP_DEFINE, CP_DEFINE,
-	CP_DEFINE_CHECK, CP_CLEAR, INTERFACE_END, HB_CONDITION, COMMUTATIVITY_RULE } spec_anno_type; 
-typedef
-struct spec_annotation {
-	spec_anno_type type;
-	void *annotation;
-} spec_annotation;
-
-
-/**
-	The interfaces and their HB conditions are represented by integers.
+	FIXME: Currently we actually do not need to have the INTERFACE_END types. We
+	basically wrap the MethodCall* pointer of the method call in the
+	INTERFACE_BEGIN type of annotation.
 */
-typedef
-struct hb_rule {
-	int interface_num_before;
-	int hb_condition_num_before;
-	int interface_num_after;
-	int hb_condition_num_after;
-} hb_rule;
+typedef enum SpecAnnoType {
+	INIT, POTENTIAL_OP, OP_DEFINE, OP_CHECK, OP_CLEAR, OP_CLEAR_DEFINE,
+	INTERFACE_BEGIN, INTERFACE_EN
+} SpecAnnoType; 
 
+typedef
+struct SpecAnnotation {
+	SpecAnnoType type;
+	void *annotation;
+
+	SpecAnnotation(SpecAnnoType type, void *anno) : type(type), annotation(anno) {
+		
+	}
+
+	/** 
+		A static function for others to use. To extract the actual annotation
+		pointer and return the actual annotation if this is an annotation action;
+		otherwise return NULL.
+	*/
+	static SpecAnnotation* getAnnotation(ModelAction *act) {
+		if (act->get_type() != ATOMIC_ANNOTATION)
+			return NULL;
+		if (act->get_value() != SPEC_ANALYSIS)
+			return NULL;
+		SpecAnnotation *anno = (SpecAnnotation*) act->get_location();
+		MODEL_ASSERT (anno);
+		return anno;
+	}
+
+	SNAPSHOTALLOC
+	
+} SpecAnnotation ;
+
+typedef bool (*CheckCommutativity_t)(Method, Method);
+typedef bool (*CheckState_t)(Method);
+typedef void (*UpdateState_t)(Method);
+// Copy the second state to the first state
+typedef void (*CopyState_t)(Method, Method);
 
 /**
 	This struct contains a commutativity rule: two method calls represented by
@@ -43,85 +67,136 @@ struct hb_rule {
 	the two method calls are commutable.
 */
 typedef
-struct commutativity_rule {
-	int interface_num_before;
-	int interface_num_after;
-	char *rule; // The plain text of the rule (debugging purpose)
-	check_commutativity_t condition;
-} commutativity_rule;
+struct CommutativityRule {
+	string method1;
+	string method2;
 
+	/** The plain text of the rule (debugging purpose) */
+	string rule;
+	CheckCommutativity_t condition;
 
-typedef
-struct anno_init {
-	void_func_t init_func;
-	cleanup_func_t cleanup_func;
-
-	void **func_table;
-	int func_table_size;
+	CommutativityRule(string method1, string method2, string rule,
+		CheckCommutativity_t condition) : method1(method1),
+		method2(method2), rule(rule), condition(condition) {}
 	
-	hb_rule **hb_rule_table;
-	int hb_rule_table_size;
-
-	// For commutativity rules
-	commutativity_rule **commutativity_rule_table;
-	int commutativity_rule_table_size;
-} anno_init;
-
-
-typedef
-struct anno_interface_begin {
-	int interface_num;
-	char *interface_name; // For debugging only
-} anno_interface_begin;
-
-/* 
-	The follwoing function pointers can be put in a static table, not
-	necessarily stored in every function call.
-
-	id_func_t id;
-	check_action_func_t check_action;
-*/
-typedef
-struct anno_interface_end {
-	int interface_num;
-	void *info; // Return value & arguments
-} anno_interface_end;
-
-typedef
-struct anno_potential_cp_define {
-	int label_num;
-	char *label_name; // For debugging
-} anno_potential_cp_define;
-
-typedef
-struct anno_cp_define {
-	int label_num;
-	int potential_cp_label_num;
-	int interface_num;
+	bool isRightRule(Method m1, Method m2) {
+		return (m1->interfaceName == method1 && m2->interfaceName == method2) ||
+			(m1->interfaceName == method2 && m2->interfaceName == method1);
+	}
 	
-	char *label_name; // For debugging
-	char *potential_label_name; // For debugging
-} anno_cp_define;
+	bool checkCondition(Method m1, Method m2) {
+		if (m1->interfaceName == method1 && m2->interfaceName == method2)
+			return (*condition)(m1, m2);
+		else if (m1->interfaceName == method2 && m2->interfaceName == method1)
+			return (*condition)(m2, m1);
+		else // The checking should only be called on the right rule
+			MODEL_ASSERT(false);
+			return false;
+	}
+
+	SNAPSHOTALLOC
+} CommutativityRule;
 
 typedef
-struct anno_cp_define_check {
-	int label_num;
-	int interface_num;
-	char *label_name; // For debugging
-} anno_cp_define_check;
+struct StateFunctions {
+	string name;
+	UpdateState_t transition;
+	UpdateState_t evaluateState;
+	CheckState_t preCondition;
+	UpdateState_t sideEffect;
+	CheckState_t postCondition;
+
+	StateFunctions(string name) : name(name), transition(NULL),
+		evaluateState(NULL), preCondition(NULL), sideEffect(NULL),
+		postCondition(NULL) {}
+
+	SNAPSHOTALLOC
+} StateFunctions;
+
+template<typename Key, typename T>
+class SnapMap : public std::unordered_map<Key, T, hash<Key>, equal_to<Key>,
+	SnapshotAlloc< pair<const Key, T> > >
+{
+	public:
+	typedef std::unordered_map< Key, T, hash<Key>, equal_to<Key>,
+		SnapshotAlloc<pair<const Key, T> > > map;
+
+	SnapMap() : map() { }
+
+	SNAPSHOTALLOC
+};
 
 typedef
-struct anno_cp_clear {
-	int label_num;
-	int interface_num;
-	char* label_name;
-} anno_cp_clear;
+struct AnnoInit {
+	/**
+		For the initialization of a state; We actually assume there are two
+		special nodes --- INITIAL & FINAL. They actually have a special
+		MethodCall class representing these two nodes, and their interface name
+		would be INITIAL and FINAL. For the initial function, we actually also
+		use it as the state copy function when evaluating the state of other
+		method calls
+	*/
+	UpdateState_t initial;
 
+	/**
+		TODO: Currently we just have this "final" field, which was supposed to
+		be a final checking function after all method call nodes have been
+		executed on the graph. However, before we think it through, this might
+		potentially be a violation of composability
+	*/
+	CheckState_t final;
+	
+	/**
+		For copying out an existing state from a previous method call
+	*/
+	CopyState_t copy;
+
+	/** For the state functions. We can conveniently access to the set of state
+	 *  functions with a hashmap */
+	SnapMap<string, StateFunctions*> *funcMap;
+	
+	/** For commutativity rules */
+	CommutativityRule *commuteRules;
+	int commuteRuleNum;
+
+	AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
+		CommutativityRule *commuteRules, int ruleNum)
+		: initial(initial), final(final), copy(copy),
+		commuteRules(commuteRules), commuteRuleNum(ruleNum) {
+		funcMap = new SnapMap<string, StateFunctions*>;
+	}
+	
+	AnnoInit(UpdateState_t initial, CopyState_t copy, CommutativityRule
+		*commuteRules, int ruleNum) :
+		initial(initial), final(NULL), copy(copy), commuteRules(commuteRules),
+		commuteRuleNum(ruleNum) {
+		funcMap = new SnapMap<string, StateFunctions*>;
+	}
+
+	void addInterfaceFunctions(string name, StateFunctions *funcs) {
+		funcMap->insert(make_pair<string, StateFunctions*>(name, funcs));
+	}
+
+	SNAPSHOTALLOC
+} AnnoInit;
 
 typedef
-struct anno_hb_condition {
-	int interface_num;
-	int hb_condition_num;
-} anno_hb_condition;
+struct AnnoPotentialOP {
+	string label;
+
+	AnnoPotentialOP(string label) : label(label) {}
+
+	SNAPSHOTALLOC
+
+} AnnoPotentialOP;
+
+typedef
+struct AnnoOPCheck {
+	string label;
+
+	AnnoOPCheck(string label) : label(label) {}
+
+	SNAPSHOTALLOC
+} AnnoOPCheck;
 
 #endif

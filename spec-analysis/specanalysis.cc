@@ -94,41 +94,41 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	/* Count the number bug-free traces */
 	stats->bugfreeCnt++;
 
-	CPGraph *cpGraph = new CPGraph(execution);
-	cpGraph->build(actions);
-	if (cpGraph->getBroken()) {
+	ExecutionGraph *graph = new ExecutionGraph(execution);
+	graph->buildGraph(actions);
+	if (graph->isBroken()) {
 		stats->brokenCnt++;
 		return;
 	}
 
-	if (!cpGraph->checkAdmissibility()) {
+	if (!graph->checkAdmissibility()) {
 		/* One more inadmissible trace */
 		stats->inadmissibilityCnt++;
 		if (print_inadmissible && !quiet) {
 			model_print("Execution #%d is NOT admissible\n",
 				execution->get_execution_number());
-			cpGraph->printGraph();
+			graph->print();
 		}
 		return;
 	}
 
-	if (cpGraph->hasCycle()) {
+	if (graph->hasCycle()) {
 		/* One more trace with a cycle */
 		stats->cyclicCnt++;
 		if (!quiet)
-			cpGraph->printGraph();
+			graph->print();
 		return;
 	}
 	
 	bool pass = false;
-	CPNodeList *list = NULL;
-	CPNodeListVector *sortings = NULL;
+	MethodList *history = NULL;
+	MethodListVector *histories= NULL;
 	if (check_one) { // Only check one random sorting
-		list = cpGraph->generateOneSorting();
-		pass = cpGraph->checkOne(list);
+		history = graph->generateOneHistory();
+		pass = graph->checkOneHistory(history);
 	} else { // Check all sortings
-		sortings = cpGraph->generateAllSortings();
-		pass = cpGraph->checkAll(sortings);
+		histories = graph->generateAllHistories();
+		pass = graph->checkAllHistories(histories);
 	}
 
 	if (!pass) {
@@ -137,11 +137,11 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 
 		if (!quiet) {
 			model_print("This execution is NOT consistent with the spec.\n");
-			cpGraph->printGraph();
+			graph->print();
 			if (check_one)
-				cpGraph->printOneSorting(list);
+				graph->printOneHistory(history);
 			else
-				cpGraph->printAllSortings(sortings);
+				graph->printAllHistories(histories);
 		}
 	} else {
 		/* One more passing trace */
@@ -149,11 +149,11 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 
 		if (print_always && !quiet) { // By default not printing
 			model_print("This execution is consistent with the spec.\n");
-			cpGraph->printGraph();
+			graph->print();
 			if (check_one)
-				cpGraph->printOneSorting(list);
+				graph->printOneHistory(history);
 			else
-				cpGraph->printAllSortings(sortings);
+				graph->printAllHistories(histories);
 		}
 	}
 }
