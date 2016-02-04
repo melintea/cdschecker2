@@ -2,6 +2,7 @@
 #define _SPECANNOTATION_H
 
 #include <unordered_map>
+#include <utility>
 #include "modeltypes.h"
 #include "model-assert.h"
 #include "methodcall.h"
@@ -23,7 +24,7 @@ using namespace std;
 */
 typedef enum SpecAnnoType {
 	INIT, POTENTIAL_OP, OP_DEFINE, OP_CHECK, OP_CLEAR, OP_CLEAR_DEFINE,
-	INTERFACE_BEGIN, INTERFACE_EN
+	INTERFACE_BEGIN, INTERFACE_END
 } SpecAnnoType; 
 
 typedef
@@ -55,6 +56,12 @@ struct SpecAnnotation {
 } SpecAnnotation ;
 
 typedef bool (*CheckCommutativity_t)(Method, Method);
+/**
+	The first method is the target (to update its state), and the second method
+	is the method that should be executed (to access its method call info (ret
+	& args)
+*/
+typedef void (*StateTransition_t)(Method, Method);
 typedef bool (*CheckState_t)(Method);
 typedef void (*UpdateState_t)(Method);
 // Copy the second state to the first state
@@ -78,6 +85,8 @@ struct CommutativityRule {
 	CommutativityRule(string method1, string method2, string rule,
 		CheckCommutativity_t condition) : method1(method1),
 		method2(method2), rule(rule), condition(condition) {}
+
+	CommutativityRule() {}
 	
 	bool isRightRule(Method m1, Method m2) {
 		return (m1->interfaceName == method1 && m2->interfaceName == method2) ||
@@ -100,15 +109,17 @@ struct CommutativityRule {
 typedef
 struct StateFunctions {
 	string name;
-	UpdateState_t transition;
+	StateTransition_t transition;
 	UpdateState_t evaluateState;
 	CheckState_t preCondition;
 	UpdateState_t sideEffect;
 	CheckState_t postCondition;
 
-	StateFunctions(string name) : name(name), transition(NULL),
-		evaluateState(NULL), preCondition(NULL), sideEffect(NULL),
-		postCondition(NULL) {}
+	StateFunctions(string name, StateTransition_t transition, UpdateState_t
+		evaluateState, CheckState_t preCondition, UpdateState_t sideEffect,
+		CheckState_t postCondition) : name(name), transition(transition),
+		evaluateState(evaluateState), preCondition(preCondition),
+		sideEffect(sideEffect), postCondition(postCondition) {}
 
 	SNAPSHOTALLOC
 } StateFunctions;
@@ -174,7 +185,7 @@ struct AnnoInit {
 	}
 
 	void addInterfaceFunctions(string name, StateFunctions *funcs) {
-		funcMap->insert(make_pair<string, StateFunctions*>(name, funcs));
+		funcMap->insert(make_pair(name, funcs));
 	}
 
 	SNAPSHOTALLOC

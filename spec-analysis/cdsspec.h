@@ -1,7 +1,6 @@
 #ifndef _CDSSPEC_H
 #define _CDSSPEC_H
 
-#include <iostream>
 #include <vector>
 #include <list>
 #include <string>
@@ -87,7 +86,7 @@ typedef SnapSet<double> DoubleSet;
 	GeneralGuard(int, ITEM > 0))"
 */
 #define GeneralGuard(type, expression)  std::function<bool(type)> ( \
-	[](type ITEM) -> bool { return (expression);}) \
+	[&](type ITEM) -> bool { return (expression);}) \
 
 /**
 	This is a more specific guard designed for the Method (MethodCall*). It

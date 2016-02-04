@@ -55,9 +55,6 @@ class SPECAnalysis : public TraceAnalysis {
  	/** The execution */
 	ModelExecution *execution;
 
-	/** The execution graph */
-	ExecutionGraph *graph;
-
 	/** A few useful options */
 	/* Print out the graphs of all executions */
 	bool print_always;

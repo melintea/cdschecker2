@@ -741,9 +741,9 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 			if (MethodCall::belong(m->allPrev, exec)) {
 				StateFunctions *funcs = funcMap->at(exec->interfaceName);
 				MODEL_ASSERT (funcs);
-				UpdateState_t transition = funcs->transition;
+				StateTransition_t transition = funcs->transition;
 				// Execute the transition on the state of Method m
-				(*transition)(m);
+				(*transition)(m, exec);
 			}
 		}
 
@@ -755,25 +755,32 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 		UpdateState_t sideEffect = funcs->sideEffect;
 		CheckState_t postCondition = funcs->postCondition ;
 		// Evaluate the state of Method m
-		(*evaluateState)(m);
+		if (evaluateState)
+			(*evaluateState)(m);
 		bool satisfied = false;
 		// Check PreCondition of Mehtod m
-		satisfied = (*preCondition)(m);
-		if (!satisfied) {
-			model_print("PreCondition is not satisfied (Problematic method call"
-			 " printed");
-			m->print();
-			return false;
+		if (preCondition) {
+			satisfied = (*preCondition)(m);
+			if (!satisfied) {
+				model_print("PreCondition is not satisfied (Problematic method call"
+				 " printed");
+				m->print();
+				return false;
+			}
 		}
+		
 		// Execute the side effect of Method m
-		(*sideEffect)(m);
+		if (sideEffect)
+			(*sideEffect)(m);
 		// Check PostCondition of Method m
-		satisfied = (*postCondition)(m);
-		if (!satisfied) {
-			model_print("PostCondition is not satisfied (Problematic method call"
-			 " printed");
-			m->print();
-			return false;
+		if (postCondition) {
+			satisfied = (*postCondition)(m);
+			if (!satisfied) {
+				model_print("PostCondition is not satisfied (Problematic method call"
+				 " printed");
+				m->print();
+				return false;
+			}
 		}
 	}
 	return true;
