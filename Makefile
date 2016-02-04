@@ -9,6 +9,7 @@ OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   context.o scanalysis.o execution.o plugins.o libannotate.o
 
 CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR)
+CFLAGS += -Iinclude -I. -I$(SPEC_DIR)
 LDFLAGS := -ldl -lrt -rdynamic
 SHARED := -shared
 
@@ -40,7 +41,7 @@ $(LIB_SO): $(OBJECTS)
 	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(LDFLAGS)
 
 malloc.o: malloc.c
-	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPFLAGS) -Wno-unused-variable
+	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CFLAGS) -Wno-unused-variable
 
 %.o: %.cc
 	$(CXX) -MMD -MF .$@.d -fPIC -c $< $(CPPFLAGS)
