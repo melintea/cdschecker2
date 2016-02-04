@@ -12,7 +12,7 @@ CPPFLAGS += -Wall -O0 -g
 
 CFLAGS := $(CPPFLAGS)
 
-CPPFLAGS += -Wall -O0 -g -std=c++11
+CPPFLAGS += -Wall -O0 -g
 
 # Mac OSX options
 ifeq ($(UNAME), Darwin)

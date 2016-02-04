@@ -7,6 +7,7 @@
 #include <sys/time.h>
 #include <assert.h>
 #include "modeltypes.h"
+#include "executiongraph.h"
 
 
 SPECAnalysis::SPECAnalysis()

@@ -4,13 +4,9 @@
 #include <stack>
 
 #include "traceanalysis.h"
-#include "hashtable.h"
-#include "specannotation.h"
 #include "mymemory.h"
 #include "modeltypes.h"
 #include "action.h"
-#include "common.h"
-#include "executiongraph.h"
 
 struct spec_stats {
 	/** The number of traces that have passed the checking */

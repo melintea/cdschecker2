@@ -344,6 +344,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 
 	// Partially initialize the commit point node with the already known fields
 	Method m = (Method) anno->annotation;
+	MODEL_ASSERT(m);
 	m->begin = act;
 
 	// Some declaration for potential ordering points and its check
@@ -460,8 +461,8 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	}
 	
 	delete popList;
-	// The node does not have a closing end annotation
-	return NULL;
+	// The iter reaches the end
+	return m;
 }
 
 void ExecutionGraph::processInitAnnotation(AnnoInit *annoInit) {
