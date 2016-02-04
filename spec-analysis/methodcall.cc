@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "common.h"
 #include "methodcall.h"
 

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "executiongraph.h"
 #include "action.h"
 #include "cyclegraph.h"
@@ -320,7 +321,7 @@ void ExecutionGraph::buildNodesFromThreads() {
     Find the previous non-annotation model action (ordering point from the
 	current iterator
 */
-ModelAction* findPrevAction(action_list_t *actions, action_list_t::iterator 
+ModelAction* ExecutionGraph::findPrevAction(action_list_t *actions, action_list_t::iterator 
         iter) {
 	while (iter != actions->begin()) {
 		iter--;
@@ -587,7 +588,7 @@ int ExecutionGraph::conflict(Method m1, Method m2) {
 /**
 	Whether m2 is before m2 in the execution graph
 */
-bool isReachable(Method m1, Method m2) {
+bool ExecutionGraph::isReachable(Method m1, Method m2) {
 	return MethodCall::belong(m1->allNext, m2);
 }
 
