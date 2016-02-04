@@ -215,32 +215,48 @@ struct AnnoOPCheck {
 /**********    Universal functions for rewriting the program    **********/
 
 inline Method _createInterfaceBeginAnnotation(string name) {
-	Method cur = new MethodCall(name);
+	Method cur = (MethodCall*) snapshot_malloc(sizeof(MethodCall));
+	new(cur)MethodCall(name);
 	// Create and instrument with the INTERFACE_BEGIN annotation
-	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(INTERFACE_BEGIN, cur));
+	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
+	new(anno)SpecAnnotation(INTERFACE_BEGIN, cur);
+	cdsannotate(SPEC_ANALYSIS, anno);
 	return cur;
 }
 
 inline void _createOPDefineAnnotation() {
-	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_DEFINE, NULL));
+	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
+	new(anno)SpecAnnotation(OP_DEFINE, NULL);
+	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
 inline void _createPotentialOPAnnotation(string label) {
-	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(POTENTIAL_OP, new
-	AnnoPotentialOP(label)));
+	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
+	AnnoPotentialOP *pop= (AnnoPotentialOP*) snapshot_malloc(sizeof(AnnoPotentialOP));
+	new(pop)AnnoPotentialOP(label);
+	new(anno)SpecAnnotation(POTENTIAL_OP, pop);
+	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
 inline void _createOPCheckAnnotation(string label) {
-	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CHECK, new
-	AnnoOPCheck(label)));
+	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
+	AnnoOPCheck *opCheck= (AnnoOPCheck*) snapshot_malloc(sizeof(AnnoOPCheck));
+	new(opCheck)AnnoOPCheck(label);
+	new(anno)SpecAnnotation(OP_CHECK, opCheck);
+
+	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
 inline void _createOPClearAnnotation() {
-	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CLEAR, NULL));
+	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
+	new(anno)SpecAnnotation(OP_CLEAR, NULL);
+	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
 inline void _createOPClearDefineAnnotation() {
-	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CLEAR_DEFINE, NULL));
+	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
+	new(anno)SpecAnnotation(OP_CLEAR_DEFINE, NULL);
+	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
 #endif
