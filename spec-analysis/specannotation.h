@@ -7,6 +7,7 @@
 #include "model-assert.h"
 #include "methodcall.h"
 #include "action.h"
+#include "cdsannotate.h"
 
 #define SPEC_ANALYSIS 1
 
@@ -209,5 +210,37 @@ struct AnnoOPCheck {
 
 	SNAPSHOTALLOC
 } AnnoOPCheck;
+
+
+/**********    Universal functions for rewriting the program    **********/
+
+inline Method _createInterfaceBeginAnnotation(string name) {
+	Method cur = new MethodCall(name);
+	// Create and instrument with the INTERFACE_BEGIN annotation
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(INTERFACE_BEGIN, cur));
+	return cur;
+}
+
+inline void _createOPDefineAnnotation() {
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_DEFINE, NULL));
+}
+
+inline void _createPotentialOPAnnotation(string label) {
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(POTENTIAL_OP, new
+	AnnoPotentialOP(label)));
+}
+
+inline void _createOPCheckAnnotation(string label) {
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CHECK, new
+	AnnoOPCheck(label)));
+}
+
+inline void _createOPClearAnnotation() {
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CLEAR, NULL));
+}
+
+inline void _createOPClearDefineAnnotation() {
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CLEAR_DEFINE, NULL));
+}
 
 #endif
