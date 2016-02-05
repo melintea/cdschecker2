@@ -12,8 +12,6 @@ CPPFLAGS += -Wall -O0 -g
 
 CFLAGS := $(CPPFLAGS)
 
-CPPFLAGS += -Wall -O0 -g
-
 # Mac OSX options
 ifeq ($(UNAME), Darwin)
 CPPFLAGS += -D_XOPEN_SOURCE -DMAC

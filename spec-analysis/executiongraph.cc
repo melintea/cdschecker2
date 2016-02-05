@@ -47,7 +47,7 @@ void ExecutionGraph::buildGraph(action_list_t *actions) {
 	action_list_t::iterator iter = actions->begin();
 	for (; iter != actions->end(); iter++) {
 		ModelAction *act = *iter;
-		SpecAnnotation *anno = SpecAnnotation::getAnnotation(act);
+		SpecAnnotation *anno = getAnnotation(act);
 		if (!anno)
 			continue;
 		// Deal with the Initialization annotation
@@ -124,10 +124,10 @@ bool ExecutionGraph::checkAdmissibility() {
 				ModelAction *begin2 = m2->begin;
 				int tid1 = id_to_int(begin1->get_tid());
 				int tid2 = id_to_int(begin2->get_tid());
-				model_print("%s_%d (T%d)", m1->interfaceName.c_str(),
+				model_print("%s_%d (T%d)", m1->interfaceName,
 					begin1->get_seq_number(), tid1);
 				model_print(" <-> ");
-				model_print("%s_%d (T%d)", m2->interfaceName.c_str(),
+				model_print("%s_%d (T%d)", m2->interfaceName,
 					begin2->get_seq_number(), tid2);
 				model_print("\n");
 			}
@@ -283,7 +283,7 @@ void ExecutionGraph::buildNodesFromThread(action_list_t *actions) {
 	// annoBegin == NULL means we are looking for the beginning annotation
 	while (iter != actions->end()) {
 		ModelAction *act = *iter;
-		SpecAnnotation *anno = SpecAnnotation::getAnnotation(act);
+		SpecAnnotation *anno = getAnnotation(act);
 		if (!anno) { // Means this is not an annotation action
 			iter++;
 			continue;
@@ -339,7 +339,7 @@ ModelAction* ExecutionGraph::findPrevAction(action_list_t *actions, action_list_
 */
 Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iterator &iter) {
 	ModelAction *act = *iter;
-	SpecAnnotation *anno = SpecAnnotation::getAnnotation(act);
+	SpecAnnotation *anno = getAnnotation(act);
 	MODEL_ASSERT(anno && anno->type == INTERFACE_BEGIN);
 
 	// Partially initialize the commit point node with the already known fields
@@ -362,7 +362,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 
 	for (iter++; iter != actions->end(); iter++) {
 		act = *iter;
-		SpecAnnotation *anno = SpecAnnotation::getAnnotation(act);
+		SpecAnnotation *anno = getAnnotation(act);
 		if (!anno)
 			continue;
 		// Now we are dealing with one annotation
@@ -374,7 +374,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				if (!op) {
 					model_print("Potential ordering point annotation should"
 						"follow an atomic operation.\n");
-					model_print("%s_%d\n", annoPotentialOP->label.c_str(),
+					model_print("%s_%d\n", annoPotentialOP->label,
 						act->get_seq_number());
 					broken = true;
 					return NULL;
@@ -402,7 +402,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				if (!hasAppeared) {
 					model_print("Ordering point check annotation should"
 						"have previous potential ordering point.\n");
-					model_print("%s_%d\n", annoOPCheck->label.c_str(),
+					model_print("%s_%d\n", annoOPCheck->label,
 						act->get_seq_number());
 					broken = true;
 					return NULL;
@@ -448,7 +448,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				delete popList;
 				if (m->orderingPoints->size() == 0) {
 					model_print("There is no ordering points for method %s.\n",
-						m->interfaceName.c_str());
+						m->interfaceName);
 					m->begin->print();
 					broken = true;
 					return NULL;
@@ -463,6 +463,20 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	delete popList;
 	// The iter reaches the end
 	return m;
+}
+
+/** 
+	A utility function to extract the actual annotation
+	pointer and return the actual annotation if this is an annotation action;
+	otherwise return NULL.
+*/
+SpecAnnotation* ExecutionGraph::getAnnotation(ModelAction *act) {
+	if (act->get_type() != ATOMIC_ANNOTATION)
+		return NULL;
+	if (act->get_value() != SPEC_ANALYSIS)
+		return NULL; SpecAnnotation *anno = (SpecAnnotation*) act->get_location();
+	MODEL_ASSERT (anno);
+	return anno;
 }
 
 void ExecutionGraph::processInitAnnotation(AnnoInit *annoInit) {
@@ -577,7 +591,7 @@ int ExecutionGraph::conflict(Method m1, Method m2) {
 			else if (val != res) { // Self cycle
 				cyclic = true;
 				model_print("There is a self cycle between methods %s and %s\n",
-					m1->interfaceName.c_str(), m2->interfaceName.c_str());
+					m1->interfaceName, m2->interfaceName);
 				broken = true;
 				return 0;
 			}
@@ -798,7 +812,7 @@ void ExecutionGraph::printActions(action_list_t *actions, const char *header) {
 	for (action_list_t::iterator it = actions->begin(); it != actions->end();
 		it++) {
 		ModelAction *act = *it;
-		SpecAnnotation *anno = SpecAnnotation::getAnnotation(act);
+		SpecAnnotation *anno = getAnnotation(act);
 		if (anno) {
 			model_print("%d -> ", anno->type);
 		}

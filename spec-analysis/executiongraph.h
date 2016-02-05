@@ -1,5 +1,5 @@
-#ifndef _CPGRAPH_H
-#define _CPGRAPH_H
+#ifndef _EXECUTIONGRAPH_H
+#define _EXECUTIONGRAPH_H
 
 #include <stack>
 
@@ -126,7 +126,7 @@ class ExecutionGraph {
 	CopyState_t copy;
 
 	/** The map from interface label name to the set of spec functions */
-	SnapMap<string, StateFunctions*> *funcMap;
+	unordered_map<char *, StateFunctions*> *funcMap;
 
 	/** The commutativity rule array and its size */
 	CommutativityRule *commuteRules;
@@ -166,6 +166,13 @@ class ExecutionGraph {
 		commutativity rule info and the checking function info 
 	*/
 	void processInitAnnotation(AnnoInit *annoInit);
+
+	/** 
+		A utility function to extract the actual annotation
+		pointer and return the actual annotation if this is an annotation action;
+		otherwise return NULL.
+	*/
+	SpecAnnotation* getAnnotation(ModelAction *act);
 
 	/**
 		After extracting the MethodCall info for each method call, we use this

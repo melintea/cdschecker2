@@ -1,9 +1,8 @@
 #include <algorithm>
-
 #include "common.h"
 #include "methodcall.h"
 
-MethodCall::MethodCall(string name) {
+MethodCall::MethodCall(CSTR name) {
 	interfaceName = name;
 	prev = new SnapSet<Method>;
 	next = new SnapSet<Method>;
@@ -62,6 +61,6 @@ bool MethodCall::disjoint(MethodSet s1, MethodSet s2) {
 }
 
 void MethodCall::print() {
-	model_print("Method Call %s (Seq #%d)\n", interfaceName.c_str(),
+	model_print("Method Call %s (Seq #%d)\n", interfaceName,
 		begin->get_seq_number());
 }

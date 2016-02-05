@@ -8,8 +8,9 @@ OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   snapshot.o malloc.o mymemory.o common.o mutex.o promise.o conditionvariable.o \
 	   context.o scanalysis.o execution.o plugins.o libannotate.o
 
+include $(SPEC_DIR)/Makefile
+
 CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR)
-CFLAGS += -Iinclude -I. -I$(SPEC_DIR)
 LDFLAGS := -ldl -lrt -rdynamic
 SHARED := -shared
 
@@ -35,25 +36,28 @@ docs: *.c *.cc *.h README.html
 README.html: README.md
 	$(MARKDOWN) $< > $@
 
-include $(SPEC_DIR)/Makefile
-
 $(LIB_SO): $(OBJECTS)
+	echo $(TMP)
 	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(LDFLAGS)
 
 malloc.o: malloc.c
-	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CFLAGS) -Wno-unused-variable
+	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPLAGS) -Wno-unused-variable
 
 %.o: %.cc
-	$(CXX) -MMD -MF .$@.d -fPIC -c $< $(CPPFLAGS)
+	$(CXX) -MMD -MF $(dir $@).$(notdir $@).d -fPIC -c $< -o $@ $(CPPFLAGS) -std=c++11
 
 %.pdf: %.dot
 	dot -Tpdf $< -o $@
 
--include $(OBJECTS:%=.%.d)
+# Replace all the basename with 
+ALL_DEPS := $(shell echo $(OBJECTS) | sed -e 's,\([^ ]*/\)\?\([^/ ]*\),\1\.\2\.d, g')
+-include $(ALL_DEPS)
+#-include $(OBJECTS:%=.%.d)
+
 
 PHONY += clean
 clean:
-	rm -f *.o *.so .*.d *.pdf *.dot $(OBJECTS)
+	rm -f *.o *.so $(ALL_DEPS) *.pdf *.dot $(OBJECTS)
 	$(MAKE) -C $(TESTS_DIR) clean
 
 PHONY += mrclean

@@ -1,15 +1,11 @@
 #ifndef _SPECANNOTATION_H
 #define _SPECANNOTATION_H
 
-#include <unordered_map>
-#include <utility>
 #include "modeltypes.h"
 #include "model-assert.h"
 #include "methodcall.h"
 #include "action.h"
-#include "cdsannotate.h"
-
-#define SPEC_ANALYSIS 1
+#include "spec_common.h"
 
 using namespace std;
 
@@ -33,28 +29,9 @@ struct SpecAnnotation {
 	SpecAnnoType type;
 	void *annotation;
 
-	SpecAnnotation(SpecAnnoType type, void *anno) : type(type), annotation(anno) {
-		
-	}
+	SpecAnnotation(SpecAnnoType type, void *anno);
 
-	/** 
-		A static function for others to use. To extract the actual annotation
-		pointer and return the actual annotation if this is an annotation action;
-		otherwise return NULL.
-	*/
-	static SpecAnnotation* getAnnotation(ModelAction *act) {
-		if (act->get_type() != ATOMIC_ANNOTATION)
-			return NULL;
-		if (act->get_value() != SPEC_ANALYSIS)
-			return NULL;
-		SpecAnnotation *anno = (SpecAnnotation*) act->get_location();
-		MODEL_ASSERT (anno);
-		return anno;
-	}
-
-	SNAPSHOTALLOC
-	
-} SpecAnnotation ;
+} SpecAnnotation;
 
 typedef bool (*CheckCommutativity_t)(Method, Method);
 /**
@@ -76,67 +53,37 @@ typedef void (*CopyState_t)(Method, Method);
 */
 typedef
 struct CommutativityRule {
-	string method1;
-	string method2;
+	CSTR method1;
+	CSTR method2;
 
 	/** The plain text of the rule (debugging purpose) */
-	string rule;
+	CSTR rule;
 	CheckCommutativity_t condition;
 
-	CommutativityRule(string method1, string method2, string rule,
-		CheckCommutativity_t condition) : method1(method1),
-		method2(method2), rule(rule), condition(condition) {}
+	CommutativityRule(CSTR method1, CSTR method2, CSTR rule,
+		CheckCommutativity_t condition);
 
-	CommutativityRule() {}
+	bool isRightRule(Method m1, Method m2);
 	
-	bool isRightRule(Method m1, Method m2) {
-		return (m1->interfaceName == method1 && m2->interfaceName == method2) ||
-			(m1->interfaceName == method2 && m2->interfaceName == method1);
-	}
-	
-	bool checkCondition(Method m1, Method m2) {
-		if (m1->interfaceName == method1 && m2->interfaceName == method2)
-			return (*condition)(m1, m2);
-		else if (m1->interfaceName == method2 && m2->interfaceName == method1)
-			return (*condition)(m2, m1);
-		else // The checking should only be called on the right rule
-			MODEL_ASSERT(false);
-			return false;
-	}
+	bool checkCondition(Method m1, Method m2);
 
-	SNAPSHOTALLOC
 } CommutativityRule;
 
 typedef
 struct StateFunctions {
-	string name;
+	CSTR name;
 	StateTransition_t transition;
 	UpdateState_t evaluateState;
 	CheckState_t preCondition;
 	UpdateState_t sideEffect;
 	CheckState_t postCondition;
 
-	StateFunctions(string name, StateTransition_t transition, UpdateState_t
+	StateFunctions(CSTR name, StateTransition_t transition, UpdateState_t
 		evaluateState, CheckState_t preCondition, UpdateState_t sideEffect,
-		CheckState_t postCondition) : name(name), transition(transition),
-		evaluateState(evaluateState), preCondition(preCondition),
-		sideEffect(sideEffect), postCondition(postCondition) {}
+		CheckState_t postCondition);
 
-	SNAPSHOTALLOC
 } StateFunctions;
 
-template<typename Key, typename T>
-class SnapMap : public std::unordered_map<Key, T, hash<Key>, equal_to<Key>,
-	SnapshotAlloc< pair<const Key, T> > >
-{
-	public:
-	typedef std::unordered_map< Key, T, hash<Key>, equal_to<Key>,
-		SnapshotAlloc<pair<const Key, T> > > map;
-
-	SnapMap() : map() { }
-
-	SNAPSHOTALLOC
-};
 
 typedef
 struct AnnoInit {
@@ -165,98 +112,51 @@ struct AnnoInit {
 
 	/** For the state functions. We can conveniently access to the set of state
 	 *  functions with a hashmap */
-	SnapMap<string, StateFunctions*> *funcMap;
+	Map<CSTR, StateFunctions*> *funcMap;
 	
 	/** For commutativity rules */
 	CommutativityRule *commuteRules;
 	int commuteRuleNum;
 
 	AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
-		CommutativityRule *commuteRules, int ruleNum)
-		: initial(initial), final(final), copy(copy),
-		commuteRules(commuteRules), commuteRuleNum(ruleNum) {
-		funcMap = new SnapMap<string, StateFunctions*>;
-	}
-	
+		CommutativityRule *commuteRules, int ruleNum);
+			
 	AnnoInit(UpdateState_t initial, CopyState_t copy, CommutativityRule
-		*commuteRules, int ruleNum) :
-		initial(initial), final(NULL), copy(copy), commuteRules(commuteRules),
-		commuteRuleNum(ruleNum) {
-		funcMap = new SnapMap<string, StateFunctions*>;
-	}
+		*commuteRules, int ruleNum);
 
-	void addInterfaceFunctions(string name, StateFunctions *funcs) {
-		funcMap->insert(make_pair(name, funcs));
-	}
+	void addInterfaceFunctions(CSTR name, StateFunctions *funcs);
 
-	SNAPSHOTALLOC
 } AnnoInit;
 
 typedef
 struct AnnoPotentialOP {
-	string label;
+	CSTR label;
 
-	AnnoPotentialOP(string label) : label(label) {}
-
-	SNAPSHOTALLOC
+	AnnoPotentialOP(CSTR label);
 
 } AnnoPotentialOP;
 
 typedef
 struct AnnoOPCheck {
-	string label;
+	CSTR label;
 
-	AnnoOPCheck(string label) : label(label) {}
+	AnnoOPCheck(CSTR label);
 
-	SNAPSHOTALLOC
 } AnnoOPCheck;
 
 
 /**********    Universal functions for rewriting the program    **********/
 
-inline Method _createInterfaceBeginAnnotation(string name) {
-	Method cur = (MethodCall*) snapshot_malloc(sizeof(MethodCall));
-	new(cur)MethodCall(name);
-	// Create and instrument with the INTERFACE_BEGIN annotation
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
-	new(anno)SpecAnnotation(INTERFACE_BEGIN, cur);
-	cdsannotate(SPEC_ANALYSIS, anno);
-	return cur;
-}
+Method _createInterfaceBeginAnnotation(CSTR name);
 
-inline void _createOPDefineAnnotation() {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
-	new(anno)SpecAnnotation(OP_DEFINE, NULL);
-	cdsannotate(SPEC_ANALYSIS, anno);
-}
+void _createOPDefineAnnotation();
 
-inline void _createPotentialOPAnnotation(string label) {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
-	AnnoPotentialOP *pop= (AnnoPotentialOP*) snapshot_malloc(sizeof(AnnoPotentialOP));
-	new(pop)AnnoPotentialOP(label);
-	new(anno)SpecAnnotation(POTENTIAL_OP, pop);
-	cdsannotate(SPEC_ANALYSIS, anno);
-}
+void _createPotentialOPAnnotation(CSTR label);
 
-inline void _createOPCheckAnnotation(string label) {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
-	AnnoOPCheck *opCheck= (AnnoOPCheck*) snapshot_malloc(sizeof(AnnoOPCheck));
-	new(opCheck)AnnoOPCheck(label);
-	new(anno)SpecAnnotation(OP_CHECK, opCheck);
+void _createOPCheckAnnotation(CSTR label);
 
-	cdsannotate(SPEC_ANALYSIS, anno);
-}
+void _createOPClearAnnotation();
 
-inline void _createOPClearAnnotation() {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
-	new(anno)SpecAnnotation(OP_CLEAR, NULL);
-	cdsannotate(SPEC_ANALYSIS, anno);
-}
-
-inline void _createOPClearDefineAnnotation() {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
-	new(anno)SpecAnnotation(OP_CLEAR_DEFINE, NULL);
-	cdsannotate(SPEC_ANALYSIS, anno);
-}
+void _createOPClearDefineAnnotation();
 
 #endif

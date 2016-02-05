@@ -1,28 +1,9 @@
 #ifndef _METHODCALL_H
 #define _METHODCALL_H
 
-#include <string>
-#include <set>
-#include "stl-model.h"
 #include "execution.h"
-
-#include "mymemory.h"
 #include "action.h"
-
-using std::string;
-using std::less;
-
-/** Define a snapshotting set for CDSChecker backend analysis */
-template<typename _Tp>
-class SnapSet : public std::set<_Tp, less<_Tp>, SnapshotAlloc<_Tp> >
-{   
-	public:
-	typedef std::set<_Tp, less<_Tp>, SnapshotAlloc<_Tp> > set;
-	 
-	SnapSet() : set() { }
-
-	SNAPSHOTALLOC
-};
+#include "spec_common.h"
 
 class MethodCall;
 
@@ -45,7 +26,7 @@ typedef SnapSet<Method> *MethodSet;
 */
 class MethodCall {
 	public:
-	string interfaceName; // The interface label name
+	CSTR interfaceName; // The interface label name
 	void *value; // The pointer that points to the struct that have the return
 				 // value and the arguments
 	void *state; // The pointer that points to the struct that represents
@@ -54,7 +35,7 @@ class MethodCall {
 	MethodSet next; // Method calls that are hb right after me
 	MethodSet concurrent; // Method calls that are concurrent with me
 
-	MethodCall(string name);
+	MethodCall(CSTR name);
 	
 	MethodCall();
 
@@ -92,5 +73,7 @@ class MethodCall {
 	/** Logically exist (for generating all possible topological sortings) */
 	bool exist;
 };
+
+
 
 #endif
