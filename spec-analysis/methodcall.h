@@ -1,9 +1,12 @@
 #ifndef _METHODCALL_H
 #define _METHODCALL_H
 
+#include <string> 
 #include "execution.h"
 #include "action.h"
 #include "spec_common.h"
+
+using std::string;
 
 class MethodCall;
 
@@ -26,7 +29,7 @@ typedef SnapSet<Method> *MethodSet;
 */
 class MethodCall {
 	public:
-	CSTR name; // The interface label name
+	string name; // The interface label name
 	void *value; // The pointer that points to the struct that have the return
 				 // value and the arguments
 	void *state; // The pointer that points to the struct that represents
@@ -35,7 +38,7 @@ class MethodCall {
 	MethodSet next; // Method calls that are hb right after me
 	MethodSet concurrent; // Method calls that are concurrent with me
 
-	MethodCall(CSTR name);
+	MethodCall(string name);
 	
 	void addPrev(Method m);
 

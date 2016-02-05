@@ -2,7 +2,7 @@
 #include "common.h"
 #include "methodcall.h"
 
-MethodCall::MethodCall(CSTR name) {
+MethodCall::MethodCall(string name) {
 	name = name;
 	prev = new SnapSet<Method>;
 	next = new SnapSet<Method>;
@@ -51,6 +51,6 @@ bool MethodCall::disjoint(MethodSet s1, MethodSet s2) {
 }
 
 void MethodCall::print() {
-	model_print("Method Call %s (Seq #%d)\n", name,
+	model_print("Method Call %s (Seq #%d)\n", name.c_str(),
 		begin->get_seq_number());
 }

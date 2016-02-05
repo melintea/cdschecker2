@@ -2,6 +2,7 @@
 #define _EXECUTIONGRAPH_H
 
 #include <stack>
+#include <string>
 
 #include "hashtable.h"
 #include "specannotation.h"
@@ -126,7 +127,7 @@ class ExecutionGraph {
 	CopyState_t copy;
 
 	/** The map from interface label name to the set of spec functions */
-	unordered_map<char *, StateFunctions*> *funcMap;
+	unordered_map<string, StateFunctions*> *funcMap;
 
 	/** The commutativity rule array and its size */
 	CommutativityRule *commuteRules;

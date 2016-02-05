@@ -53,14 +53,14 @@ typedef void (*CopyState_t)(Method, Method);
 */
 typedef
 struct CommutativityRule {
-	CSTR method1;
-	CSTR method2;
+	string method1;
+	string method2;
 
 	/** The plain text of the rule (debugging purpose) */
-	CSTR rule;
+	string rule;
 	CheckCommutativity_t condition;
 
-	CommutativityRule(CSTR method1, CSTR method2, CSTR rule,
+	CommutativityRule(string method1, string method2, string rule,
 		CheckCommutativity_t condition);
 
 	bool isRightRule(Method m1, Method m2);
@@ -71,14 +71,14 @@ struct CommutativityRule {
 
 typedef
 struct StateFunctions {
-	CSTR name;
+	string name;
 	StateTransition_t transition;
 	UpdateState_t evaluateState;
 	CheckState_t preCondition;
 	UpdateState_t sideEffect;
 	CheckState_t postCondition;
 
-	StateFunctions(CSTR name, StateTransition_t transition, UpdateState_t
+	StateFunctions(string name, StateTransition_t transition, UpdateState_t
 		evaluateState, CheckState_t preCondition, UpdateState_t sideEffect,
 		CheckState_t postCondition);
 
@@ -112,7 +112,7 @@ struct AnnoInit {
 
 	/** For the state functions. We can conveniently access to the set of state
 	 *  functions with a hashmap */
-	Map<CSTR, StateFunctions*> *funcMap;
+	Map<string, StateFunctions*> *funcMap;
 	
 	/** For commutativity rules */
 	CommutativityRule *commuteRules;
@@ -121,27 +121,27 @@ struct AnnoInit {
 	AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
 		CommutativityRule *commuteRules, int ruleNum);
 			
-	void addInterfaceFunctions(CSTR name, StateFunctions *funcs);
+	void addInterfaceFunctions(string name, StateFunctions *funcs);
 
 } AnnoInit;
 
 typedef
 struct AnnoInterfaceInfo {
-	CSTR name;
+	string name;
 	void *value;
 
-	AnnoInterfaceInfo(CSTR name); 
+	AnnoInterfaceInfo(string name); 
 } AnnoInterfaceInfo;
 
 /**********    Universal functions for rewriting the program    **********/
 
-AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name);
+AnnoInterfaceInfo* _createInterfaceBeginAnnotation(string name);
 
 void _createOPDefineAnnotation();
 
-void _createPotentialOPAnnotation(CSTR label);
+void _createPotentialOPAnnotation(string label);
 
-void _createOPCheckAnnotation(CSTR label);
+void _createOPCheckAnnotation(string label);
 
 void _createOPClearAnnotation();
 

@@ -8,7 +8,7 @@ SpecAnnotation::SpecAnnotation(SpecAnnoType type, void *anno) : type(type),
 	annotation(anno) { }
 		
 
-CommutativityRule::CommutativityRule(CSTR method1, CSTR method2, CSTR rule,
+CommutativityRule::CommutativityRule(string method1, string method2, string rule,
 	CheckCommutativity_t condition) : method1(method1),
 	method2(method2), rule(rule), condition(condition) {}
 
@@ -28,7 +28,7 @@ bool CommutativityRule::checkCondition(Method m1, Method m2) {
 }
 
 
-StateFunctions::StateFunctions(CSTR name, StateTransition_t transition, UpdateState_t
+StateFunctions::StateFunctions(string name, StateTransition_t transition, UpdateState_t
 	evaluateState, CheckState_t preCondition, UpdateState_t sideEffect,
 	CheckState_t postCondition) : name(name), transition(transition),
 	evaluateState(evaluateState), preCondition(preCondition),
@@ -39,20 +39,20 @@ AnnoInit::AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
 	CommutativityRule *commuteRules, int ruleNum)
 	: initial(initial), final(final), copy(copy),
 	commuteRules(commuteRules), commuteRuleNum(ruleNum) {
-	funcMap = new Map<CSTR, StateFunctions*>;
+	funcMap = new Map<string, StateFunctions*>;
 }
 	
 
-void AnnoInit::addInterfaceFunctions(CSTR name, StateFunctions *funcs) {
+void AnnoInit::addInterfaceFunctions(string name, StateFunctions *funcs) {
 	funcMap->insert(make_pair(name, funcs));
 }
 
-AnnoInterfaceInfo::AnnoInterfaceInfo(CSTR name) : name(name), value(NULL) { }
+AnnoInterfaceInfo::AnnoInterfaceInfo(string name) : name(name), value(NULL) { }
 
 
 /**********    Universal functions for rewriting the program    **********/
 
-AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name) {
+AnnoInterfaceInfo* _createInterfaceBeginAnnotation(string name) {
 	AnnoInterfaceInfo *info = NEW(AnnoInterfaceInfo);
 	new(info)AnnoInterfaceInfo(name);
 	// Create and instrument with the INTERFACE_BEGIN annotation
@@ -68,15 +68,15 @@ void _createOPDefineAnnotation() {
 	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
-void _createPotentialOPAnnotation(CSTR label) {
+void _createPotentialOPAnnotation(string label) {
 	SpecAnnotation *anno = NEW(SpecAnnotation);
-	new(anno)SpecAnnotation(POTENTIAL_OP, label);
+	new(anno)SpecAnnotation(POTENTIAL_OP, new string(label));
 	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
-void _createOPCheckAnnotation(CSTR label) {
+void _createOPCheckAnnotation(string label) {
 	SpecAnnotation *anno = NEW(SpecAnnotation);
-	new(anno)SpecAnnotation(OP_CHECK, label);
+	new(anno)SpecAnnotation(OP_CHECK, new string(label));
 	cdsannotate(SPEC_ANALYSIS, anno);
 }
 

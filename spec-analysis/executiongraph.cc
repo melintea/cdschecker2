@@ -124,10 +124,10 @@ bool ExecutionGraph::checkAdmissibility() {
 				ModelAction *begin2 = m2->begin;
 				int tid1 = id_to_int(begin1->get_tid());
 				int tid2 = id_to_int(begin2->get_tid());
-				model_print("%s_%d (T%d)", m1->name,
+				model_print("%s_%d (T%d)", m1->name.c_str(),
 					begin1->get_seq_number(), tid1);
 				model_print(" <-> ");
-				model_print("%s_%d (T%d)", m2->name,
+				model_print("%s_%d (T%d)", m2->name.c_str(),
 					begin2->get_seq_number(), tid2);
 				model_print("\n");
 			}
@@ -346,13 +346,14 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	//FIXME: Seems like the SNAPSHOT new would not call non-default constructor?
 	AnnoInterfaceInfo *info = (AnnoInterfaceInfo*) anno->annotation;
 	Method m = new MethodCall(info->name);
-	m->name = info->name;
-	ASSERT(info->name);
+	model_print("info name: %s\n", info->name.c_str());
+	model_print("method name: %s\n", m->name.c_str());
+	ASSERT(m->name != "");
 	m->value = info->value;
 	m->begin = act;
 
 	// Some declaration for potential ordering points and its check
-	CSTR label;
+	string *labelPtr;
 	PotentialOP *potentialOP= NULL;
 	// A list of potential ordering points
 	PotentialOPList *popList = new PotentialOPList;
@@ -370,22 +371,22 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 		switch (anno->type) {
 			case POTENTIAL_OP:
 				//model_print("POTENTIAL_OP\n");
-				label = (CSTR) anno->annotation;
+				labelPtr = (string*) anno->annotation;
 				op = findPrevAction(actions, iter);
 				if (!op) {
 					model_print("Potential ordering point annotation should"
 						"follow an atomic operation.\n");
-					model_print("%s_%d\n", label,
+					model_print("%s_%d\n", labelPtr->c_str(),
 						act->get_seq_number());
 					broken = true;
 					return NULL;
 				}
-				potentialOP = new PotentialOP(op, label);
+				potentialOP = new PotentialOP(op, *labelPtr);
 				popList->push_back(potentialOP);
 				break;
 			case OP_CHECK:
 				//model_print("OP_CHECK\n");
-				label = (CSTR) anno->annotation;
+				labelPtr = (string*) anno->annotation;
 				// Check if corresponding potential ordering point has appeared.
 				hasAppeared = false;
 				// However, in the current version of spec, we take the most
@@ -394,7 +395,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				for (PotentialOPList::reverse_iterator popIter = popList->rbegin();
 					popIter != popList->rend(); popIter++) {
 					potentialOP = *popIter;
-					if (label == potentialOP->label) {
+					if (*labelPtr == potentialOP->label) {
 						m->addOrderingPoint(potentialOP->operation);
 						hasAppeared = true;
 						break; // Done when find the "first" PCP
@@ -403,7 +404,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				if (!hasAppeared) {
 					model_print("Ordering point check annotation should"
 						"have previous potential ordering point.\n");
-					model_print("%s_%d\n", label,
+					model_print("%s_%d\n", labelPtr->c_str(),
 						act->get_seq_number());
 					broken = true;
 					return NULL;
@@ -449,7 +450,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				delete popList;
 				if (m->orderingPoints->size() == 0) {
 					model_print("There is no ordering points for method %s.\n",
-						m->name);
+						m->name.c_str());
 					m->begin->print();
 					broken = true;
 					return NULL;
@@ -592,7 +593,7 @@ int ExecutionGraph::conflict(Method m1, Method m2) {
 			else if (val != res) { // Self cycle
 				cyclic = true;
 				model_print("There is a self cycle between methods %s and %s\n",
-					m1->name, m2->name);
+					m1->name.c_str(), m2->name.c_str());
 				broken = true;
 				return 0;
 			}
