@@ -42,67 +42,52 @@ AnnoInit::AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
 	funcMap = new Map<CSTR, StateFunctions*>;
 }
 	
-AnnoInit::AnnoInit(UpdateState_t initial, CopyState_t copy, CommutativityRule
-	*commuteRules, int ruleNum) :
-	initial(initial), final(NULL), copy(copy), commuteRules(commuteRules),
-	commuteRuleNum(ruleNum) {
-	funcMap = new Map<CSTR, StateFunctions*>;
-}
 
 void AnnoInit::addInterfaceFunctions(CSTR name, StateFunctions *funcs) {
 	funcMap->insert(make_pair(name, funcs));
 }
 
-
-AnnoPotentialOP::AnnoPotentialOP(CSTR label) : label(label) {}
-
-AnnoOPCheck::AnnoOPCheck(CSTR label) : label(label) {}
-
+AnnoInterfaceInfo::AnnoInterfaceInfo(CSTR name) : name(name), value(NULL) { }
 
 
 /**********    Universal functions for rewriting the program    **********/
 
-Method _createInterfaceBeginAnnotation(CSTR name) {
-	Method cur = (MethodCall*) snapshot_malloc(sizeof(MethodCall));
-	new(cur)MethodCall(name);
+AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name) {
+	AnnoInterfaceInfo *info = NEW(AnnoInterfaceInfo);
+	new(info)MethodCall(name);
 	// Create and instrument with the INTERFACE_BEGIN annotation
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
-	new(anno)SpecAnnotation(INTERFACE_BEGIN, cur);
+	SpecAnnotation *anno = NEW(SpecAnnotation);
+	new(anno)SpecAnnotation(INTERFACE_BEGIN, info);
 	cdsannotate(SPEC_ANALYSIS, anno);
-	return cur;
+	return info;
 }
 
 void _createOPDefineAnnotation() {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
+	SpecAnnotation *anno = NEW(SpecAnnotation);
 	new(anno)SpecAnnotation(OP_DEFINE, NULL);
 	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
 void _createPotentialOPAnnotation(CSTR label) {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
-	AnnoPotentialOP *pop= (AnnoPotentialOP*) snapshot_malloc(sizeof(AnnoPotentialOP));
-	new(pop)AnnoPotentialOP(label);
-	new(anno)SpecAnnotation(POTENTIAL_OP, pop);
+	SpecAnnotation *anno = NEW(SpecAnnotation);
+	new(anno)SpecAnnotation(POTENTIAL_OP, label);
 	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
 void _createOPCheckAnnotation(CSTR label) {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
-	AnnoOPCheck *opCheck= (AnnoOPCheck*) snapshot_malloc(sizeof(AnnoOPCheck));
-	new(opCheck)AnnoOPCheck(label);
-	new(anno)SpecAnnotation(OP_CHECK, opCheck);
-
+	SpecAnnotation *anno = NEW(SpecAnnotation);
+	new(anno)SpecAnnotation(OP_CHECK, label);
 	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
 void _createOPClearAnnotation() {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
+	SpecAnnotation *anno = NEW(SpecAnnotation);
 	new(anno)SpecAnnotation(OP_CLEAR, NULL);
 	cdsannotate(SPEC_ANALYSIS, anno);
 }
 
 void _createOPClearDefineAnnotation() {
-	SpecAnnotation *anno = (SpecAnnotation*) snapshot_malloc(sizeof(SpecAnnotation));
+	SpecAnnotation *anno = NEW(SpecAnnotation);
 	new(anno)SpecAnnotation(OP_CLEAR_DEFINE, NULL);
 	cdsannotate(SPEC_ANALYSIS, anno);
 }

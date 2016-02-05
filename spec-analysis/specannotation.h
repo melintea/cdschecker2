@@ -121,33 +121,21 @@ struct AnnoInit {
 	AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
 		CommutativityRule *commuteRules, int ruleNum);
 			
-	AnnoInit(UpdateState_t initial, CopyState_t copy, CommutativityRule
-		*commuteRules, int ruleNum);
-
 	void addInterfaceFunctions(CSTR name, StateFunctions *funcs);
 
 } AnnoInit;
 
 typedef
-struct AnnoPotentialOP {
-	CSTR label;
+struct AnnoInterfaceInfo {
+	CSTR name;
+	void *value;
 
-	AnnoPotentialOP(CSTR label);
-
-} AnnoPotentialOP;
-
-typedef
-struct AnnoOPCheck {
-	CSTR label;
-
-	AnnoOPCheck(CSTR label);
-
-} AnnoOPCheck;
-
+	AnnoInterfaceInfo(CSTR name); 
+} AnnoInterfaceInfo;
 
 /**********    Universal functions for rewriting the program    **********/
 
-Method _createInterfaceBeginAnnotation(CSTR name);
+AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name);
 
 void _createOPDefineAnnotation();
 

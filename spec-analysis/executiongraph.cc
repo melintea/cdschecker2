@@ -343,16 +343,14 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	MODEL_ASSERT(anno && anno->type == INTERFACE_BEGIN);
 
 	// Partially initialize the commit point node with the already known fields
-	Method m = (Method) anno->annotation;
-	MODEL_ASSERT(m);
+	AnnoInterfaceInfo *info = (AnnoInterfaceInfo*) anno->annotation;
+	Method m = new MethodCall(info->name);
+	m->value = info->value;
 	m->begin = act;
 
 	// Some declaration for potential ordering points and its check
-	AnnoPotentialOP *annoPotentialOP = NULL;
-	AnnoOPCheck *annoOPCheck = NULL;
-
+	CSTR label;
 	PotentialOP *potentialOP= NULL;
-	
 	// A list of potential ordering points
 	PotentialOPList *popList = new PotentialOPList;
 	// Ordering point operation
@@ -369,22 +367,22 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 		switch (anno->type) {
 			case POTENTIAL_OP:
 				//model_print("POTENTIAL_OP\n");
-				annoPotentialOP = (AnnoPotentialOP*) anno->annotation;
+				label = (CSTR) anno->annotation;
 				op = findPrevAction(actions, iter);
 				if (!op) {
 					model_print("Potential ordering point annotation should"
 						"follow an atomic operation.\n");
-					model_print("%s_%d\n", annoPotentialOP->label,
+					model_print("%s_%d\n", label,
 						act->get_seq_number());
 					broken = true;
 					return NULL;
 				}
-				potentialOP = new PotentialOP(op, annoPotentialOP->label);
+				potentialOP = new PotentialOP(op, label);
 				popList->push_back(potentialOP);
 				break;
 			case OP_CHECK:
 				//model_print("OP_CHECK\n");
-				annoOPCheck = (AnnoOPCheck*) anno->annotation;
+				label = (CSTR) anno->annotation;
 				// Check if corresponding potential ordering point has appeared.
 				hasAppeared = false;
 				// However, in the current version of spec, we take the most
@@ -393,7 +391,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				for (PotentialOPList::reverse_iterator popIter = popList->rbegin();
 					popIter != popList->rend(); popIter++) {
 					potentialOP = *popIter;
-					if (annoOPCheck->label == potentialOP->label) {
+					if (label == potentialOP->label) {
 						m->addOrderingPoint(potentialOP->operation);
 						hasAppeared = true;
 						break; // Done when find the "first" PCP
@@ -402,7 +400,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				if (!hasAppeared) {
 					model_print("Ordering point check annotation should"
 						"have previous potential ordering point.\n");
-					model_print("%s_%d\n", annoOPCheck->label,
+					model_print("%s_%d\n", label,
 						act->get_seq_number());
 					broken = true;
 					return NULL;
