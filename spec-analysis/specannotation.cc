@@ -54,7 +54,7 @@ AnnoInterfaceInfo::AnnoInterfaceInfo(CSTR name) : name(name), value(NULL) { }
 
 AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name) {
 	AnnoInterfaceInfo *info = NEW(AnnoInterfaceInfo);
-	new(info)MethodCall(name);
+	new(info)AnnoInterfaceInfo(name);
 	// Create and instrument with the INTERFACE_BEGIN annotation
 	SpecAnnotation *anno = NEW(SpecAnnotation);
 	new(anno)SpecAnnotation(INTERFACE_BEGIN, info);
