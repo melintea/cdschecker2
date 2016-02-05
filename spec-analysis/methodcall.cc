@@ -3,7 +3,7 @@
 #include "methodcall.h"
 
 MethodCall::MethodCall(CSTR name) {
-	interfaceName = name;
+	name = name;
 	prev = new SnapSet<Method>;
 	next = new SnapSet<Method>;
 	concurrent = new SnapSet<Method>;
@@ -12,16 +12,6 @@ MethodCall::MethodCall(CSTR name) {
 	allNext  = new SnapSet<Method>;
 }
 	
-MethodCall::MethodCall() {
-	interfaceName = "";
-	prev = new SnapSet<Method>;
-	next = new SnapSet<Method>;
-	concurrent = new SnapSet<Method>;
-	orderingPoints = new action_list_t;
-	allPrev = new SnapSet<Method>;
-	allNext  = new SnapSet<Method>;
-}
-
 void MethodCall::addPrev(Method m) { prev->insert(m); }
 
 void MethodCall::addNext(Method m) { next->insert(m); }
@@ -61,6 +51,6 @@ bool MethodCall::disjoint(MethodSet s1, MethodSet s2) {
 }
 
 void MethodCall::print() {
-	model_print("Method Call %s (Seq #%d)\n", interfaceName,
+	model_print("Method Call %s (Seq #%d)\n", name,
 		begin->get_seq_number());
 }

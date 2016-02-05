@@ -26,7 +26,7 @@ typedef SnapSet<Method> *MethodSet;
 */
 class MethodCall {
 	public:
-	CSTR interfaceName; // The interface label name
+	CSTR name; // The interface label name
 	void *value; // The pointer that points to the struct that have the return
 				 // value and the arguments
 	void *state; // The pointer that points to the struct that represents
@@ -37,8 +37,6 @@ class MethodCall {
 
 	MethodCall(CSTR name);
 	
-	MethodCall();
-
 	void addPrev(Method m);
 
 	void addNext(Method m);

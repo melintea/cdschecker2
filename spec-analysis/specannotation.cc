@@ -13,14 +13,14 @@ CommutativityRule::CommutativityRule(CSTR method1, CSTR method2, CSTR rule,
 	method2(method2), rule(rule), condition(condition) {}
 
 bool CommutativityRule::isRightRule(Method m1, Method m2) {
-	return (m1->interfaceName == method1 && m2->interfaceName == method2) ||
-		(m1->interfaceName == method2 && m2->interfaceName == method1);
+	return (m1->name == method1 && m2->name == method2) ||
+		(m1->name == method2 && m2->name == method1);
 }
 	
 bool CommutativityRule::checkCondition(Method m1, Method m2) {
-	if (m1->interfaceName == method1 && m2->interfaceName == method2)
+	if (m1->name == method1 && m2->name == method2)
 		return (*condition)(m1, m2);
-	else if (m1->interfaceName == method2 && m2->interfaceName == method1)
+	else if (m1->name == method2 && m2->name == method1)
 		return (*condition)(m2, m1);
 	else // The checking should only be called on the right rule
 		MODEL_ASSERT(false);

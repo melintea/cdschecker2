@@ -124,10 +124,10 @@ bool ExecutionGraph::checkAdmissibility() {
 				ModelAction *begin2 = m2->begin;
 				int tid1 = id_to_int(begin1->get_tid());
 				int tid2 = id_to_int(begin2->get_tid());
-				model_print("%s_%d (T%d)", m1->interfaceName,
+				model_print("%s_%d (T%d)", m1->name,
 					begin1->get_seq_number(), tid1);
 				model_print(" <-> ");
-				model_print("%s_%d (T%d)", m2->interfaceName,
+				model_print("%s_%d (T%d)", m2->name,
 					begin2->get_seq_number(), tid2);
 				model_print("\n");
 			}
@@ -446,7 +446,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				delete popList;
 				if (m->orderingPoints->size() == 0) {
 					model_print("There is no ordering points for method %s.\n",
-						m->interfaceName);
+						m->name);
 					m->begin->print();
 					broken = true;
 					return NULL;
@@ -589,7 +589,7 @@ int ExecutionGraph::conflict(Method m1, Method m2) {
 			else if (val != res) { // Self cycle
 				cyclic = true;
 				model_print("There is a self cycle between methods %s and %s\n",
-					m1->interfaceName, m2->interfaceName);
+					m1->name, m2->name);
 				broken = true;
 				return 0;
 			}
@@ -744,7 +744,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 			fixedIter--;
 			Method fixed = *fixedIter;
 			if (fixed->concurrent->size() == 0 && (MethodCall::belong(m->allPrev,
-				fixed) || fixed->interfaceName == "START")) {
+				fixed) || fixed->name == "START")) {
 				(*copy)(m, fixed);
 				break;
 			}
@@ -753,7 +753,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 			execIter++) {
 			Method exec = *execIter;
 			if (MethodCall::belong(m->allPrev, exec)) {
-				StateFunctions *funcs = funcMap->at(exec->interfaceName);
+				StateFunctions *funcs = funcMap->at(exec->name);
 				MODEL_ASSERT (funcs);
 				StateTransition_t transition = funcs->transition;
 				// Execute the transition on the state of Method m
@@ -762,7 +762,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 		}
 
 		// Execute @EvaluateState
-		StateFunctions *funcs = funcMap->at(m->interfaceName);
+		StateFunctions *funcs = funcMap->at(m->name);
 		MODEL_ASSERT (funcs);
 		UpdateState_t evaluateState = funcs->evaluateState;
 		CheckState_t preCondition = funcs->preCondition ;
