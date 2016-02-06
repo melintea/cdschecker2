@@ -37,7 +37,6 @@ README.html: README.md
 	$(MARKDOWN) $< > $@
 
 $(LIB_SO): $(OBJECTS)
-	echo $(TMP)
 	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(LDFLAGS)
 
 malloc.o: malloc.c
@@ -50,7 +49,7 @@ malloc.o: malloc.c
 	dot -Tpdf $< -o $@
 
 # Replace all the basename with 
-ALL_DEPS := $(shell echo $(OBJECTS) | sed -e 's,\([^ ]*/\)\?\([^/ ]*\),\1\.\2\.d, g')
+ALL_DEPS := $(shell echo $(OBJECTS) | sed -E 's/([^ ]*\/)?([^\/ ]*)/\1\.\2.d/g')
 -include $(ALL_DEPS)
 #-include $(OBJECTS:%=.%.d)
 
