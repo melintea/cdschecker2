@@ -54,7 +54,7 @@ class MethodCall {
 
 	static bool disjoint(MethodSet s1, MethodSet s2);
 
-	void print();
+	void print(bool printOP = true);
 	
 	SNAPSHOTALLOC
 
@@ -62,7 +62,8 @@ class MethodCall {
 		FIXME: The end action is not really used or necessary here, maybe we
 		should clean this
 	*/
-	ModelAction *begin, *end;
+	ModelAction *begin;
+	ModelAction *end;
 	action_list_t *orderingPoints;
 	
 	/**

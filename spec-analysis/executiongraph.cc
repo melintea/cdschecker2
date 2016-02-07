@@ -293,7 +293,7 @@ void ExecutionGraph::buildNodesFromThread(action_list_t *actions) {
 			if (m) {
 				// Get a complete method call node and store it
 				methodList->push_back(m);
-			} else {
+			} else 
 				broken = true;
 				model_print("Error with constructing a complete node.\n");
 				return;
@@ -442,24 +442,24 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				m->addOrderingPoint(op);
 				break;
 			case INTERFACE_BEGIN:
-				delete popList;
-				if (m->orderingPoints->size() == 0) {
-					model_print("There is no ordering points for method %s.\n",
-						m->name.c_str());
-					m->begin->print();
-					broken = true;
-					return NULL;
-				}
-				return m;
 				break;
 			default:
-				break;
+				model_print("We should not get here.\n");
+				//MODEL_ASSERT(false);
+				return NULL;
 		}
 	}
-	
 	delete popList;
-	// The iter reaches the end
-	return m;
+	if (m->orderingPoints->size() == 0) {
+		model_print("There is no ordering points for method %s.\n",
+			m->name.c_str());
+		m->begin->print();
+		broken = true;
+		return NULL;
+	} else {
+		// Get a complete method call
+		return m;
+	}
 }
 
 /** 
@@ -587,8 +587,10 @@ int ExecutionGraph::conflict(Method m1, Method m2) {
 				val = res;
 			else if (val != res) { // Self cycle
 				cyclic = true;
-				model_print("There is a self cycle between methods %s and %s\n",
-					m1->name.c_str(), m2->name.c_str());
+				model_print("There is a self cycle between the following two "
+					"methods\n");
+				m1->print();
+				m2->print();
 				broken = true;
 				return 0;
 			}

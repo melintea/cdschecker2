@@ -1,10 +1,11 @@
 #include <algorithm>
 #include "common.h"
+#include "threads-model.h"
 #include "methodcall.h"
 
 MethodCall::MethodCall(string name, void *value, ModelAction *begin) :
-name(name), value(value), begin(begin), prev(new SnapSet<Method>), next(new
-SnapSet<Method>), concurrent(new SnapSet<Method>), orderingPoints(new
+name(name), value(value), prev(new SnapSet<Method>), next(new SnapSet<Method>),
+concurrent(new SnapSet<Method>), begin(begin), end(NULL), orderingPoints(new
 action_list_t), allPrev(new SnapSet<Method>), allNext(new SnapSet<Method>) { }
 	
 void MethodCall::addPrev(Method m) { prev->insert(m); }
@@ -45,7 +46,16 @@ bool MethodCall::disjoint(MethodSet s1, MethodSet s2) {
 	return true;
 }
 
-void MethodCall::print() {
-	model_print("Method Call %s (Seq #%d)\n", name.c_str(),
-		begin->get_seq_number());
+void MethodCall::print(bool printOP) {
+	model_print("Method Call %s (Seq #%d (T%d))\n", name.c_str(),
+		begin->get_seq_number(), id_to_int(begin->get_tid()));
+	if (!printOP)
+		return;
+	int i = 1;
+	for (action_list_t::iterator it = orderingPoints->begin(); it !=
+		orderingPoints->end(); it++) {
+		ModelAction *op = *it;
+		model_print("  -> %d. ", i++);
+		op->print();
+	}
 }
