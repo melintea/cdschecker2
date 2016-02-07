@@ -2,15 +2,10 @@
 #include "common.h"
 #include "methodcall.h"
 
-MethodCall::MethodCall(string name) {
-	name = name;
-	prev = new SnapSet<Method>;
-	next = new SnapSet<Method>;
-	concurrent = new SnapSet<Method>;
-	orderingPoints = new action_list_t;
-	allPrev = new SnapSet<Method>;
-	allNext  = new SnapSet<Method>;
-}
+MethodCall::MethodCall(string name, void *value, ModelAction *begin) :
+name(name), value(value), begin(begin), prev(new SnapSet<Method>), next(new
+SnapSet<Method>), concurrent(new SnapSet<Method>), orderingPoints(new
+action_list_t), allPrev(new SnapSet<Method>), allNext(new SnapSet<Method>) { }
 	
 void MethodCall::addPrev(Method m) { prev->insert(m); }
 

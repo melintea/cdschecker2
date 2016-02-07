@@ -38,7 +38,7 @@ class MethodCall {
 	MethodSet next; // Method calls that are hb right after me
 	MethodSet concurrent; // Method calls that are concurrent with me
 
-	MethodCall(string name);
+	MethodCall(string name, void *value = NULL, ModelAction *begin = NULL);
 	
 	void addPrev(Method m);
 

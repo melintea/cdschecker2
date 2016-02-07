@@ -53,41 +53,29 @@ AnnoInterfaceInfo::AnnoInterfaceInfo(string name) : name(name), value(NULL) { }
 /**********    Universal functions for rewriting the program    **********/
 
 AnnoInterfaceInfo* _createInterfaceBeginAnnotation(string name) {
-	AnnoInterfaceInfo *info = NEW(AnnoInterfaceInfo);
-	new(info)AnnoInterfaceInfo(name);
+	AnnoInterfaceInfo *info = new AnnoInterfaceInfo(name);
 	// Create and instrument with the INTERFACE_BEGIN annotation
-	SpecAnnotation *anno = NEW(SpecAnnotation);
-	new(anno)SpecAnnotation(INTERFACE_BEGIN, info);
-	cdsannotate(SPEC_ANALYSIS, anno);
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(INTERFACE_BEGIN, info));
 	return info;
 }
 
 void _createOPDefineAnnotation() {
-	SpecAnnotation *anno = NEW(SpecAnnotation);
-	new(anno)SpecAnnotation(OP_DEFINE, NULL);
-	cdsannotate(SPEC_ANALYSIS, anno);
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_DEFINE, NULL));
 }
 
 void _createPotentialOPAnnotation(string label) {
-	SpecAnnotation *anno = NEW(SpecAnnotation);
-	new(anno)SpecAnnotation(POTENTIAL_OP, new string(label));
-	cdsannotate(SPEC_ANALYSIS, anno);
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(POTENTIAL_OP,
+		new string(label)));
 }
 
 void _createOPCheckAnnotation(string label) {
-	SpecAnnotation *anno = NEW(SpecAnnotation);
-	new(anno)SpecAnnotation(OP_CHECK, new string(label));
-	cdsannotate(SPEC_ANALYSIS, anno);
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CHECK, new string(label)));
 }
 
 void _createOPClearAnnotation() {
-	SpecAnnotation *anno = NEW(SpecAnnotation);
-	new(anno)SpecAnnotation(OP_CLEAR, NULL);
-	cdsannotate(SPEC_ANALYSIS, anno);
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CLEAR, NULL));
 }
 
 void _createOPClearDefineAnnotation() {
-	SpecAnnotation *anno = NEW(SpecAnnotation);
-	new(anno)SpecAnnotation(OP_CLEAR_DEFINE, NULL);
-	cdsannotate(SPEC_ANALYSIS, anno);
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CLEAR_DEFINE, NULL));
 }

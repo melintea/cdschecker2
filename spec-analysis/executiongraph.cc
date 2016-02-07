@@ -345,12 +345,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	// Partially initialize the commit point node with the already known fields
 	//FIXME: Seems like the SNAPSHOT new would not call non-default constructor?
 	AnnoInterfaceInfo *info = (AnnoInterfaceInfo*) anno->annotation;
-	Method m = new MethodCall(info->name);
-	model_print("info name: %s\n", info->name.c_str());
-	model_print("method name: %s\n", m->name.c_str());
-	ASSERT(m->name != "");
-	m->value = info->value;
-	m->begin = act;
+	Method m = new MethodCall(info->name, info->value, act);
 
 	// Some declaration for potential ordering points and its check
 	string *labelPtr;
