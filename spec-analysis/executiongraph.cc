@@ -293,7 +293,7 @@ void ExecutionGraph::buildNodesFromThread(action_list_t *actions) {
 			if (m) {
 				// Get a complete method call node and store it
 				methodList->push_back(m);
-			} else 
+			} else {
 				broken = true;
 				model_print("Error with constructing a complete node.\n");
 				return;
