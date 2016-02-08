@@ -22,7 +22,30 @@ using namespace std;
 typedef enum SpecAnnoType {
 	INIT, POTENTIAL_OP, OP_DEFINE, OP_CHECK, OP_CLEAR, OP_CLEAR_DEFINE,
 	INTERFACE_BEGIN, INTERFACE_END
-} SpecAnnoType; 
+} SpecAnnoType;
+
+inline string specAnnoType2Str(SpecAnnoType type) {
+	switch (type) {
+		case INIT:
+			return "INIT";
+		case POTENTIAL_OP:
+			return "POTENTIAL_OP";
+		case OP_DEFINE:
+			return "OP_DEFINE";
+		case OP_CHECK:
+			return "OP_CHECK";
+		case OP_CLEAR:
+			return "OP_CLEAR";
+		case OP_CLEAR_DEFINE:
+			return "OP_CLEAR_DEFINE";
+		case INTERFACE_BEGIN:
+			return "INTERFACE_BEGIN";
+		case INTERFACE_END:
+			return "INTERFACE_END";
+		default:
+			return "UNKNOWN_TYPE";
+	}
+}
 
 typedef
 struct SpecAnnotation {

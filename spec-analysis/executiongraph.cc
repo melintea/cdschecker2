@@ -197,7 +197,7 @@ void ExecutionGraph::printOneHistory(MethodList *history) {
 	for (MethodList::iterator it = history->begin(); it != history->end(); it++) {
 		Method m = *it;
 		model_print("%d. ", idx++);
-		m->print();
+		m->print(false);
 	}
 	model_print("-------------    A random history (end)    -------------\n");
 }
@@ -213,7 +213,7 @@ void ExecutionGraph::printAllHistories(MethodListVector *histories) {
 			it++) {
 			Method m = *it;
 			model_print("%d. ", idx++);
-			m->print();
+			m->print(false);
 		}
 		if (i != histories->size() - 1)
 			model_print("\n");
@@ -230,18 +230,18 @@ void ExecutionGraph::print() {
 		methodList->end(); iter++) {
 		Method m = *iter;
 		/* Print the info the this method */
-		m->print();
+		m->print(false);
 		model_print("\n");
 		/* Print the info the edges directly from this node */
 		for (SnapSet<Method>::iterator nextIter = m->next->begin(); nextIter !=
 			m->next->end(); nextIter++) {
 			Method next = *nextIter;
 			model_print("\t\t--> ");
-			next->print();
+			next->print(false);
 		}
 	}
 	model_print("------------------  End Graph (exec #%d)"
-	"  ------------------\n", execution->get_execution_number());
+		"  ------------------\n", execution->get_execution_number());
 	model_print("\n");
 }
 
@@ -279,6 +279,9 @@ void ExecutionGraph::buildThreadLists(action_list_t *actions) {
 */
 void ExecutionGraph::buildNodesFromThread(action_list_t *actions) {
 	action_list_t::iterator iter = actions->begin();
+
+	// FIXME: Just for the purpose of debugging
+	//printActions(actions, "BuildNodesFromThread");
 	
 	// annoBegin == NULL means we are looking for the beginning annotation
 	while (iter != actions->end()) {
@@ -343,7 +346,6 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	MODEL_ASSERT(anno && anno->type == INTERFACE_BEGIN);
 
 	// Partially initialize the commit point node with the already known fields
-	//FIXME: Seems like the SNAPSHOT new would not call non-default constructor?
 	AnnoInterfaceInfo *info = (AnnoInterfaceInfo*) anno->annotation;
 	Method m = new MethodCall(info->name, info->value, act);
 
@@ -356,7 +358,8 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	ModelAction *op = NULL;
 	// Whether the potential ordering points were defined
 	bool hasAppeared = false;
-
+	
+	bool methodComplete = false;
 	for (iter++; iter != actions->end(); iter++) {
 		act = *iter;
 		SpecAnnotation *anno = getAnnotation(act);
@@ -442,13 +445,20 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				m->addOrderingPoint(op);
 				break;
 			case INTERFACE_BEGIN:
+				methodComplete = true;		
 				break;
 			default:
-				model_print("We should not get here.\n");
+				model_print("Unknown type!! We should never get here.\n");
 				//MODEL_ASSERT(false);
 				return NULL;
 		}
+		if (methodComplete) // Get out of the loop when we have a complete node
+			break;
 	}
+
+	MODEL_ASSERT (iter == actions->end() || (getAnnotation(*iter) &&
+		getAnnotation(*iter)->type == INTERFACE_BEGIN));
+
 	delete popList;
 	if (m->orderingPoints->size() == 0) {
 		model_print("There is no ordering points for method %s.\n",
@@ -471,7 +481,8 @@ SpecAnnotation* ExecutionGraph::getAnnotation(ModelAction *act) {
 	if (act->get_type() != ATOMIC_ANNOTATION)
 		return NULL;
 	if (act->get_value() != SPEC_ANALYSIS)
-		return NULL; SpecAnnotation *anno = (SpecAnnotation*) act->get_location();
+		return NULL;
+	SpecAnnotation *anno = (SpecAnnotation*) act->get_location();
 	MODEL_ASSERT (anno);
 	return anno;
 }
@@ -689,6 +700,8 @@ void ExecutionGraph::generateHistoriesHelper(MethodListVector* results, MethodLi
 	MethodVector *roots = getRootNodes();
 	// Cycle exists (no root nodes but still have live nodes
 	if (roots->size() == 0) {
+		model_print("There is a cycle in this graph so we cannot generate"
+			" sequential histories\n");
 		cyclic = true;
 		return;
 	}
@@ -779,7 +792,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 			if (!satisfied) {
 				model_print("PreCondition is not satisfied (Problematic method call"
 				 " printed");
-				m->print();
+				m->print(false);
 				return false;
 			}
 		}
@@ -793,7 +806,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 			if (!satisfied) {
 				model_print("PostCondition is not satisfied (Problematic method call"
 				 " printed");
-				m->print();
+				m->print(false);
 				return false;
 			}
 		}
@@ -807,15 +820,15 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 */
 void ExecutionGraph::printActions(action_list_t *actions, const char *header) {
 	model_print("%s\n", header);
-	model_print("---------- thread list (begin) ---------\n");
+	model_print("---------- Thread List (Begin) ---------\n");
 	for (action_list_t::iterator it = actions->begin(); it != actions->end();
 		it++) {
 		ModelAction *act = *it;
 		SpecAnnotation *anno = getAnnotation(act);
 		if (anno) {
-			model_print("%d -> ", anno->type);
+			model_print("%s -> ", specAnnoType2Str(anno->type).c_str());
 		}
 		act->print();
 	}
-	model_print("---------- thread list (end) ---------\n");
+	model_print("---------- Thread List (End) ---------\n");
 }
