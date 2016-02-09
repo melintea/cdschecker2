@@ -43,7 +43,7 @@ malloc.o: malloc.c
 	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPLAGS) -Wno-unused-variable
 
 %.o: %.cc
-	$(CXX) -MMD -MF $(dir $@).$(notdir $@).d -fPIC -c $< -o $@ $(CPPFLAGS) -std=c++11
+	$(CXX) -MMD -MF $(dir $@).$(notdir $@).d -fPIC -c $< -o $@ $(CPPFLAGS)
 
 %.pdf: %.dot
 	dot -Tpdf $< -o $@

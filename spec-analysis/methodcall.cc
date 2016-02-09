@@ -3,10 +3,14 @@
 #include "threads-model.h"
 #include "methodcall.h"
 
-MethodCall::MethodCall(string name, void *value, ModelAction *begin) :
+CSTR GRAPH_START = "START_NODE";
+CSTR GRAPH_FINISH = "FINIS_NODE";
+
+MethodCall::MethodCall(CSTR name, void *value, ModelAction *begin) :
 name(name), value(value), prev(new SnapSet<Method>), next(new SnapSet<Method>),
 concurrent(new SnapSet<Method>), begin(begin), end(NULL), orderingPoints(new
-action_list_t), allPrev(new SnapSet<Method>), allNext(new SnapSet<Method>) { }
+action_list_t), allPrev(new SnapSet<Method>), allNext(new SnapSet<Method>),
+exist(true) { }
 	
 void MethodCall::addPrev(Method m) { prev->insert(m); }
 
@@ -23,6 +27,29 @@ void MethodCall::addOrderingPoint(ModelAction *act) {
 
 bool MethodCall::belong(MethodSet s, Method m) {
 	return s->end() != std::find(s->begin(), s->end(), m);
+}
+
+bool MethodCall::identical(MethodSet s1, MethodSet s2) {
+	if (s1->size() != s2->size())
+		return false;
+	SnapSet<Method>::iterator it;
+	for (it = s1->begin(); it != s1->end(); it++) {
+		Method m1 = *it;
+		if (belong(s2, m1))
+			return false;
+	}
+	return true;
+}
+
+/**
+	Put the union of src and dest to dest.
+*/
+void MethodCall::Union(MethodSet dest, MethodSet src) {
+	SnapSet<Method>::iterator it;
+	for (it = src->begin(); it != src->end(); it++) {
+		Method m = *it;
+		dest->insert(m);
+	}
 }
 
 MethodSet MethodCall::intersection(MethodSet s1, MethodSet s2) {
@@ -47,7 +74,15 @@ bool MethodCall::disjoint(MethodSet s1, MethodSet s2) {
 }
 
 void MethodCall::print(bool printOP) {
-	model_print("Method Call %s (Seq #%d (T%d))\n", name.c_str(),
+	if (name == GRAPH_START) {
+		model_print("%s\n", GRAPH_START);
+		return;
+	}
+	if (name == GRAPH_FINISH) {
+		model_print("%s\n", GRAPH_FINISH);
+		return;
+	}
+	model_print("Method Call %s (Seq #%d (T%d))\n", name,
 		begin->get_seq_number(), id_to_int(begin->get_tid()));
 	if (!printOP)
 		return;

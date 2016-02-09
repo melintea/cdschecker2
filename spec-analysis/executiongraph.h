@@ -2,7 +2,6 @@
 #define _EXECUTIONGRAPH_H
 
 #include <stack>
-#include <string>
 
 #include "hashtable.h"
 #include "specannotation.h"
@@ -15,7 +14,8 @@
 #include "methodcall.h"
 #include "specannotation.h"
 
-using std::string;
+
+const int UNKNOWN_CONFLICT = 0xffff;
 
 /**
 	Record the a potential commit point information, including the potential
@@ -23,9 +23,9 @@ using std::string;
 */
 typedef struct PotentialOP {
 	ModelAction *operation;
-	string label;
+	CSTR label;
 
-	PotentialOP(ModelAction *op, string name);
+	PotentialOP(ModelAction *op, CSTR name);
 
 	SNAPSHOTALLOC
 } PotentialOP;
@@ -89,7 +89,13 @@ class ExecutionGraph {
 	void printAllHistories(MethodListVector *sortings);
 
 	/** Print out the graph for the purpose of debugging */
-	void print();
+	void print(bool allEdges = false);
+
+	/**
+		Print out the graph in reverse order (with previous edges) for the
+		purpose of debugging
+	*/
+	void PrintReverse(bool allEdges);
 
 	SNAPSHOTALLOC
 
@@ -127,7 +133,7 @@ class ExecutionGraph {
 	CopyState_t copy;
 
 	/** The map from interface label name to the set of spec functions */
-	unordered_map<string, StateFunctions*> *funcMap;
+	Map *funcMap;
 
 	/** The commutativity rule array and its size */
 	CommutativityRule *commuteRules;
@@ -183,6 +189,13 @@ class ExecutionGraph {
 	void buildEdges();
 
 	/**
+		This method call is used to check whether the edge sets of the nodes are
+		built correctly --- consistently. We should only use this routine after the
+		builiding of edges when debugging
+	*/
+	void AssertEdges();
+
+	/**
 		The conflicting relation between two model actions by hb/SC. If act1 and
 		act2 commutes, it returns 0; Otherwise, if act1->act2, it returns 1; and
 		if act2->act1, it returns -1
@@ -232,6 +245,13 @@ class ExecutionGraph {
 	*/
 	void generateHistoriesHelper(MethodListVector* results,
 		MethodList *curList, int &numLiveNodes, bool generateOne, bool &found);
+
+	/** Return the fake nodes -- START & END */
+	Method getStartMethod();
+	Method getFinishMethod();
+	
+	/** Whether method call node m is a fake node */
+	bool isFakeMethod(Method m);
 
 	/** 
 		Check the state specifications (PreCondition & PostCondition & state

@@ -1,12 +1,9 @@
 #ifndef _METHODCALL_H
 #define _METHODCALL_H
 
-#include <string> 
 #include "execution.h"
 #include "action.h"
 #include "spec_common.h"
-
-using std::string;
 
 class MethodCall;
 
@@ -29,7 +26,7 @@ typedef SnapSet<Method> *MethodSet;
 */
 class MethodCall {
 	public:
-	string name; // The interface label name
+	CSTR name; // The interface label name
 	void *value; // The pointer that points to the struct that have the return
 				 // value and the arguments
 	void *state; // The pointer that points to the struct that represents
@@ -38,7 +35,7 @@ class MethodCall {
 	MethodSet next; // Method calls that are hb right after me
 	MethodSet concurrent; // Method calls that are concurrent with me
 
-	MethodCall(string name, void *value = NULL, ModelAction *begin = NULL);
+	MethodCall(CSTR name, void *value = NULL, ModelAction *begin = NULL);
 	
 	void addPrev(Method m);
 
@@ -50,14 +47,17 @@ class MethodCall {
 
 	static bool belong(MethodSet s, Method m);
 
+	static bool identical(MethodSet s1, MethodSet s2);
+
+	/** Put the union of src and dest to dest */
+	static void Union(MethodSet dest, MethodSet src);
+
 	static MethodSet intersection(MethodSet s1, MethodSet s2);
 
 	static bool disjoint(MethodSet s1, MethodSet s2);
 
 	void print(bool printOP = true);
 	
-	SNAPSHOTALLOC
-
 	/**
 		FIXME: The end action is not really used or necessary here, maybe we
 		should clean this
@@ -74,6 +74,8 @@ class MethodCall {
 
 	/** Logically exist (for generating all possible topological sortings) */
 	bool exist;
+
+	SNAPSHOTALLOC
 };
 
 

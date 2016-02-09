@@ -6,6 +6,7 @@
 #include "methodcall.h"
 #include "action.h"
 #include "spec_common.h"
+#include "hashtable.h"
 
 using namespace std;
 
@@ -24,7 +25,7 @@ typedef enum SpecAnnoType {
 	INTERFACE_BEGIN, INTERFACE_END
 } SpecAnnoType;
 
-inline string specAnnoType2Str(SpecAnnoType type) {
+inline CSTR specAnnoType2Str(SpecAnnoType type) {
 	switch (type) {
 		case INIT:
 			return "INIT";
@@ -50,9 +51,9 @@ inline string specAnnoType2Str(SpecAnnoType type) {
 typedef
 struct SpecAnnotation {
 	SpecAnnoType type;
-	void *annotation;
+	const void *annotation;
 
-	SpecAnnotation(SpecAnnoType type, void *anno);
+	SpecAnnotation(SpecAnnoType type, const void *anno);
 
 } SpecAnnotation;
 
@@ -76,14 +77,14 @@ typedef void (*CopyState_t)(Method, Method);
 */
 typedef
 struct CommutativityRule {
-	string method1;
-	string method2;
+	CSTR method1;
+	CSTR method2;
 
 	/** The plain text of the rule (debugging purpose) */
-	string rule;
+	CSTR rule;
 	CheckCommutativity_t condition;
 
-	CommutativityRule(string method1, string method2, string rule,
+	CommutativityRule(CSTR method1, CSTR method2, CSTR rule,
 		CheckCommutativity_t condition);
 
 	bool isRightRule(Method m1, Method m2);
@@ -94,19 +95,21 @@ struct CommutativityRule {
 
 typedef
 struct StateFunctions {
-	string name;
+	CSTR name;
 	StateTransition_t transition;
 	UpdateState_t evaluateState;
 	CheckState_t preCondition;
 	UpdateState_t sideEffect;
 	CheckState_t postCondition;
 
-	StateFunctions(string name, StateTransition_t transition, UpdateState_t
+	StateFunctions(CSTR name, StateTransition_t transition, UpdateState_t
 		evaluateState, CheckState_t preCondition, UpdateState_t sideEffect,
 		CheckState_t postCondition);
 
 } StateFunctions;
 
+/** A map from a constant c-string to its set of checking functions */
+typedef HashTable<CSTR, StateFunctions*, uintptr_t, 4, malloc, calloc, free > Map;
 
 typedef
 struct AnnoInit {
@@ -135,7 +138,7 @@ struct AnnoInit {
 
 	/** For the state functions. We can conveniently access to the set of state
 	 *  functions with a hashmap */
-	Map<string, StateFunctions*> *funcMap;
+	Map *funcMap;
 	
 	/** For commutativity rules */
 	CommutativityRule *commuteRules;
@@ -144,27 +147,27 @@ struct AnnoInit {
 	AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
 		CommutativityRule *commuteRules, int ruleNum);
 			
-	void addInterfaceFunctions(string name, StateFunctions *funcs);
+	void addInterfaceFunctions(CSTR name, StateFunctions *funcs);
 
 } AnnoInit;
 
 typedef
 struct AnnoInterfaceInfo {
-	string name;
+	CSTR name;
 	void *value;
 
-	AnnoInterfaceInfo(string name); 
+	AnnoInterfaceInfo(CSTR name); 
 } AnnoInterfaceInfo;
 
 /**********    Universal functions for rewriting the program    **********/
 
-AnnoInterfaceInfo* _createInterfaceBeginAnnotation(string name);
+AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name);
 
 void _createOPDefineAnnotation();
 
-void _createPotentialOPAnnotation(string label);
+void _createPotentialOPAnnotation(CSTR label);
 
-void _createOPCheckAnnotation(string label);
+void _createOPCheckAnnotation(CSTR label);
 
 void _createOPClearAnnotation();
 

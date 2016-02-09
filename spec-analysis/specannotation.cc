@@ -4,11 +4,11 @@
 
 /**********    Annotations    **********/
 
-SpecAnnotation::SpecAnnotation(SpecAnnoType type, void *anno) : type(type),
+SpecAnnotation::SpecAnnotation(SpecAnnoType type, const void *anno) : type(type),
 	annotation(anno) { }
 		
 
-CommutativityRule::CommutativityRule(string method1, string method2, string rule,
+CommutativityRule::CommutativityRule(CSTR method1, CSTR method2, CSTR rule,
 	CheckCommutativity_t condition) : method1(method1),
 	method2(method2), rule(rule), condition(condition) {}
 
@@ -23,12 +23,12 @@ bool CommutativityRule::checkCondition(Method m1, Method m2) {
 	else if (m1->name == method2 && m2->name == method1)
 		return (*condition)(m2, m1);
 	else // The checking should only be called on the right rule
-		MODEL_ASSERT(false);
+		ASSERT(false);
 		return false;
 }
 
 
-StateFunctions::StateFunctions(string name, StateTransition_t transition, UpdateState_t
+StateFunctions::StateFunctions(CSTR name, StateTransition_t transition, UpdateState_t
 	evaluateState, CheckState_t preCondition, UpdateState_t sideEffect,
 	CheckState_t postCondition) : name(name), transition(transition),
 	evaluateState(evaluateState), preCondition(preCondition),
@@ -39,20 +39,20 @@ AnnoInit::AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
 	CommutativityRule *commuteRules, int ruleNum)
 	: initial(initial), final(final), copy(copy),
 	commuteRules(commuteRules), commuteRuleNum(ruleNum) {
-	funcMap = new Map<string, StateFunctions*>;
+	funcMap = new Map;
 }
 	
 
-void AnnoInit::addInterfaceFunctions(string name, StateFunctions *funcs) {
-	funcMap->insert(make_pair(name, funcs));
+void AnnoInit::addInterfaceFunctions(CSTR name, StateFunctions *funcs) {
+	funcMap->put(name, funcs);
 }
 
-AnnoInterfaceInfo::AnnoInterfaceInfo(string name) : name(name), value(NULL) { }
+AnnoInterfaceInfo::AnnoInterfaceInfo(CSTR name) : name(name), value(NULL) { }
 
 
 /**********    Universal functions for rewriting the program    **********/
 
-AnnoInterfaceInfo* _createInterfaceBeginAnnotation(string name) {
+AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name) {
 	AnnoInterfaceInfo *info = new AnnoInterfaceInfo(name);
 	// Create and instrument with the INTERFACE_BEGIN annotation
 	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(INTERFACE_BEGIN, info));
@@ -63,13 +63,12 @@ void _createOPDefineAnnotation() {
 	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_DEFINE, NULL));
 }
 
-void _createPotentialOPAnnotation(string label) {
-	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(POTENTIAL_OP,
-		new string(label)));
+void _createPotentialOPAnnotation(CSTR label) {
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(POTENTIAL_OP, label));
 }
 
-void _createOPCheckAnnotation(string label) {
-	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CHECK, new string(label)));
+void _createOPCheckAnnotation(CSTR label) {
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_CHECK, label));
 }
 
 void _createOPClearAnnotation() {

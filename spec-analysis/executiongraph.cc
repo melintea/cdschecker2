@@ -14,7 +14,7 @@
 
 
 /********************    PotentialOP    ********************/
-PotentialOP::PotentialOP(ModelAction *op, string label) :
+PotentialOP::PotentialOP(ModelAction *op, CSTR label) :
 	operation(op),
 	label(label)
 {
@@ -124,10 +124,10 @@ bool ExecutionGraph::checkAdmissibility() {
 				ModelAction *begin2 = m2->begin;
 				int tid1 = id_to_int(begin1->get_tid());
 				int tid2 = id_to_int(begin2->get_tid());
-				model_print("%s_%d (T%d)", m1->name.c_str(),
+				model_print("%s_%d (T%d)", m1->name,
 					begin1->get_seq_number(), tid1);
 				model_print(" <-> ");
-				model_print("%s_%d (T%d)", m2->name.c_str(),
+				model_print("%s_%d (T%d)", m2->name,
 					begin2->get_seq_number(), tid2);
 				model_print("\n");
 			}
@@ -222,25 +222,62 @@ void ExecutionGraph::printAllHistories(MethodListVector *histories) {
 		"-------------\n\n", execution->get_execution_number());
 }
 
-void ExecutionGraph::print() {
+/**
+	By default we print only all the edges that are directly from this mehtod
+	call node. If passed allEdges == true, we will print all the edges that are
+	reachable (SC/hb after) the current node.
+*/
+void ExecutionGraph::print(bool allEdges) {
 	model_print("\n");
-	model_print("------------------  Execution Graph (exec #%d)"
-	"  ------------------\n", execution->get_execution_number());
+	const char *extraStr = allEdges ? "All Edges" : "";
+	model_print("------------------  Execution Graph -- %s (exec #%d)"
+	"  ------------------\n", extraStr, execution->get_execution_number());
 	for (MethodList::iterator iter = methodList->begin(); iter !=
 		methodList->end(); iter++) {
 		Method m = *iter;
 		/* Print the info the this method */
 		m->print(false);
-		model_print("\n");
 		/* Print the info the edges directly from this node */
-		for (SnapSet<Method>::iterator nextIter = m->next->begin(); nextIter !=
-			m->next->end(); nextIter++) {
+		SnapSet<Method> *theSet = allEdges ? m->allNext : m->next;
+		for (SnapSet<Method>::iterator nextIter = theSet->begin(); nextIter !=
+			theSet->end(); nextIter++) {
 			Method next = *nextIter;
-			model_print("\t\t--> ");
+			model_print("\t--> ");
 			next->print(false);
 		}
 	}
 	model_print("------------------  End Graph (exec #%d)"
+		"  ------------------\n", execution->get_execution_number());
+	model_print("\n");
+}
+
+/**
+	By default we print only all the edges that are directly to this mehtod
+	call node. If passed allEdges == true, we will print all the edges that are
+	reachable (SC/hb before) from the current node.
+	
+	Only for debugging!!
+*/
+void ExecutionGraph::PrintReverse(bool allEdges) {
+	model_print("\n");
+	const char *extraStr = allEdges ? "All Edges" : "";
+	model_print("------------------  Reverse Execution Graph -- %s (exec #%d)"
+	"  ------------------\n", extraStr, execution->get_execution_number());
+	for (MethodList::iterator iter = methodList->begin(); iter !=
+		methodList->end(); iter++) {
+		Method m = *iter;
+		/* Print the info the this method */
+		m->print(false);
+		/* Print the info the edges directly from this node */
+		SnapSet<Method> *theSet = allEdges ? m->allPrev : m->prev;
+		for (SnapSet<Method>::iterator prevIter = theSet->begin(); prevIter !=
+			theSet->end(); prevIter++) {
+			Method prev = *prevIter;
+			model_print("\t--> ");
+			prev->print(false);
+		}
+	}
+	model_print("------------------  End Reverse Graph (exec #%d)"
 		"  ------------------\n", execution->get_execution_number());
 	model_print("\n");
 }
@@ -343,14 +380,14 @@ ModelAction* ExecutionGraph::findPrevAction(action_list_t *actions, action_list_
 Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iterator &iter) {
 	ModelAction *act = *iter;
 	SpecAnnotation *anno = getAnnotation(act);
-	MODEL_ASSERT(anno && anno->type == INTERFACE_BEGIN);
+	ASSERT(anno && anno->type == INTERFACE_BEGIN);
 
 	// Partially initialize the commit point node with the already known fields
 	AnnoInterfaceInfo *info = (AnnoInterfaceInfo*) anno->annotation;
 	Method m = new MethodCall(info->name, info->value, act);
 
 	// Some declaration for potential ordering points and its check
-	string *labelPtr;
+	CSTR label;
 	PotentialOP *potentialOP= NULL;
 	// A list of potential ordering points
 	PotentialOPList *popList = new PotentialOPList;
@@ -369,22 +406,22 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 		switch (anno->type) {
 			case POTENTIAL_OP:
 				//model_print("POTENTIAL_OP\n");
-				labelPtr = (string*) anno->annotation;
+				label = (CSTR) anno->annotation;
 				op = findPrevAction(actions, iter);
 				if (!op) {
 					model_print("Potential ordering point annotation should"
 						"follow an atomic operation.\n");
-					model_print("%s_%d\n", labelPtr->c_str(),
+					model_print("%s_%d\n", label,
 						act->get_seq_number());
 					broken = true;
 					return NULL;
 				}
-				potentialOP = new PotentialOP(op, *labelPtr);
+				potentialOP = new PotentialOP(op, label);
 				popList->push_back(potentialOP);
 				break;
 			case OP_CHECK:
 				//model_print("OP_CHECK\n");
-				labelPtr = (string*) anno->annotation;
+				label = (CSTR) anno->annotation;
 				// Check if corresponding potential ordering point has appeared.
 				hasAppeared = false;
 				// However, in the current version of spec, we take the most
@@ -393,7 +430,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				for (PotentialOPList::reverse_iterator popIter = popList->rbegin();
 					popIter != popList->rend(); popIter++) {
 					potentialOP = *popIter;
-					if (*labelPtr == potentialOP->label) {
+					if (label == potentialOP->label) {
 						m->addOrderingPoint(potentialOP->operation);
 						hasAppeared = true;
 						break; // Done when find the "first" PCP
@@ -402,7 +439,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				if (!hasAppeared) {
 					model_print("Ordering point check annotation should"
 						"have previous potential ordering point.\n");
-					model_print("%s_%d\n", labelPtr->c_str(),
+					model_print("%s_%d\n", label,
 						act->get_seq_number());
 					broken = true;
 					return NULL;
@@ -449,20 +486,20 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				break;
 			default:
 				model_print("Unknown type!! We should never get here.\n");
-				//MODEL_ASSERT(false);
+				ASSERT(false);
 				return NULL;
 		}
 		if (methodComplete) // Get out of the loop when we have a complete node
 			break;
 	}
 
-	MODEL_ASSERT (iter == actions->end() || (getAnnotation(*iter) &&
+	ASSERT (iter == actions->end() || (getAnnotation(*iter) &&
 		getAnnotation(*iter)->type == INTERFACE_BEGIN));
 
 	delete popList;
 	if (m->orderingPoints->size() == 0) {
 		model_print("There is no ordering points for method %s.\n",
-			m->name.c_str());
+			m->name);
 		m->begin->print();
 		broken = true;
 		return NULL;
@@ -483,7 +520,7 @@ SpecAnnotation* ExecutionGraph::getAnnotation(ModelAction *act) {
 	if (act->get_value() != SPEC_ANALYSIS)
 		return NULL;
 	SpecAnnotation *anno = (SpecAnnotation*) act->get_location();
-	MODEL_ASSERT (anno);
+	ASSERT (anno);
 	return anno;
 }
 
@@ -492,7 +529,7 @@ void ExecutionGraph::processInitAnnotation(AnnoInit *annoInit) {
 	initial= annoInit->initial;
 	final= annoInit->final;
 	copy= annoInit->copy;
-	MODEL_ASSERT(initial);
+	ASSERT(initial);
 
 	// Assign the function map (from interface name to state functions)
 	funcMap = annoInit->funcMap;
@@ -502,6 +539,7 @@ void ExecutionGraph::processInitAnnotation(AnnoInit *annoInit) {
 	commuteRuleNum = annoInit->commuteRuleNum; 
 }
 
+
 /**
 	This is a very important interal function to build the graph. When called,
 	we assume that we have a list of method nodes built (extracted from the raw
@@ -509,6 +547,13 @@ void ExecutionGraph::processInitAnnotation(AnnoInit *annoInit) {
 	edges between them to yield an execution graph for checking
 */
 void ExecutionGraph::buildEdges() {
+	// Add two special nodes (START & FINISH) at the beginning & end of methodList
+	Method startMethod = new MethodCall(GRAPH_START);
+	Method finishMethod = new MethodCall(GRAPH_FINISH);
+	
+	methodList->push_front(startMethod);
+	methodList->push_back(finishMethod);
+
 	MethodList::iterator iter1, iter2;
 	// First build the allPrev and allNext set (don't care if they are right
 	// previous or right next first)
@@ -529,23 +574,23 @@ void ExecutionGraph::buildEdges() {
 			}
 		}
 	}
+	
 	// Now build the prev, next and concurrent sets
 	for (MethodList::iterator iter = methodList->begin(); iter != methodList->end();
 		iter++) {
 		Method m = *iter;
 		// prev -- nodes in allPrev that are before none in allPrev
+		// next -- nodes in allNext that are after none in allNext (but we
+		// actually build this set together with building prev
 		SnapSet<Method>::iterator setIt;
-		for (setIt = m->prev->begin(); setIt != m->prev->end(); setIt++) {
+		for (setIt = m->allPrev->begin(); setIt != m->allPrev->end(); setIt++) {
 			Method prevMethod = *setIt;
-			if (MethodCall::disjoint(m->prev, prevMethod->allNext))
+			if (MethodCall::disjoint(m->allPrev, prevMethod->allNext)) {
 				m->prev->insert(prevMethod);
+				prevMethod->next->insert(m);
+			}
 		}
-		// next -- nodes in allNext that are after none in allNext
-		for (setIt = m->next->begin(); setIt != m->next->end(); setIt++) {
-			Method nextMethod = *setIt;
-			if (MethodCall::disjoint(m->next, nextMethod->allPrev))
-				m->next->insert(nextMethod);
-		}
+		
 		// concurrent -- all other nodes besides MYSELF, allPrev and allNext
 		for (MethodList::iterator concurIter = methodList->begin(); concurIter !=
 			methodList->end(); concurIter++) {
@@ -555,7 +600,117 @@ void ExecutionGraph::buildEdges() {
 				m->concurrent->insert(concur);
 		}
 	}
-	
+
+	AssertEdges();
+
+	model_print("Right after calling buildEdges\n");
+	print(false);
+	PrintReverse(false);
+}
+
+/**
+	This method call is used to check whether the edge sets of the nodes are
+	built correctly --- consistently. We should only use this routine after the
+	builiding of edges when debugging
+*/
+void ExecutionGraph::AssertEdges() {
+	// Assume there is no self-cycle in execution (ordering points are fine)
+	ASSERT (!cyclic);
+
+	MethodList::iterator it;
+	for (it = methodList->begin(); it != methodList->end(); it++) {
+		Method m = *it;
+		SnapSet<Method>::iterator setIt, setIt1;
+		int val = 0;
+
+		// Soundness of sets
+		// 1. allPrev is sound
+		for (setIt = m->allPrev->begin(); setIt != m->allPrev->end(); setIt++) {
+			Method prevMethod = *setIt;
+			val = conflict(prevMethod, m);
+			ASSERT (val == 1);
+		}
+		// 2. allNext is sound
+		for (setIt = m->allNext->begin(); setIt != m->allNext->end(); setIt++) {
+			Method nextMethod = *setIt;
+			val = conflict(m, nextMethod);
+			ASSERT (val == 1);
+		}
+		// 3. concurrent is sound
+		for (setIt = m->concurrent->begin(); setIt != m->concurrent->end(); setIt++) {
+			Method concur = *setIt;
+			val = conflict(m, concur);
+			ASSERT (val == 0);
+		}
+		// 4. allPrev & allNext are complete
+		ASSERT (1 + m->allPrev->size() + m->allNext->size() + m->concurrent->size()
+			== methodList->size());
+		// 5. prev is sound
+		for (setIt = m->prev->begin(); setIt != m->prev->end(); setIt++) {
+			Method prev = *setIt;
+			ASSERT (MethodCall::belong(m->allPrev, prev));
+			for (setIt1 = m->allPrev->begin(); setIt1 != m->allPrev->end();
+				setIt1++) {
+				Method middle = *setIt1;
+				if (middle == prev)
+					continue;
+				val = conflict(prev, middle);
+				// prev is before none
+				ASSERT (val != 1);
+			}
+		}
+		// 6. prev is complete 
+		for (setIt = m->allPrev->begin(); setIt != m->allPrev->end(); setIt++) {
+			Method prev = *setIt;
+			if (MethodCall::belong(m->prev, prev))
+				continue;
+			// Ensure none of other previous nodes should be in the prev set
+			bool hasMiddle = false;
+			for (setIt1 = m->allPrev->begin(); setIt1 != m->allPrev->end();
+				setIt1++) {
+				Method middle = *setIt1;
+				if (middle == prev)
+					continue;
+				val = conflict(prev, middle);
+				if (val == 1)
+					hasMiddle = true;
+			}
+			ASSERT (hasMiddle);
+		}
+
+		// 7. next is sound
+		for (setIt = m->next->begin(); setIt != m->next->end(); setIt++) {
+			Method next = *setIt;
+			ASSERT (MethodCall::belong(m->allNext, next));
+			for (setIt1 = m->allNext->begin(); setIt1 != m->allNext->end();
+				setIt1++) {
+				Method middle = *setIt1;
+				if (middle == next)
+					continue;
+				val = conflict(middle, next);
+				// next is after none
+				ASSERT (val != 1);
+			}
+		}
+		// 8. next is complete 
+		for (setIt = m->allNext->begin(); setIt != m->allNext->end(); setIt++) {
+			Method next = *setIt;
+			if (MethodCall::belong(m->next, next))
+				continue;
+			// Ensure none of other next nodes should be in the next set
+			bool hasMiddle = false;
+			for (setIt1 = m->allNext->begin(); setIt1 != m->allNext->end();
+				setIt1++) {
+				Method middle = *setIt1;
+				if (middle == next)
+					continue;
+				val = conflict(middle, next);
+				if (val == 1)
+					hasMiddle = true;
+			}
+			ASSERT (hasMiddle);
+		}
+	}
 }
 
 /**
@@ -585,6 +740,13 @@ int ExecutionGraph::conflict(ModelAction *act1, ModelAction *act2) {
 	an error message (Self-cycle) and set the broken flag and return
 */
 int ExecutionGraph::conflict(Method m1, Method m2) {
+	ASSERT (m1 != m2);
+	
+	if (m1->name == GRAPH_START)
+		return true;
+	if (m2->name == GRAPH_FINISH)
+		return true;
+
 	action_list_t *OPs1= m1->orderingPoints;
 	action_list_t *OPs2= m2->orderingPoints;
 	int val = 0;
@@ -603,7 +765,7 @@ int ExecutionGraph::conflict(Method m1, Method m2) {
 				m1->print();
 				m2->print();
 				broken = true;
-				return 0;
+				return UNKNOWN_CONFLICT;
 			}
 		}
 	}
@@ -647,9 +809,18 @@ MethodVector* ExecutionGraph::getRootNodes() {
 	return vec;
 }
 
-/** FIXME */
+/** 
+	Collects the set of method call nodes that do NOT have any following nodes
+	(the tail of the graph)
+*/
 MethodVector* ExecutionGraph::getEndNodes() {
 	MethodVector *vec = new MethodVector;
+	for (MethodList::iterator it = methodList->begin(); it != methodList->end();
+		it++) {
+		Method m = *it;
+		if (m->next->size() == 0)
+			vec->push_back(m);
+	}
 	return vec;
 }
 
@@ -738,18 +909,33 @@ void ExecutionGraph::generateHistoriesHelper(MethodListVector* results, MethodLi
 	delete roots;
 }
 
+Method ExecutionGraph::getStartMethod() {
+	return methodList->front();
+}
+
+Method ExecutionGraph::getFinishMethod() {
+	return methodList->back();
+}
+
+bool ExecutionGraph::isFakeMethod(Method m) {
+	return m->name == GRAPH_START || m->name == GRAPH_FINISH;
+}
 
 
+/**
+	Checking the state specification (in sequential order)
+*/
 bool ExecutionGraph::checkStateSpec(MethodList *history) {
 	// Initialize state (with a fake starting node)
-	Method startPoint = new MethodCall("START");
-	(*initial)(startPoint);
-	// Put the fake starting point in the very beginning of the history
-	history->push_front(startPoint);
+	Method startMethod = getStartMethod();
+	(*initial)(startMethod);
 
 	for (MethodList::iterator it = history->begin(); it != history->end();
 		it++) {
 		Method m = *it;
+		if (isFakeMethod(m))
+			continue;
+
 		// Execute @Transition
 		// Optimization: find the previous fixed nodes --- a node that has no
 		// concurrent method calls (everyone is either before or after me).
@@ -757,18 +943,21 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 		while (fixedIter != history->begin()) {
 			fixedIter--;
 			Method fixed = *fixedIter;
-			if (fixed->concurrent->size() == 0 && (MethodCall::belong(m->allPrev,
-				fixed) || fixed->name == "START")) {
+			if (fixed->concurrent->size() == 0 &&
+				MethodCall::belong(m->allPrev, fixed)) {
 				(*copy)(m, fixed);
 				break;
 			}
 		}
-		for (MethodList::iterator execIter = fixedIter++; execIter != it;
+		// Now m has the copied state of the most recent fixed node, and
+		// fixedIter points to that fixed node
+		for (MethodList::iterator execIter = ++fixedIter; execIter != it;
 			execIter++) {
 			Method exec = *execIter;
 			if (MethodCall::belong(m->allPrev, exec)) {
-				StateFunctions *funcs = funcMap->at(exec->name);
-				MODEL_ASSERT (funcs);
+				ASSERT (!isFakeMethod(exec));
+				StateFunctions *funcs = funcMap->get(exec->name);
+				ASSERT (funcs);
 				StateTransition_t transition = funcs->transition;
 				// Execute the transition on the state of Method m
 				(*transition)(m, exec);
@@ -776,8 +965,8 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 		}
 
 		// Execute @EvaluateState
-		StateFunctions *funcs = funcMap->at(m->name);
-		MODEL_ASSERT (funcs);
+		StateFunctions *funcs = funcMap->get(m->name);
+		ASSERT (funcs);
 		UpdateState_t evaluateState = funcs->evaluateState;
 		CheckState_t preCondition = funcs->preCondition ;
 		UpdateState_t sideEffect = funcs->sideEffect;
@@ -826,7 +1015,7 @@ void ExecutionGraph::printActions(action_list_t *actions, const char *header) {
 		ModelAction *act = *it;
 		SpecAnnotation *anno = getAnnotation(act);
 		if (anno) {
-			model_print("%s -> ", specAnnoType2Str(anno->type).c_str());
+			model_print("%s -> ", specAnnoType2Str(anno->type));
 		}
 		act->print();
 	}
