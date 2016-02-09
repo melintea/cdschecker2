@@ -12,6 +12,7 @@
 
 #include <stdarg.h>
 
+#include "mymemory.h"
 #include "methodcall.h"
 
 using namespace std;
@@ -85,8 +86,8 @@ typedef SnapSet<double> DoubleSet;
 	a subset of positive elements on an IntSet "s" would be "Subset(s,
 	GeneralGuard(int, ITEM > 0))"
 */
-#define GeneralGuard(type, expression)  std::function<bool(type)> ( \
-	[&](type ITEM) -> bool { return (expression);}) \
+#define GeneralGuard(type, expression)  std::function<bool(type)> \
+	([&](type ITEM) -> bool { return (expression);}) \
 
 /**
 	This is a more specific guard designed for the Method (MethodCall*). It

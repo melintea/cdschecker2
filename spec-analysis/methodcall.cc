@@ -2,6 +2,7 @@
 #include "common.h"
 #include "threads-model.h"
 #include "methodcall.h"
+#include "spec_common.h"
 
 CSTR GRAPH_START = "START_NODE";
 CSTR GRAPH_FINISH = "FINIS_NODE";

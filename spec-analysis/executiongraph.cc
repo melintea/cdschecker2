@@ -12,7 +12,6 @@
 #include "model-assert.h"
 #include "time.h"
 
-
 /********************    PotentialOP    ********************/
 PotentialOP::PotentialOP(ModelAction *op, CSTR label) :
 	operation(op),
