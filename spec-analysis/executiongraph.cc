@@ -978,8 +978,8 @@ bool ExecutionGraph::checkStateSpec(MethodList *history) {
 		if (preCondition) {
 			satisfied = (*preCondition)(m);
 			if (!satisfied) {
-				model_print("PreCondition is not satisfied (Problematic method call"
-				 " printed");
+				model_print("PreCondition is not satisfied. Problematic method"
+					" is as follow: \n");
 				m->print(false);
 				return false;
 			}
