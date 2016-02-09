@@ -2,12 +2,15 @@
 #define _SPEC_COMMON_H
 
 #include <set>
+#include <stdlib.h>
 #include "mymemory.h"
 
 #define SPEC_ANALYSIS 1
 
 #define NEW_SIZE(type, size) (type*) malloc(size)
 #define NEW(type) NEW_SIZE(type, sizeof(type))
+
+#define EQ(str1, str2) (strcmp(str1, str2) == 0)
 
 typedef const char *CSTR;
 

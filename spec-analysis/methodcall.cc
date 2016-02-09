@@ -5,7 +5,7 @@
 #include "spec_common.h"
 
 CSTR GRAPH_START = "START_NODE";
-CSTR GRAPH_FINISH = "FINIS_NODE";
+CSTR GRAPH_FINISH = "FINISH_NODE";
 
 MethodCall::MethodCall(CSTR name, void *value, ModelAction *begin) :
 name(name), value(value), prev(new SnapSet<Method>), next(new SnapSet<Method>),
