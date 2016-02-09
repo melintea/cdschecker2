@@ -56,7 +56,18 @@ class MethodCall {
 
 	static bool disjoint(MethodSet s1, MethodSet s2);
 
-	void print(bool printOP = true);
+	/**
+		Print the method all name with the seq_num of the begin annotation and
+		its thread id.
+	
+		printOP == true -> Add each line with the ordering point operation's
+		print()
+
+		breakAtEnd == true -> Add a line break at the end of the print;
+		otherwise, the print will be a string without line breaker when printOP
+		is false.
+	*/
+	void print(bool printOP = true, bool breakAtEnd = true);
 	
 	/**
 		FIXME: The end action is not really used or necessary here, maybe we

@@ -27,15 +27,16 @@ bool CommutativityRule::checkCondition(Method m1, Method m2) {
 		return false;
 }
 
+NamedFunction::NamedFunction(CSTR name, CheckFunctionType type, void *function) : name(name),
+	type(type), function(function) { }
 
-StateFunctions::StateFunctions(CSTR name, StateTransition_t transition, UpdateState_t
-	evaluateState, CheckState_t preCondition, UpdateState_t sideEffect,
-	CheckState_t postCondition) : name(name), transition(transition),
-	evaluateState(evaluateState), preCondition(preCondition),
-	sideEffect(sideEffect), postCondition(postCondition) {}
+StateFunctions::StateFunctions(NamedFunction *transition, NamedFunction
+	*preCondition, NamedFunction *sideEffect, NamedFunction *postCondition) :
+	transition(transition), preCondition(preCondition), sideEffect(sideEffect),
+	postCondition(postCondition) { }
 
 
-AnnoInit::AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
+AnnoInit::AnnoInit(NamedFunction *initial, NamedFunction *final, NamedFunction *copy,
 	CommutativityRule *commuteRules, int ruleNum)
 	: initial(initial), final(final), copy(copy),
 	commuteRules(commuteRules), commuteRuleNum(ruleNum) {

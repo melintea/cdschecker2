@@ -39,6 +39,45 @@ typedef SnapVector<Method> MethodVector;
 typedef SnapVector<MethodList*> MethodListVector;
 
 /**
+	A struct that records the checking function that has been executed. It
+	records the name of the function, the type of the functin, and the method
+	call nodes that were passed to this checking function. For @Transition and
+	@Copy functions, there exist two method argumnts. For others, m2 can be
+	ignored.
+*/
+typedef struct StateFunctionRecord {
+	CSTR name;
+	CheckFunctionType type;
+	Method m1, m2;
+
+	StateFunctionRecord(NamedFunction *func, Method m1, Method m2 =
+		NULL);
+
+	void print();
+
+	SNAPSHOTALLOC
+} StateFunctionRecord;
+
+typedef SnapList<StateFunctionRecord*> FunctionRecordList;
+
+/**
+	This struct contains all the checking method executions of MethodCall
+	method (in recordList). A list of 
+*/
+typedef struct HistoryRecordItem {
+	Method method;
+	FunctionRecordList *recordList;
+
+	HistoryRecordItem(Method m);
+
+	void addFunctionRecord(StateFunctionRecord *r);
+
+	SNAPSHOTALLOC
+} HistoryRecordItem;
+
+typedef SnapList<HistoryRecordItem*> HistoryRecord;
+
+/**
 	This represents the execution graph at the method call level. Each node is a
 	MethodCall type that has the runtime info (return value & arguments) and the
 	state info the method call. The edges in this graph are the hb/SC edges
@@ -124,13 +163,13 @@ class ExecutionGraph {
 	bool cyclic;
 
 	/** The state initialization function */
-	UpdateState_t initial;
+	NamedFunction *initial;
 
 	/** FIXME: The final check function; we might delete this */
-	CheckState_t final;
+	NamedFunction *final;
 
 	/** The state copy function */
-	CopyState_t copy;
+	NamedFunction *copy;
 
 	/** The map from interface label name to the set of spec functions */
 	Map *funcMap;
@@ -253,12 +292,17 @@ class ExecutionGraph {
 	/** Whether method call node m is a fake node */
 	bool isFakeMethod(Method m);
 
+
+	/** Print the list of records for one history execution */
+	void printHistoryRecord(HistoryRecord *records);
+
 	/** 
 		Check the state specifications (PreCondition & PostCondition & state
 		transition and evaluation) based on the graph (called after
-		admissibility check)
+		admissibility check). The verbose option controls whether we print a
+		detailed list of checking functions that we have called
 	*/
-	bool checkStateSpec(MethodList *history);
+	bool checkStateSpec(MethodList *history, bool verbose = false);
 
 	/** Print a problematic thread list */
 	void printActions(action_list_t *actions, const char *header = "The problematic thread list:");

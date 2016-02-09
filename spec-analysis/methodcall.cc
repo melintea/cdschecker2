@@ -74,17 +74,23 @@ bool MethodCall::disjoint(MethodSet s1, MethodSet s2) {
 	return true;
 }
 
-void MethodCall::print(bool printOP) {
+void MethodCall::print(bool printOP, bool breakAtEnd) {
 	if (name == GRAPH_START) {
-		model_print("%s\n", GRAPH_START);
+		model_print("%s", GRAPH_START);
+		if (breakAtEnd)
+			model_print("\n");
 		return;
 	}
 	if (name == GRAPH_FINISH) {
-		model_print("%s\n", GRAPH_FINISH);
+		model_print("%s", GRAPH_FINISH);
+		if (breakAtEnd)
+			model_print("\n");
 		return;
 	}
-	model_print("Method Call %s (Seq #%d (T%d))\n", name,
+	model_print("%s (Seq #%d (T%d))", name,
 		begin->get_seq_number(), id_to_int(begin->get_tid()));
+	if (breakAtEnd)
+		model_print("\n");
 	if (!printOP)
 		return;
 	int i = 1;

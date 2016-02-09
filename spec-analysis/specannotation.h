@@ -93,18 +93,34 @@ struct CommutativityRule {
 
 } CommutativityRule;
 
+typedef enum CheckFunctionType {
+	INITIAL, COPY, FINAL, TRANSITION, PRE_CONDITION, SIDE_EFFECT, POST_CONDITION
+} CheckFunctionType;
+
+typedef struct NamedFunction {
+	CSTR name;
+	CheckFunctionType type;
+	void *function;
+
+	/**
+		StateTransition_t transition;
+		UpdateState_t evaluateState;
+		CheckState_t preCondition;
+		UpdateState_t sideEffect;
+		CheckState_t postCondition;
+	*/
+	NamedFunction(CSTR name, CheckFunctionType type, void *function);
+} NamedFunction;
+
 typedef
 struct StateFunctions {
-	CSTR name;
-	StateTransition_t transition;
-	UpdateState_t evaluateState;
-	CheckState_t preCondition;
-	UpdateState_t sideEffect;
-	CheckState_t postCondition;
+	NamedFunction *transition;
+	NamedFunction *preCondition;
+	NamedFunction *sideEffect;
+	NamedFunction *postCondition;
 
-	StateFunctions(CSTR name, StateTransition_t transition, UpdateState_t
-		evaluateState, CheckState_t preCondition, UpdateState_t sideEffect,
-		CheckState_t postCondition);
+	StateFunctions(NamedFunction *transition, NamedFunction *preCondition,
+		NamedFunction *sideEffect, NamedFunction *postCondition);
 
 } StateFunctions;
 
@@ -120,21 +136,27 @@ struct AnnoInit {
 		would be INITIAL and FINAL. For the initial function, we actually also
 		use it as the state copy function when evaluating the state of other
 		method calls
+
+		UpdateState_t --> initial
 	*/
-	UpdateState_t initial;
+	NamedFunction *initial;
 
 	/**
 		TODO: Currently we just have this "final" field, which was supposed to
 		be a final checking function after all method call nodes have been
 		executed on the graph. However, before we think it through, this might
 		potentially be a violation of composability
+
+		CheckState_t --> final;
 	*/
-	CheckState_t final;
+	NamedFunction *final;
 	
 	/**
 		For copying out an existing state from a previous method call
+
+		CopyState_t --> copy 
 	*/
-	CopyState_t copy;
+	NamedFunction *copy;
 
 	/** For the state functions. We can conveniently access to the set of state
 	 *  functions with a hashmap */
@@ -144,7 +166,7 @@ struct AnnoInit {
 	CommutativityRule *commuteRules;
 	int commuteRuleNum;
 
-	AnnoInit(UpdateState_t initial, CheckState_t final, CopyState_t copy,
+	AnnoInit(NamedFunction *initial, NamedFunction *final, NamedFunction *copy,
 		CommutativityRule *commuteRules, int ruleNum);
 			
 	void addInterfaceFunctions(CSTR name, StateFunctions *funcs);
