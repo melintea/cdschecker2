@@ -223,7 +223,7 @@ inline MethodSet MakeSet(int count, ...) {
 */
 
 /********** Method call related operations **********/
-#define Name(method) method->interfaceName
+#define Name(method) method->name
 
 #define State(method, field) ((StateStruct*) method->state)->field
 

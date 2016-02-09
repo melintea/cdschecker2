@@ -602,9 +602,9 @@ void ExecutionGraph::buildEdges() {
 
 	AssertEdges();
 
-	model_print("Right after calling buildEdges\n");
-	print(false);
-	PrintReverse(false);
+	//model_print("Right after calling buildEdges\n");
+	//print(false);
+	//PrintReverse(false);
 }
 
 /**
