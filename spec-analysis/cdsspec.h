@@ -25,6 +25,16 @@ typedef SnapVector<double> DoubleVector;
 typedef SnapList<double> DoubleList;
 typedef SnapSet<double> DoubleSet;
 
+/********** Debugging functions **********/
+template<class Container>
+inline void printContainer(Container *container) {
+	for (auto it = container->begin(); it != container->end(); it++) {
+		int item = *it;
+		model_print("%d ", item);
+	}
+	model_print("\n");
+}
+
 /********** More general specification-related types and operations **********/
 
 #define NewMethodSet new SnapSet<Method>
