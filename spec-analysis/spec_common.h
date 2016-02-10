@@ -7,6 +7,9 @@
 
 #define SPEC_ANALYSIS 1
 
+/** Null function pointer */
+#define NULL_FUNC NULL
+
 #define NEW_SIZE(type, size) (type*) malloc(size)
 #define NEW(type) NEW_SIZE(type, sizeof(type))
 
