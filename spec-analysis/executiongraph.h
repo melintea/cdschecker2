@@ -122,7 +122,7 @@ class ExecutionGraph {
 	
 	/********** A few public printing functions for DEBUGGING **********/
 	/** Print a random sorting */
-	void printOneHistory(MethodList *list);
+	void printOneHistory(MethodList *list, CSTR header = "A random history");
 
 	/** Print all the possible sortings */
 	void printAllHistories(MethodListVector *sortings);
@@ -302,7 +302,7 @@ class ExecutionGraph {
 		admissibility check). The verbose option controls whether we print a
 		detailed list of checking functions that we have called
 	*/
-	bool checkStateSpec(MethodList *history, bool verbose = false);
+	bool checkStateSpec(MethodList *history);
 
 	/** Print a problematic thread list */
 	void printActions(action_list_t *actions, const char *header = "The problematic thread list:");

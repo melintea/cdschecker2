@@ -135,15 +135,7 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	if (!pass) {
 		/* One more failed trace */
 		stats->failedCnt++;
-
-		if (!quiet) {
-			model_print("This execution is NOT consistent with the spec.\n");
-			graph->print();
-			if (check_one)
-				graph->printOneHistory(history);
-			else
-				graph->printAllHistories(histories);
-		}
+		model_print("This execution is NOT consistent with the spec.\n");
 	} else {
 		/* One more passing trace */
 		stats->passCnt++;

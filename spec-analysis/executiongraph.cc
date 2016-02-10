@@ -26,39 +26,38 @@ StateFunctionRecord::StateFunctionRecord(NamedFunction *func, Method m1,
 	Method m2) : name(func->name), type(func->type), m1(m1), m2(m2) { }
 
 void StateFunctionRecord::print() {
-	model_print("Executing ");
 	switch (type) {
 		case INITIAL:
 			model_print("@Initial %s on ", name);
-			m1->print();
+			m1->print(false, false);
 			break;
 		case COPY:
 			model_print("@Copy %s from ", name);
-			m2->print();
+			m2->print(false, false);
 			model_print(" to ");
-			m1->print();
+			m1->print(false, false);
 			break;
 		case FINAL:
 			model_print("@Final %s on ", name);
-			m1->print();
+			m1->print(false, false);
 			break;
 		case TRANSITION:
 			model_print("@Transition %s on ", name);
-			m2->print();
+			m2->print(false, false);
 			model_print(", target ->");
-			m1->print();
+			m1->print(false, false);
 			break;
 		case PRE_CONDITION:
 			model_print("@PreCondition %s on ", name);
-			m1->print();
+			m1->print(false, false);
 			break;
 		case SIDE_EFFECT:
 			model_print("@SideEffect %s on ", name);
-			m1->print();
+			m1->print(false, false);
 			break;
 		case POST_CONDITION:
 			model_print("@PostCondition %s on ", name);
-			m1->print();
+			m1->print(false, false);
 			break;
 		default:
 			model_print("Unknown CheckFunctionTyep (never should be here!!\n");
@@ -245,15 +244,17 @@ bool ExecutionGraph::checkAllHistories(MethodListVector *histories) {
 
 /********** Several public printing functions (ExecutionGraph) **********/
 
-void ExecutionGraph::printOneHistory(MethodList *history) {
-	model_print("-------------    A random history    -------------\n");
+void ExecutionGraph::printOneHistory(MethodList *history, CSTR header) {
+	model_print("-------------    %s (exec #%d)   -------------\n", header,
+		execution->get_execution_number());
 	int idx = 1;
 	for (MethodList::iterator it = history->begin(); it != history->end(); it++) {
 		Method m = *it;
 		model_print("%d. ", idx++);
 		m->print(false);
 	}
-	model_print("-------------    A random history (end)    -------------\n");
+	model_print("-------------    %s (exec #%d) (end)    -------------\n",
+		header, execution->get_execution_number());
 }
 
 void ExecutionGraph::printAllHistories(MethodListVector *histories) {
@@ -988,15 +989,14 @@ void ExecutionGraph::printHistoryRecord(HistoryRecord *records) {
 		HistoryRecordItem *item = *it;
 		Method m = item->method;
 		FunctionRecordList *funcList = item->recordList;
-		model_print("%d. Method ", i);
+		model_print("%d. Method ", i++);
 		m->print(false, false);
 		model_print(":\n");
 		for (FunctionRecordList::iterator funcIt = funcList->begin(); funcIt !=
 			funcList->end(); funcIt++) {
 			StateFunctionRecord *func = *funcIt;
-			model_print("\t");
+			model_print("   ");
 			func->print();
-			model_print("\n");
 		}
 	}
 }
@@ -1004,7 +1004,7 @@ void ExecutionGraph::printHistoryRecord(HistoryRecord *records) {
 /**
 	Checking the state specification (in sequential order)
 */
-bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
+bool ExecutionGraph::checkStateSpec(MethodList *history) {
 	// Record the histroy execution
 	HistoryRecord *historyRecord = new HistoryRecord;
 	HistoryRecordItem *recordItem = NULL;
@@ -1095,8 +1095,11 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 			if (!satisfied) {
 				model_print("PreCondition is not satisfied. Problematic method"
 					" is as follow: \n");
-				m->print(false);
-				model_print("Here is the history execution record: \n");
+				m->print(true, true);
+				model_print("Problmatic execution graph: \n");
+				print();
+				printOneHistory(history, "Problematic Seqneutial History");
+				model_print("Problematic history execution record: \n");
 				printHistoryRecord(historyRecord);
 				return false;
 			}
@@ -1116,9 +1119,13 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 			if (!satisfied) {
 				model_print("PostCondition is not satisfied (Problematic method call"
 				 " printed");
-				m->print(false);
-				model_print("Here is the history execution record: \n");
+				m->print(true, true);
+				model_print("Problmatic execution graph: \n");
+				print();
+				printOneHistory(history, "Problematic Seqneutial History");
+				model_print("Problematic history execution record: \n");
 				printHistoryRecord(historyRecord);
+
 				return false;
 			}
 		}
