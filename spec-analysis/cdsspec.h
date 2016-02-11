@@ -17,6 +17,18 @@
 
 using namespace std;
 
+/**
+	A special kind of integer that has been embedded with a universal tag (ID)
+*/
+typedef struct TagInt {
+	unsigned int tag;
+	int val;
+
+	TagInit(unsigned int tag, int val) : tag(tag), val(val) { }
+	
+	TagInit(int val) : tag(0), val(val) { }
+}TagInt;
+
 typedef SnapVector<int> IntVector;
 typedef SnapList<int> IntList;
 typedef SnapSet<int> IntSet;
