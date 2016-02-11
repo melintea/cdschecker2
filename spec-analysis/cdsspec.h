@@ -24,9 +24,9 @@ typedef struct TagInt {
 	unsigned int tag;
 	int val;
 
-	TagInit(unsigned int tag, int val) : tag(tag), val(val) { }
+	TagInt(unsigned int tag, int val) : tag(tag), val(val) { }
 	
-	TagInit(int val) : tag(0), val(val) { }
+	TagInt(int val) : tag(0), val(val) { }
 }TagInt;
 
 typedef SnapVector<int> IntVector;
