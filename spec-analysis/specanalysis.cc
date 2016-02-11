@@ -126,10 +126,10 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	MethodListVector *histories= NULL;
 	if (check_one) { // Only check one random sorting
 		history = graph->generateOneHistory();
-		pass = graph->checkOneHistory(history, !quiet);
+		pass = graph->checkOneHistory(history, print_always && !quiet);
 	} else { // Check all sortings
 		histories = graph->generateAllHistories();
-		pass = graph->checkAllHistories(histories, !quiet);
+		pass = graph->checkAllHistories(histories, print_always && !quiet);
 	}
 
 	if (!pass) {
