@@ -15,6 +15,9 @@
 
 #define EQ(str1, str2) (strcmp(str1, str2) == 0)
 
+extern const unsigned int METHOD_ID_MAX;
+extern const unsigned int METHOD_ID_MIN;
+
 typedef const char *CSTR;
 
 extern CSTR GRAPH_START;

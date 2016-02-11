@@ -116,9 +116,9 @@ class ExecutionGraph {
 	/** Generate all topological sortings */
 	MethodListVector* generateAllHistories();
 
-	bool checkOneHistory(MethodList *list);
+	bool checkOneHistory(MethodList *list, bool verbose = false);
 
-	bool checkAllHistories(MethodListVector *sortings);
+	bool checkAllHistories(MethodListVector *sortings, bool verbose = false);
 	
 	/********** A few public printing functions for DEBUGGING **********/
 	/** Print a random sorting */
@@ -170,6 +170,9 @@ class ExecutionGraph {
 
 	/** The state copy function */
 	NamedFunction *copy;
+
+	/** The state print-out function */
+	NamedFunction *printState;
 
 	/** The map from interface label name to the set of spec functions */
 	Map *funcMap;
@@ -302,7 +305,7 @@ class ExecutionGraph {
 		admissibility check). The verbose option controls whether we print a
 		detailed list of checking functions that we have called
 	*/
-	bool checkStateSpec(MethodList *history);
+	bool checkStateSpec(MethodList *history, bool verbose);
 
 	/** Print a problematic thread list */
 	void printActions(action_list_t *actions, const char *header = "The problematic thread list:");

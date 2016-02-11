@@ -31,14 +31,14 @@ NamedFunction::NamedFunction(CSTR name, CheckFunctionType type, void *function) 
 	type(type), function(function) { }
 
 StateFunctions::StateFunctions(NamedFunction *transition, NamedFunction
-	*preCondition, NamedFunction *sideEffect, NamedFunction *postCondition) :
-	transition(transition), preCondition(preCondition), sideEffect(sideEffect),
-	postCondition(postCondition) { }
+	*preCondition, NamedFunction *sideEffect, NamedFunction *postCondition,
+	NamedFunction *print) : transition(transition), preCondition(preCondition),
+	sideEffect(sideEffect), postCondition(postCondition), print(print) { }
 
 
 AnnoInit::AnnoInit(NamedFunction *initial, NamedFunction *final, NamedFunction *copy,
-	CommutativityRule *commuteRules, int ruleNum)
-	: initial(initial), final(final), copy(copy),
+	NamedFunction *printState, CommutativityRule *commuteRules, int ruleNum) :
+	initial(initial), final(final), copy(copy), printState(printState),
 	commuteRules(commuteRules), commuteRuleNum(ruleNum) {
 	funcMap = new Map;
 }

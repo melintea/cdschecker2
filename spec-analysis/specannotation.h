@@ -94,7 +94,8 @@ struct CommutativityRule {
 } CommutativityRule;
 
 typedef enum CheckFunctionType {
-	INITIAL, COPY, FINAL, TRANSITION, PRE_CONDITION, SIDE_EFFECT, POST_CONDITION
+	INITIAL, COPY, FINAL, PRINT_STATE,  TRANSITION, PRE_CONDITION, SIDE_EFFECT,
+	POST_CONDITION, PRINT_VALUE
 } CheckFunctionType;
 
 typedef struct NamedFunction {
@@ -118,9 +119,11 @@ struct StateFunctions {
 	NamedFunction *preCondition;
 	NamedFunction *sideEffect;
 	NamedFunction *postCondition;
+	NamedFunction *print;
 
 	StateFunctions(NamedFunction *transition, NamedFunction *preCondition,
-		NamedFunction *sideEffect, NamedFunction *postCondition);
+		NamedFunction *sideEffect, NamedFunction *postCondition, NamedFunction
+		*print);
 
 } StateFunctions;
 
@@ -157,6 +160,13 @@ struct AnnoInit {
 		CopyState_t --> copy 
 	*/
 	NamedFunction *copy;
+	
+	/**
+		For printing out the state 
+
+		UpdateState_t --> printState
+	*/
+	NamedFunction *printState;
 
 	/** For the state functions. We can conveniently access to the set of state
 	 *  functions with a hashmap */
@@ -167,7 +177,8 @@ struct AnnoInit {
 	int commuteRuleNum;
 
 	AnnoInit(NamedFunction *initial, NamedFunction *final, NamedFunction *copy,
-		CommutativityRule *commuteRules, int ruleNum);
+		NamedFunction *printState, CommutativityRule *commuteRules, int
+		ruleNum);
 			
 	void addInterfaceFunctions(CSTR name, StateFunctions *funcs);
 

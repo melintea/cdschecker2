@@ -7,11 +7,26 @@
 CSTR GRAPH_START = "START_NODE";
 CSTR GRAPH_FINISH = "FINISH_NODE";
 
+const unsigned int METHOD_ID_MAX = 0xffffffff;
+const unsigned int METHOD_ID_MIN = 0;
+
 MethodCall::MethodCall(CSTR name, void *value, ModelAction *begin) :
 name(name), value(value), prev(new SnapSet<Method>), next(new SnapSet<Method>),
-concurrent(new SnapSet<Method>), begin(begin), end(NULL), orderingPoints(new
+concurrent(new SnapSet<Method>), end(NULL), orderingPoints(new
 action_list_t), allPrev(new SnapSet<Method>), allNext(new SnapSet<Method>),
-exist(true) { }
+exist(true) {
+	if (name == GRAPH_START) {
+		this->begin = NULL;
+		id = METHOD_ID_MIN;
+	} else if (name == GRAPH_FINISH) {
+		this->begin = NULL;
+		id = METHOD_ID_MAX;
+	} else {
+		this->begin = begin;
+		ASSERT (begin);
+		id = begin->get_seq_number();
+	}
+}
 	
 void MethodCall::addPrev(Method m) { prev->insert(m); }
 
@@ -76,19 +91,18 @@ bool MethodCall::disjoint(MethodSet s1, MethodSet s2) {
 
 void MethodCall::print(bool printOP, bool breakAtEnd) {
 	if (name == GRAPH_START) {
-		model_print("%s", GRAPH_START);
+		model_print("%d(%s)", id, GRAPH_START);
 		if (breakAtEnd)
 			model_print("\n");
 		return;
 	}
 	if (name == GRAPH_FINISH) {
-		model_print("%s", GRAPH_FINISH);
+		model_print("%d(%s)", id, GRAPH_FINISH);
 		if (breakAtEnd)
 			model_print("\n");
 		return;
 	}
-	model_print("%s (Seq #%d (T%d))", name,
-		begin->get_seq_number(), id_to_int(begin->get_tid()));
+	model_print("%d.T%d(%s)", id, id_to_int(begin->get_tid()), name);
 	if (breakAtEnd)
 		model_print("\n");
 	if (!printOP)

@@ -28,11 +28,12 @@ typedef SnapSet<double> DoubleSet;
 /********** Debugging functions **********/
 template<class Container>
 inline void printContainer(Container *container) {
+	if (!container || container->size() == 0)
+		model_print("EMPTY");
 	for (auto it = container->begin(); it != container->end(); it++) {
 		int item = *it;
 		model_print("%d ", item);
 	}
-	model_print("\n");
 }
 
 /********** More general specification-related types and operations **********/
@@ -67,6 +68,8 @@ inline void printContainer(Container *container) {
 */
 #define ITEM _M
 #define _M ME
+
+#define ID Id(_M)
 
 #define NAME Name(_M)
 
@@ -233,6 +236,8 @@ inline MethodSet MakeSet(int count, ...) {
 */
 
 /********** Method call related operations **********/
+#define Id(method) method->id
+
 #define Name(method) method->name
 
 #define State(method, field) ((StateStruct*) method->state)->field

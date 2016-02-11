@@ -26,6 +26,7 @@ typedef SnapSet<Method> *MethodSet;
 */
 class MethodCall {
 	public:
+	unsigned int id; // The method call id (the seq_num of the begin action)
 	CSTR name; // The interface label name
 	void *value; // The pointer that points to the struct that have the return
 				 // value and the arguments
