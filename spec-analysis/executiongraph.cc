@@ -1093,6 +1093,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 				if (verbose) {
 					model_print("\t@Copy from justified node: ");
 					justified->print(false, false);
+					model_print("\n");
 					if (printStateFunc) {
 						model_print("\t**********  State Info  **********\n");
 						(*printStateFunc)(m);

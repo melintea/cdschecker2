@@ -91,18 +91,18 @@ bool MethodCall::disjoint(MethodSet s1, MethodSet s2) {
 
 void MethodCall::print(bool printOP, bool breakAtEnd) {
 	if (name == GRAPH_START) {
-		model_print("%d(%s)", id, GRAPH_START);
+		model_print("%s", GRAPH_START);
 		if (breakAtEnd)
 			model_print("\n");
 		return;
 	}
 	if (name == GRAPH_FINISH) {
-		model_print("%d(%s)", id, GRAPH_FINISH);
+		model_print("%s", GRAPH_FINISH);
 		if (breakAtEnd)
 			model_print("\n");
 		return;
 	}
-	model_print("%d.T%d(%s)", id, id_to_int(begin->get_tid()), name);
+	model_print("%u.%s(T%d)", id, name, id_to_int(begin->get_tid()));
 	if (breakAtEnd)
 		model_print("\n");
 	if (!printOP)
