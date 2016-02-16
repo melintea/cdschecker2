@@ -1,0 +1,4 @@
+register
+.*.d
+*.o
+*.dSYM/

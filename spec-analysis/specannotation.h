@@ -105,7 +105,6 @@ typedef struct NamedFunction {
 
 	/**
 		StateTransition_t transition;
-		UpdateState_t evaluateState;
 		CheckState_t preCondition;
 		UpdateState_t sideEffect;
 		CheckState_t postCondition;
