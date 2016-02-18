@@ -193,7 +193,13 @@ struct AnnoInterfaceInfo {
 
 /**********    Universal functions for rewriting the program    **********/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name);
+
+void _setInterfaceBeginAnnotationValue(AnnoInterfaceInfo *info, void *value);
 
 void _createOPDefineAnnotation();
 
@@ -204,5 +210,9 @@ void _createOPCheckAnnotation(CSTR label);
 void _createOPClearAnnotation();
 
 void _createOPClearDefineAnnotation();
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

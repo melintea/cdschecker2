@@ -13,6 +13,7 @@
 #include <stdarg.h>
 
 #include "mymemory.h"
+#include "common.h"
 #include "methodcall.h"
 
 using namespace std;

@@ -9,7 +9,7 @@ LIB_NAME = model
 LIB_SO = lib$(LIB_NAME).so
 
 BASE = ../..
-INCLUDE = -I$(BASE)/include -I../include -I$(BASE)/scfence -I$(BASE) -I$(BASE)/spec-analysis
+INCLUDE = -I$(BASE) -I$(BASE)/include -I../include -I$(BASE)/spec-analysis -I$(BASE)/spec-analysis/include
 
 # C preprocessor flags
 CPPFLAGS += $(INCLUDE) -O0 -g

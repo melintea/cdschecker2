@@ -60,6 +60,11 @@ AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name) {
 	return info;
 }
 
+
+void _setInterfaceBeginAnnotationValue(AnnoInterfaceInfo *info, void *value) {
+	info->value = value;
+}
+
 void _createOPDefineAnnotation() {
 	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(OP_DEFINE, NULL));
 }

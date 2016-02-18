@@ -7,11 +7,11 @@ all: $(TESTS)
 # Should include it after "all"; otherwise it will only make cdsspec-generated.o 
 include ../benchmarks.mk
 
-$(BENCH).o: $(BENCH).c
-	$(CXX) -fPIC -c -MMD -MF .$@.d -o $@ $< $(CXXFLAGS) $(LDFLAGS)
+%.o : %.c 
+	$(CC) -fPIC -c -MMD -MF .$@.d -o $@ $< $(CPPFLAGS) $(LDFLAGS)
 
-$(TESTS): % : %.c $(BENCH).o $(CDSSPEC)
-	$(CXX) -MMD -MF .$@.d -o $@ $< $(BENCH).o $(CDSSPEC) $(CXXFLAGS) $(LDFLAGS)
+$(TESTS): % : %.o $(BENCH).o $(CDSSPEC)
+	$(CXX) -o $@ $^ $(CPPFLAGS) $(LDFLAGS)
 
 -include .*.d
 

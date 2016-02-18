@@ -1,4 +1,3 @@
-
 BENCH := deque
 
 TESTS := testcase1 testcase2 testcase3 testcase4 testcase5 testcase6
@@ -12,7 +11,7 @@ $(BENCH).o : $(BENCH).c
 	$(CXX) -c -fPIC -MMD -MF .$@.d -o $@ $< $(CXXFLAGS) $(LDFLAGS)
 
 $(TESTS): % : %.c $(BENCH).o $(CDSSPEC)
-	$(CXXC) -MMD -MF .$@.d -o $@ $< $(BENCH).o $(CDSSPEC) $(CXXFLAGS) $(LDFLAGS)
+	$(CXX) -MMD -MF .$@.d -o $@ $< $(BENCH).o $(CDSSPEC) $(CXXFLAGS) $(LDFLAGS)
 
 -include .*.d
 
