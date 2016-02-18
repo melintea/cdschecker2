@@ -17,6 +17,16 @@
 
 using namespace std;
 
+
+/** Define shorter memory order parameters */
+#define relaxed memory_order_relaxed
+#define acquire memory_order_acquire
+#define release memory_order_release
+#define acq_rel memory_order_acq_rel
+#define seq_cst memory_order_seq_cst
+
+
+
 /**
 	A special kind of integer that has been embedded with a universal tag (ID)
 */

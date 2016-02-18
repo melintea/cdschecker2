@@ -1,7 +1,7 @@
 #ifndef _METHODCALL_H
 #define _METHODCALL_H
 
-#include "execution.h"
+#include "stl-model.h"
 #include "action.h"
 #include "spec_common.h"
 
@@ -9,7 +9,7 @@ class MethodCall;
 
 typedef MethodCall *Method;
 typedef SnapSet<Method> *MethodSet;
-
+typedef SnapList<ModelAction *> action_list_t;
 /**
 	This is the core class on which the whole checking process will be
 	executing. With the original execution (with the raw annotation
