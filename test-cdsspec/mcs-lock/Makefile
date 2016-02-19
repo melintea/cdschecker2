@@ -1,6 +1,6 @@
 BENCH := mcs-lock
 
-TESTS = testcase
+TESTS := testcase
 
 all: $(TESTS)
 
@@ -11,9 +11,11 @@ include ../benchmarks.mk
 	$(CXX) -fPIC -c -MMD -MF .$@.d -o $@ $< $(CXXFLAGS) $(LDFLAGS)
 
 $(TESTS) : % : %.o $(BENCH).o $(CDSSPEC)
-	$(CXX) -MMD -MF .$@.d -o $@ $< $(BENCH).o $(CDSSPEC) $(CXXFLAGS) $(LDFLAGS)
+	$(CXX) -MMD -MF .$@.d -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 
 -include .*.d
 
 clean:
-	rm -rf $(BENCH) $(TESTS) *.o *.dSYM
+	rm -rf $(TESTS) *.o .*.d *.dSYM
+
+.PHONY: clean all

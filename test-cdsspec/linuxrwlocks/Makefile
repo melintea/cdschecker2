@@ -1,6 +1,6 @@
 BENCH := linuxrwlocks
 
-TESTS := testcase1 testcase2 testcase_full
+TESTS := testcase1 
 
 all: $(TESTS) 
 
@@ -16,4 +16,6 @@ $(TESTS): % : %.o $(BENCH).o $(CDSSPEC)
 -include .*.d
 
 clean:
-	rm -f $(TESTS) *.o .*.d *.dSYM
+	rm -rf $(TESTS) *.o .*.d *.dSYM
+
+.PHONY: clean all

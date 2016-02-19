@@ -3,7 +3,7 @@
 	concurrent-hashmap seqlock spsc-example spsc-queue-scfence \
 	treiber-stack register
 
-DIRS := register ms-queue linuxrwlocks mcs-lock
+DIRS := register ms-queue linuxrwlocks mcs-lock chase-lev-deque-bugfix
 
 .PHONY: $(DIRS)
 

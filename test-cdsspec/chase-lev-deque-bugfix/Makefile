@@ -11,9 +11,11 @@ include ../benchmarks.mk
 	$(CC) -fPIC -c -MMD -MF .$@.d -o $@ $< $(CPPFLAGS) $(LDFLAGS)
 
 $(TESTS): % : %.o $(BENCH).o $(CDSSPEC)
-	$(CXX) -MMD -MF .$@.d -o $@ $< $(BENCH).o $(CDSSPEC) $(CXXFLAGS) $(LDFLAGS)
+	$(CXX) -o $@ $^ $(CPPFLAGS) $(LDFLAGS)
 
 -include .*.d
 
 clean:
-	rm -fr *.o .*.d $(TESTS) *.dSYM
+	rm -rf $(TESTS) *.o .*.d *.dSYM
+
+.PHONY: clean all
