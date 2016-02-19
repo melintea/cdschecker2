@@ -8,7 +8,7 @@ UNAME := $(shell uname)
 LIB_NAME := model
 LIB_SO := lib$(LIB_NAME).so
 
-CPPFLAGS += -Wall -O0 -g
+CPPFLAGS += -Wall -O3
 
 CFLAGS := $(CPPFLAGS)
 

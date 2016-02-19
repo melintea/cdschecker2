@@ -1,6 +1,6 @@
 BENCH := linuxrwlocks
 
-TESTS := testcase1 
+TESTS := testcase1 testcase2 testcase3
 
 all: $(TESTS) 
 

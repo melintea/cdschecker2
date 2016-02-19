@@ -12,7 +12,7 @@ BASE = ../..
 INCLUDE = -I$(BASE) -I$(BASE)/include -I../include -I$(BASE)/spec-analysis -I$(BASE)/spec-analysis/include
 
 # C preprocessor flags
-CPPFLAGS += $(INCLUDE) -O0 -g
+CPPFLAGS += $(INCLUDE) -O3
 
 # C++ compiler flags
 CXXFLAGS += $(CPPFLAGS)
