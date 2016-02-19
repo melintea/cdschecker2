@@ -13,7 +13,7 @@
 #include <stdarg.h>
 
 #include "mymemory.h"
-#include "common.h"
+//#include "common.h"
 #include "methodcall.h"
 
 using namespace std;
@@ -26,7 +26,9 @@ using namespace std;
 #define acq_rel memory_order_acq_rel
 #define seq_cst memory_order_seq_cst
 
-
+/** Macro for output (stole from common.h) */
+extern int model_out;
+#define PRINT(fmt, ...) do { dprintf(model_out, fmt, ##__VA_ARGS__); } while (0)
 
 /**
 	A special kind of integer that has been embedded with a universal tag (ID)
@@ -52,10 +54,10 @@ typedef SnapSet<double> DoubleSet;
 template<class Container>
 inline void printContainer(Container *container) {
 	if (!container || container->size() == 0)
-		model_print("EMPTY");
+		PRINT("EMPTY");
 	for (auto it = container->begin(); it != container->end(); it++) {
 		int item = *it;
-		model_print("%d ", item);
+		PRINT("%d ", item);
 	}
 }
 
