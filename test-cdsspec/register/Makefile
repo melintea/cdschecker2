@@ -1,11 +1,17 @@
-TESTNAME = register
+BENCH := register
 
-all: $(TESTNAME)
+TESTS = testcase
 
+all: $(TESTS)
+
+# Should include it after "all"; otherwise it will only make cdsspec-generated.o
 include ../benchmarks.mk
 
-$(TESTNAME): $(TESTNAME).cc $(CDSSPEC)
-	$(CXX) -MMD -MF $(dir $@).$(notdir $@).d -o $@ $< $(CDSSPEC) $(CXXFLAGS) $(LDFLAGS)
+%.o : %.cc 
+	$(CXX) -fPIC -c -MMD -MF .$@.d -o $@ $< $(CXXFLAGS) $(LDFLAGS)
+
+$(TESTS) : % : %.o $(BENCH).o $(CDSSPEC)
+	$(CXX) -MMD -MF .$@.d -o $@ $< $(BENCH).o $(CDSSPEC) $(CXXFLAGS) $(LDFLAGS)
 
 -include .*.d 
 

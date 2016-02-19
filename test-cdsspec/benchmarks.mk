@@ -15,7 +15,7 @@ INCLUDE = -I$(BASE) -I$(BASE)/include -I../include -I$(BASE)/spec-analysis -I$(B
 CPPFLAGS += $(INCLUDE) -O0 -g
 
 # C++ compiler flags
-CXXFLAGS += $(CPPFLAGS) -std=c++11
+CXXFLAGS += $(CPPFLAGS)
 
 # C compiler flags
 CFLAGS += $(CPPFLAGS)
@@ -37,5 +37,5 @@ CDSSPEC_NAME = cdsspec-generated
 CDSSPEC = $(CDSSPEC_NAME).o
 
 $(CDSSPEC): $(CDSSPEC_NAME).cc
-	$(CXX) -MMD -MF .$@.d -o $@ -fPIC -c $< $(CXXFLAGS) $(LDFLAGS)
+	$(CXX) -MMD -MF .$@.d -o $@ -fPIC -c $< $(CXXFLAGS) -std=c++11 $(LDFLAGS)
 
