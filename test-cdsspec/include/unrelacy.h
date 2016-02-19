@@ -11,8 +11,9 @@
 #include <librace.h>
 
 #define $
-
+#ifndef ASSERT
 #define ASSERT(expr) MODEL_ASSERT(expr)
+#endif
 #define RL_ASSERT(expr) MODEL_ASSERT(expr)
 
 #define RL_NEW new
