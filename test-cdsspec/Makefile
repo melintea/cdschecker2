@@ -4,7 +4,7 @@
 	treiber-stack register
 
 DIRS := register ms-queue linuxrwlocks mcs-lock chase-lev-deque-bugfix \
-	treiber-stack ticket-lock seqlock-versioned
+	treiber-stack ticket-lock seqlock seqlock-versioned
 
 .PHONY: $(DIRS)
 
