@@ -1,6 +1,6 @@
 BENCH := deque
 
-TESTS := testcase1 testcase2 testcase3 testcase4
+TESTS := testcase1 testcase2 testcase3
 
 all: $(TESTS)
 

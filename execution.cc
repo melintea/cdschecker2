@@ -1583,6 +1583,9 @@ bool ModelExecution::r_modification_order(ModelAction *curr, const rf_type *rf)
 		action_list_t::reverse_iterator rit;
 		for (rit = list->rbegin(); rit != list->rend(); rit++) {
 			ModelAction *act = *rit;
+			// FIXME: The read from promise might read from an annotation
+			if (act->get_type() == ATOMIC_ANNOTATION)
+				continue;
 
 			/* Skip curr */
 			if (act == curr)
