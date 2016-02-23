@@ -50,6 +50,9 @@ void SPECAnalysis::finish() {
 			model_print("However! You have executions with a cyclic graph.\n");
 		if (stats->inadmissibilityCnt > 0)
 			model_print("However! You have inadmissible executions.\n");
+		if (stats->noOrderingPointCnt > 0)
+			model_print("You have execution graphs that have no ordering points.\n");
+
 	}
 }
 
@@ -100,6 +103,11 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	if (graph->isBroken()) {
 		stats->brokenCnt++;
 		return;
+	}
+	
+	// Count how many executions that have no-ordering-point method calls
+	if (graph->isNoOrderingPoint()) {
+		stats->noOrderingPointCnt++;
 	}
 
 	if (!graph->checkAdmissibility()) {

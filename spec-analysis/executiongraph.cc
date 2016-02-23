@@ -88,6 +88,7 @@ ExecutionGraph::ExecutionGraph(ModelExecution *e) {
 	randomHistory = NULL;
 
 	broken = false;
+	noOrderingPoint = false;
 	cyclic = false;
 	threadLists = new SnapVector<action_list_t*>;
 }
@@ -125,6 +126,10 @@ void ExecutionGraph::buildGraph(action_list_t *actions) {
 
 bool ExecutionGraph::isBroken() {
 	return broken;
+}
+
+bool ExecutionGraph::isNoOrderingPoint() {
+	return noOrderingPoint;
 }
 
 bool ExecutionGraph::hasCycle() {
@@ -552,12 +557,19 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 		getAnnotation(*iter)->type == INTERFACE_BEGIN));
 
 	delete popList;
+	// XXX: We just allow methods to have no specified ordering points. In that
+	// case, the method is concurrent with every other method call
+	
 	if (m->orderingPoints->size() == 0) {
+		noOrderingPoint = true;
+		/*
 		model_print("There is no ordering points for method %s.\n",
 			m->name);
 		m->begin->print();
 		broken = true;
 		return NULL;
+		*/
+		return m;
 	} else {
 		// Get a complete method call
 		return m;
@@ -815,6 +827,9 @@ int ExecutionGraph::conflict(Method m1, Method m2) {
 
 	action_list_t *OPs1= m1->orderingPoints;
 	action_list_t *OPs2= m2->orderingPoints;
+	// Method calls without ordering points are concurrent with any others
+	if (OPs1->empty() || OPs2->empty())
+		return 0;
 	int val = 0;
 	action_list_t::iterator iter1, iter2;
 	for (iter1 = OPs1->begin(); iter1 != OPs1->end(); iter1++) {

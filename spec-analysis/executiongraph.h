@@ -98,6 +98,10 @@ class ExecutionGraph {
 	/** Check whether this is a broken execution */
 	bool isBroken();
 
+	/** Check whether this is an execution that has method calls without
+	 * ordering points */
+	bool isNoOrderingPoint();
+
 	/**
 		Check whether this is a cyclic execution graph, meaning that the graph
 	 	has an cycle derived from the ordering points' hb/SC relation
@@ -158,6 +162,9 @@ class ExecutionGraph {
 
 	/** Whether this is a broken graph */
 	bool broken;
+
+	/** Whether this graph has method calls that have no ordering points */
+	bool noOrderingPoint;
 
 	/** Whether there is a cycle in the graph */
 	bool cyclic;

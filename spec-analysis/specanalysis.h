@@ -24,6 +24,9 @@ struct spec_stats {
 	/** The number of traces with broken graphs */
 	unsigned brokenCnt;
 
+	/** The number of traces with graphs that has no ordering points */
+	unsigned noOrderingPointCnt;
+
 	/** The number of traces that failed */
 	unsigned failedCnt;
 	
