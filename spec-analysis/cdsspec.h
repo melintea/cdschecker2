@@ -46,11 +46,11 @@ class IntMap : public unordered_map<int, int> {
 	IntMap() : map() { }
 
 	int get(int key) {
-		return at(key);
+		return (*this)[key];
 	}
 
 	void put(int key, int value) {
-		insert({key, value});
+		(*this)[key] = value;
 	}
 
 	SNAPSHOTALLOC
