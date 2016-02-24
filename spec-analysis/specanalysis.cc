@@ -60,8 +60,8 @@ bool SPECAnalysis::option(char * opt) {
 	if (strcmp(opt, "verbose")==0) {
 		print_always=true;
 		return false;
-	} else if (strcmp(opt, "inadmissible")==0) {
-		print_inadmissible = true;
+	} else if (strcmp(opt, "no-admissible")==0) {
+		print_inadmissible = false;
 		return false;
 	}  else if (strcmp(opt, "quiet")==0) {
 		quiet = true;
@@ -104,6 +104,11 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 		stats->brokenCnt++;
 		return;
 	}
+
+	if (print_always) {
+		model_print("------------------  Checking execution #%d"
+			"  ------------------\n", execution->get_execution_number());
+	}
 	
 	// Count how many executions that have no-ordering-point method calls
 	if (graph->isNoOrderingPoint()) {
@@ -117,6 +122,8 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 			model_print("Execution #%d is NOT admissible\n",
 				execution->get_execution_number());
 			graph->print();
+			if (print_always)
+				graph->printAllMethodInfo(true);
 		}
 		return;
 	}

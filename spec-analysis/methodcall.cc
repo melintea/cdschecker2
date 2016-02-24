@@ -111,7 +111,7 @@ void MethodCall::print(bool printOP, bool breakAtEnd) {
 	for (action_list_t::iterator it = orderingPoints->begin(); it !=
 		orderingPoints->end(); it++) {
 		ModelAction *op = *it;
-		model_print("  -> %d. ", i++);
+		model_print("\t-> %d. ", i++);
 		op->print();
 	}
 }

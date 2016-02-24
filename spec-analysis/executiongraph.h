@@ -125,6 +125,13 @@ class ExecutionGraph {
 	bool checkAllHistories(MethodListVector *sortings, bool verbose = false);
 	
 	/********** A few public printing functions for DEBUGGING **********/
+
+	/**
+		Print out the ordering points and dynamic calling info (return value &
+		arguments) of all the methods in the methodList
+	*/
+	void printAllMethodInfo(bool verbose);
+
 	/** Print a random sorting */
 	void printOneHistory(MethodList *list, CSTR header = "A random history");
 
@@ -305,6 +312,12 @@ class ExecutionGraph {
 
 	/** Print the list of records for one history execution */
 	void printHistoryRecord(HistoryRecord *records);
+
+	/**
+		Print out the ordering points and dynamic calling info (return value &
+		arguments).
+	*/
+	void printMethodInfo(Method m, bool verbose);
 
 	/** 
 		Check the state specifications (PreCondition & PostCondition & state

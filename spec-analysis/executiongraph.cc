@@ -1031,6 +1031,45 @@ void ExecutionGraph::printHistoryRecord(HistoryRecord *records) {
 }
 
 /**
+	Print out the ordering points and dynamic calling info (return value &
+	arguments) of all the methods in the methodList
+*/
+void ExecutionGraph::printAllMethodInfo(bool verbose) {
+	model_print("------------------  Method Info (exec #%d)"
+		"  ------------------\n", execution->get_execution_number());
+	for (MethodList::iterator iter = methodList->begin(); iter !=
+		methodList->end(); iter++) {
+		Method m = *iter;
+		printMethodInfo(m, verbose);
+	}
+	model_print("------------------  End Info (exec #%d)"
+		"  ------------------\n\n", execution->get_execution_number());
+}
+
+/**
+	Print out the ordering points and dynamic calling info (return value &
+	arguments).
+*/
+void ExecutionGraph::printMethodInfo(Method m, bool verbose) {
+	StateFunctions *funcs = NULL;
+	m->print(verbose, true);
+
+	if (isFakeMethod(m))
+		return;
+	
+	funcs = funcMap->get(m->name);
+	ASSERT (funcs);
+	UpdateState_t printValue = (UpdateState_t) funcs->print->function;
+
+	model_print("\t**********  Value Info  **********\n");
+	if (printValue) {
+		(*printValue)(m);
+	} else {
+		model_print("\tNothing printed..\n");
+	}
+}
+
+/**
 	Checking the state specification (in sequential order)
 */
 bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
@@ -1089,7 +1128,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 			if (printValue) {
 				model_print("\t**********  Value Info  **********\n");
 				(*printValue)(m);
-			}	
+			}
 		}
 
 		// Execute a list of transitions till Method m
