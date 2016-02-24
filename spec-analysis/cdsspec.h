@@ -7,6 +7,7 @@
 #include <iterator>
 #include <algorithm>
 #include <set>
+#include <unordered_map>
 
 #include <functional>
 
@@ -17,14 +18,6 @@
 #include "methodcall.h"
 
 using namespace std;
-
-
-/** Define shorter memory order parameters */
-#define relaxed memory_order_relaxed
-#define acquire memory_order_acquire
-#define release memory_order_release
-#define acq_rel memory_order_acq_rel
-#define seq_cst memory_order_seq_cst
 
 /** Macro for output (stole from common.h) */
 extern int model_out;
@@ -46,6 +39,23 @@ typedef SnapVector<int> IntVector;
 typedef SnapList<int> IntList;
 typedef SnapSet<int> IntSet;
 
+class IntMap : public unordered_map<int, int> {
+	public:
+	typedef unordered_map<int, int> map;
+
+	IntMap() : map() { }
+
+	int get(int key) {
+		return at(key);
+	}
+
+	void put(int key, int value) {
+		insert({key, value});
+	}
+
+	SNAPSHOTALLOC
+};
+
 typedef SnapVector<double> DoubleVector;
 typedef SnapList<double> DoubleList;
 typedef SnapSet<double> DoubleSet;
@@ -58,6 +68,15 @@ inline void printContainer(Container *container) {
 	for (auto it = container->begin(); it != container->end(); it++) {
 		int item = *it;
 		PRINT("%d ", item);
+	}
+}
+
+inline void printMap(IntMap *container) {
+	if (!container || container->size() == 0)
+		PRINT("EMPTY");
+	for (auto it = container->begin(); it != container->end(); it++) {
+		pair<int, int> item = *it;
+		PRINT("(%d, %d) ", item.first, item.second);
 	}
 }
 
