@@ -61,8 +61,14 @@ class SPECAnalysis : public TraceAnalysis {
 	bool print_inadmissible;
 	/* Never print out the graphs of any traces */
 	bool quiet;
-	/* Only check one random topological sorting */
-	bool check_one;
+	/* Stop checking when seeing one failed history */
+	bool stopOnFail;
+	/* The number of random histories to be checked; If 0, we check all possible
+	 * histories */
+	int checkRandomNum;
+	
+	/** Whether this is a "check-12" like option */
+	bool isCheckRandomHistories(char *opt, int &num);
 };
 
 

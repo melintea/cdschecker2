@@ -17,7 +17,8 @@ SPECAnalysis::SPECAnalysis()
 	print_always = false;
 	print_inadmissible = true;
 	quiet = false;
-	check_one = false;
+	stopOnFail = false;
+	checkRandomNum = 0;
 }
 
 SPECAnalysis::~SPECAnalysis() {
@@ -56,6 +57,38 @@ void SPECAnalysis::finish() {
 	}
 }
 
+bool SPECAnalysis::isCheckRandomHistories(char *opt, int &num) {
+	char *p = opt;
+	bool res = false;
+	if (*p == 'c') {
+		p++;
+		if (*p == 'h') {
+			p++;
+			if (*p == 'e') {
+				p++;
+				if (*p == 'c') {
+					p++;
+					if (*p == 'k') {
+						res = true;
+						p++;
+					}
+				}
+			}
+		}
+	}
+	if (res) {
+		// p now should point to '-'
+		if (*p == '-') {
+			p++;
+			num = atoi(p);
+			if (num > 0)
+				return true;
+		}
+		return false;
+	}
+	return res;
+}
+
 bool SPECAnalysis::option(char * opt) {
 	if (strcmp(opt, "verbose")==0) {
 		print_always=true;
@@ -63,15 +96,17 @@ bool SPECAnalysis::option(char * opt) {
 	} else if (strcmp(opt, "no-admissible")==0) {
 		print_inadmissible = false;
 		return false;
-	}  else if (strcmp(opt, "quiet")==0) {
+	} else if (strcmp(opt, "quiet")==0) {
 		quiet = true;
 		return false;
-	} else if (strcmp(opt, "check-one")==0) {
-		check_one = true;
+	} else if (strcmp(opt, "stop-on-fail")==0) {
+		stopOnFail = true;
+		return false;
+	} else if (isCheckRandomHistories(opt, checkRandomNum)) {
 		return false;
 	} else if (strcmp(opt, "help") != 0) {
 		model_print("Unrecognized option: %s\n", opt);
-	}
+	} 
 
 	model_print("SPEC Analysis options\n"
 		"By default SPEC outputs the graphs of those failed execution\n"
@@ -145,9 +180,13 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	}
 	
 	bool pass = false;
-	if (check_one) { // Only check one random sorting
-		pass = graph->checkRandomHistories(1, true, print_always && !quiet);
-	} else { // Check all sortings
+	if (checkRandomNum > 0) { // Only a few random histories
+		if (print_always && !quiet)
+			model_print("Check %d random histories...\n", checkRandomNum);
+		pass = graph->checkRandomHistories(checkRandomNum, true, print_always && !quiet);
+	} else { // Check all histories 
+		if (print_always && !quiet)
+			model_print("Check all histories...\n");
 		pass = graph->checkAllHistories(true, print_always && !quiet);
 	}
 
