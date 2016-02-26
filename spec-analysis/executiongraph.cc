@@ -140,30 +140,30 @@ bool ExecutionGraph::checkAdmissibility() {
 }
 
 
-/** Generate one random topological sorting */
-MethodList* ExecutionGraph::generateOneRandomHistory() {
-	MethodList *res = new MethodList;
-	int liveNodeNum = methodList->size();
-	generateOneRandomHistoryHelper(res, liveNodeNum);
-	if (cyclic) {
-		delete res;
-		return NULL;
+/** To check "num" random histories */
+bool ExecutionGraph::checkRandomHistories(int num, bool stopOnFail, bool verbose) {
+	bool pass = true;
+	for (int i = 0; i < num; i++) {
+		MethodList *history = generateOneRandomHistory();
+		pass &= checkStateSpec(history, verbose, i + 1);
+		if (!pass) {
+			// Print out the graph
+			model_print("Problmatic execution graph: \n");
+			print();
+			if (stopOnFail) { // Just stop on this
+				// Recycle
+				delete history;
+				return false;
+			}
+		} else if (verbose) {
+			// Print out the graph in verbose
+			model_print("Execution graph: \n");
+			print();
+		}
+		// Recycle
+		delete history;
 	}
-	return res;
-}
-
-/** To check one generated history */
-bool ExecutionGraph::checkOneHistory(MethodList *history, bool verbose) {
-	bool pass = checkStateSpec(history, verbose);
-	if (!pass) {
-		// Print out the graph
-		model_print("Problmatic execution graph: \n");
-		print();
-	} else if (verbose) {
-		// Print out the graph in verbose
-		model_print("Execution graph: \n");
-		print();
-	}
+	
 	return pass;
 }
 
@@ -177,14 +177,14 @@ bool ExecutionGraph::checkOneHistory(MethodList *history, bool verbose) {
 bool ExecutionGraph::checkAllHistories(bool stopOnFailure, bool verbose) {
 	MethodList *curList = new MethodList;
 	int numLiveNodes = methodList->size();
-	bool pass = checkAllHistoriesHelper(curList, numLiveNodes, stopOnFailure, verbose);
+	int historyIndex = 1;
+	bool pass = checkAllHistoriesHelper(curList, numLiveNodes, historyIndex,
+		stopOnFailure, verbose);
 	if (!pass) {
 		// Print out the graph
-		model_print("Problmatic execution graph: \n");
 		print();
 	} else if (verbose) {
 		// Print out the graph in verbose
-		model_print("Execution graph: \n");
 		print();
 	}
 	return pass;
@@ -882,16 +882,19 @@ MethodVector* ExecutionGraph::getEndNodes() {
 		been selected and added in a specific topological sorting yet). We keep
 		such a number as an optimization since when numLinveNodes equals to 0,
 		we can backtrack. Initially it is the size of the method call list.
+	historyIndex -> The current history index. We should start with 1.
+	stopOnFailure -> Stop the checking once we see a failed history
 	verbose -> Whether the verbose mode is on
 */
-bool ExecutionGraph::checkAllHistoriesHelper(MethodList
-	*curList, int &numLiveNodes, bool stopOnFailure, bool verbose) {
+bool ExecutionGraph::checkAllHistoriesHelper(MethodList *curList, int
+	&numLiveNodes, int &historyIndex, bool stopOnFailure, bool verbose) {
 	if (cyclic)
 		return false;
 	
 	bool satisfied = true;
 	if (numLiveNodes == 0) { // Found one sorting, and we can backtrack
-		satisfied = checkStateSpec(curList, verbose);
+		// Don't forget to increase the history number
+		satisfied = checkStateSpec(curList, verbose, historyIndex++);
 		// Don't forget to recycle
 		delete curList;
 		return satisfied;
@@ -917,7 +920,7 @@ bool ExecutionGraph::checkAllHistoriesHelper(MethodList
 		newList->push_back(m);
 		
 		bool oneSatisfied = checkAllHistoriesHelper(newList, numLiveNodes,
-			stopOnFailure, verbose);
+			historyIndex, stopOnFailure, verbose);
 		// Stop the checking once failure or cycle detected
 		if (!oneSatisfied && (cyclic || stopOnFailure)) {
 			delete curList;
@@ -932,6 +935,40 @@ bool ExecutionGraph::checkAllHistoriesHelper(MethodList
 	delete curList;
 	delete roots;
 	return satisfied;
+}
+
+/** To check one generated history */
+bool ExecutionGraph::checkHistory(MethodList *history, int historyIndex, bool
+	verbose) {
+	bool pass = checkStateSpec(history, verbose, historyIndex);
+	if (!pass) {
+		// Print out the graph
+		model_print("Problmatic execution graph: \n");
+		print();
+	} else if (verbose) {
+		// Print out the graph in verbose
+		model_print("Execution graph: \n");
+		print();
+	}
+	return pass;
+}
+
+/** Generate one random topological sorting */
+MethodList* ExecutionGraph::generateOneRandomHistory() {
+	MethodList *res = new MethodList;
+	int liveNodeNum = methodList->size();
+	generateOneRandomHistoryHelper(res, liveNodeNum);
+	if (cyclic) {
+		delete res;
+		return NULL;
+	}
+	// Reset the liveness of each method
+	for (MethodList::iterator it = methodList->begin(); it != methodList->end();
+	it++) {
+		Method m = *it;
+		m->exist = true;
+	}
+	return res;
 }
 
 /**
@@ -1034,9 +1071,14 @@ void ExecutionGraph::clearStates() {
 /**
 	Checking the state specification (in sequential order)
 */
-bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
-	if (verbose)
-		model_print("---- Start to check on state specification ----\n");
+bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
+	historyIndex) {
+	if (verbose) {
+		if (historyIndex > 0)
+			model_print("---- Start to check history %d ----\n", historyIndex);
+		else
+			model_print("---- Start to check history ----\n");
+	}
 
 	// @Initial state (with a fake starting node)
 	Method startMethod = getStartMethod();
@@ -1155,10 +1197,14 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 				model_print("PreCondition is not satisfied. Problematic method"
 					" is as follow: \n");
 				m->print(true, true);
-				printOneHistory(history, "Problematic Seqneutial History");
-				if (verbose)
-					model_print("---- Check on state specification ends"
-						" ----\n\n");
+				printOneHistory(history, "Failed History");
+				if (verbose) {
+					if (historyIndex > 0)
+						model_print("---- Check history %d END ----\n\n",
+							historyIndex);
+					else
+						model_print("---- Check history END ----\n\n");
+				}
 				// Clear out the states created when checking
 				clearStates();
 				return false;
@@ -1186,9 +1232,12 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 	clearStates();
 
 	if (verbose) {
-		model_print("---- Check on state specification ends ----\n\n");
+		printOneHistory(history, "Passed History");
 		// Print the history in verbose mode
-		printOneHistory(history, "Problematic Seqneutial History");
+		if (historyIndex > 0)
+			model_print("---- Check history %d END ----\n\n", historyIndex);
+		else
+			model_print("---- Check history END ----\n\n");
 	}
 	return true;
 }

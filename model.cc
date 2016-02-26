@@ -330,8 +330,10 @@ bool ModelChecker::next_execution()
 
 /** @brief Run trace analyses on complete trace */
 void ModelChecker::run_trace_analyses() {
+	IN_TRACE_ANALYSIS = true;
 	for (unsigned int i = 0; i < trace_analyses.size(); i++)
 		trace_analyses[i]->analyze(execution->get_action_trace());
+	IN_TRACE_ANALYSIS = false;
 }
 
 /**

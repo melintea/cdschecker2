@@ -102,6 +102,10 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	graph->buildGraph(actions);
 	if (graph->isBroken()) {
 		stats->brokenCnt++;
+		if (print_always && !quiet) { // By default not printing
+			model_print("Execution #%d has a broken graph.\n\n",
+				execution->get_execution_number());
+		}
 		return;
 	}
 
@@ -133,14 +137,16 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 		stats->cyclicCnt++;
 		if (!quiet)
 			graph->print();
+		if (print_always && !quiet) { // By default not printing
+			model_print("Execution #%d has a cyclic graph.\n\n",
+				execution->get_execution_number());
+		}
 		return;
 	}
 	
 	bool pass = false;
-	MethodList *history = NULL;
 	if (check_one) { // Only check one random sorting
-		history = graph->generateOneRandomHistory();
-		pass = graph->checkOneHistory(history, print_always && !quiet);
+		pass = graph->checkRandomHistories(1, true, print_always && !quiet);
 	} else { // Check all sortings
 		pass = graph->checkAllHistories(true, print_always && !quiet);
 	}
@@ -148,14 +154,15 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	if (!pass) {
 		/* One more failed trace */
 		stats->failedCnt++;
-		model_print("This execution is NOT consistent with the spec.\n");
+		model_print("Execution #%d failed.\n\n",
+			execution->get_execution_number());
 	} else {
 		/* One more passing trace */
 		stats->passCnt++;
 
 		if (print_always && !quiet) { // By default not printing
-			model_print("This execution is consistent with the spec.\n");
-			graph->print();
+			model_print("Execution #%d passed.\n\n",
+				execution->get_execution_number());
 		}
 	}
 }

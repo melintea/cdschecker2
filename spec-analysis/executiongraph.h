@@ -75,11 +75,8 @@ class ExecutionGraph {
 	/** Check whether the execution is admmisible */
 	bool checkAdmissibility();
 
-	/** Generate one random topological sorting */
-	MethodList* generateOneRandomHistory();
-
-	/** Check whether a specific history is correct */
-	bool checkOneHistory(MethodList *history, bool verbose = false);
+	/** Check whether a number of random history is correct */
+	bool checkRandomHistories(int num = 1, bool stopOnFail = true, bool verbose = false);
 
 	/** Check whether all histories are correct */
 	bool checkAllHistories(bool stopOnFailure = true, bool verbose = false);
@@ -256,8 +253,15 @@ class ExecutionGraph {
 		If you only want to stop the checking process when finding one failed
 		history, pass true to stopOnFailure.
 	*/
-	bool checkAllHistoriesHelper(MethodList *curList, int &numLiveNodes, bool
-	stopOnFailure, bool verbose);
+	bool checkAllHistoriesHelper(MethodList *curList, int &numLiveNodes, int
+	&historyNum, bool stopOnFailure, bool verbose);
+
+
+	/** Check whether a specific history is correct */
+	bool checkHistory(MethodList *history, int historyIndex, bool verbose = false);
+
+	/** Generate one random topological sorting */
+	MethodList* generateOneRandomHistory();
 
 	/**
 		The helper function to generate one random topological sorting
@@ -287,7 +291,7 @@ class ExecutionGraph {
 		admissibility check). The verbose option controls whether we print a
 		detailed list of checking functions that we have called
 	*/
-	bool checkStateSpec(MethodList *history, bool verbose);
+	bool checkStateSpec(MethodList *history, bool verbose, int historyNum);
 
 	/** Print a problematic thread list */
 	void printActions(action_list_t *actions, const char *header = "The problematic thread list:");
