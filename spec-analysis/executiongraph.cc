@@ -143,7 +143,8 @@ bool ExecutionGraph::checkAdmissibility() {
 /** To check "num" random histories */
 bool ExecutionGraph::checkRandomHistories(int num, bool stopOnFail, bool verbose) {
 	bool pass = true;
-	for (int i = 0; i < num; i++) {
+	int i;
+	for (i = 0; i < num; i++) {
 		MethodList *history = generateOneRandomHistory();
 		pass &= checkStateSpec(history, verbose, i + 1);
 		if (!pass) {
@@ -153,6 +154,8 @@ bool ExecutionGraph::checkRandomHistories(int num, bool stopOnFail, bool verbose
 			if (stopOnFail) { // Just stop on this
 				// Recycle
 				delete history;
+				if (verbose)
+					model_print("We totally checked %d histories.\n", i + 1);
 				return false;
 			}
 		} else if (verbose) {
@@ -164,6 +167,8 @@ bool ExecutionGraph::checkRandomHistories(int num, bool stopOnFail, bool verbose
 		delete history;
 	}
 	
+	if (verbose)
+		model_print("We totally checked %d histories.\n", i);
 	return pass;
 }
 
@@ -187,6 +192,8 @@ bool ExecutionGraph::checkAllHistories(bool stopOnFailure, bool verbose) {
 		// Print out the graph in verbose
 		print();
 	}
+	if (verbose)
+		model_print("We totally checked %d histories.\n", historyIndex - 1);
 	return pass;
 }
 
@@ -565,6 +572,72 @@ void ExecutionGraph::processInitAnnotation(AnnoInit *annoInit) {
 	commuteRuleNum = annoInit->commuteRuleNum; 
 }
 
+/**
+	After building up the graph (both the nodes and egdes are correctly built),
+	we also call this function to initialize the most recent justified node of
+	each method node.
+
+	A justified method node of a method m is a method that is in the allPrev set
+	of m, and all other nodes in the allPrev set of m are either before or after
+	it. The most recent justified node is the most recent one in the hb/SC
+	order.
+*/
+void ExecutionGraph::initializeJustifiedNode() {
+	MethodList::iterator it = methodList->begin();
+	// Start from the second methods in the list --- skipping the START node
+	for (it++; it != methodList->end(); it++) {
+		Method m = *it;
+		// Walk all the way up, when we have multiple immediately previous
+		// choices, pick one and record others. When we find one node that only
+		// has one immediate prev, check if that node is before all other
+		// recorded nodes. If not, keep going up; otherwise, that node is the
+		// most recent justified node
+		
+		// A list to record visited nodes that we will later check
+		MethodList *visitedMethods = new MethodList;
+		MethodSet prev = NULL;
+		Method justified = m;
+		SnapSet<Method>::iterator setIt;
+		do {
+			prev = justified->prev;
+			// At the very least we should have the START nodes
+			ASSERT (!prev->empty());
+			
+			// setIt points to the very beginning of allPrev set
+			setIt = prev->begin();
+			if (prev->size() == 1) { // Need extra check
+				justified = *setIt;
+				// Check whether justified is before all recorded nodes
+				bool beforeFlag = true;
+				for (MethodList::iterator visitedIter =
+					visitedMethods->begin(); visitedIter !=
+					visitedMethods->end(); visitedIter++) {
+					Method visited = *visitedIter;
+					if (!isReachable(justified, visited)) {
+						beforeFlag = false;
+						break;
+					}
+				}
+				if (beforeFlag) // Found the justified node
+					break;
+			} else { // Pick one path up and record others
+				// Pick the "beginning" node
+				justified = *setIt;
+				// Record other parents in the list
+				for (setIt++; setIt != prev->end(); setIt++) {
+					Method otherParent = *setIt;
+					visitedMethods->push_back(otherParent);
+				}
+			}
+		} while (true);
+		// Recycle list
+		delete visitedMethods;
+		ASSERT (justified != m);
+		// Don't forget to set the method's field
+		m->justifiedMethod = justified;
+	}
+}
+
 
 /**
 	This is a very important interal function to build the graph. When called,
@@ -641,9 +714,8 @@ void ExecutionGraph::buildEdges() {
 
 	AssertEdges();
 
-	//model_print("Right after calling buildEdges\n");
-	//print(false);
-	//PrintReverse(false);
+	// Initialize the justified method of each method
+	initializeJustifiedNode();
 }
 
 /**
@@ -780,9 +852,9 @@ int ExecutionGraph::conflict(ModelAction *act1, ModelAction *act2) {
 int ExecutionGraph::conflict(Method m1, Method m2) {
 	ASSERT (m1 != m2);
 	
-	if (m1->name == GRAPH_START)
+	if (isStartMethod(m1))
 		return 1;
-	if (m2->name == GRAPH_FINISH)
+	if (isFinishMethod(m2))
 		return 1;
 
 	action_list_t *OPs1= m1->orderingPoints;
@@ -1013,10 +1085,6 @@ Method ExecutionGraph::getFinishMethod() {
 	return methodList->back();
 }
 
-bool ExecutionGraph::isFakeMethod(Method m) {
-	return m->name == GRAPH_START || m->name == GRAPH_FINISH;
-}
-
 /**
 	Print out the ordering points and dynamic calling info (return value &
 	arguments) of all the methods in the methodList
@@ -1075,7 +1143,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 	historyIndex) {
 	if (verbose) {
 		if (historyIndex > 0)
-			model_print("---- Start to check history %d ----\n", historyIndex);
+			model_print("---- Start to check history #%d ----\n", historyIndex);
 		else
 			model_print("---- Start to check history ----\n");
 	}
@@ -1118,14 +1186,16 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 		}
 
 		// Execute a list of transitions till Method m
-		// Optimization: find the previous justified nodes --- a node that has no
+		// Optimization: find the previous justified nodes --- a node that is in
+		// my allPrev set, and no other nodes in allPrev set is concurrent with
+		// it.
+		
 		// concurrent method calls (everyone is either before or after me).
 		MethodList::iterator justifiedIter = it;
 		while (justifiedIter != history->begin()) {
 			justifiedIter--;
 			Method justified = *justifiedIter;
-			if (justified->concurrent->size() == 0 &&
-				MethodCall::belong(m->allPrev, justified)) {
+			if (justified == m->justifiedMethod) {
 				// @Copy function from Method justified to Method m
 				CopyState_t copyFunc = (CopyState_t) copy->function;
 				(*copyFunc)(m, justified);
@@ -1149,10 +1219,9 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 			execIter++) {
 			Method exec = *execIter;
 			ASSERT (!isFakeMethod(exec));
+
 			if (MethodCall::belong(m->allPrev, exec)) {
 				ASSERT (!isFakeMethod(exec));
-				if (exec->name == GRAPH_START || exec->name == GRAPH_FINISH)
-					continue;
 				funcs = funcMap->get(exec->name);
 				ASSERT (funcs);
 				transition = (StateTransition_t)
@@ -1200,7 +1269,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 				printOneHistory(history, "Failed History");
 				if (verbose) {
 					if (historyIndex > 0)
-						model_print("---- Check history %d END ----\n\n",
+						model_print("---- Check history #%d END ----\n\n",
 							historyIndex);
 					else
 						model_print("---- Check history END ----\n\n");
@@ -1235,7 +1304,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 		printOneHistory(history, "Passed History");
 		// Print the history in verbose mode
 		if (historyIndex > 0)
-			model_print("---- Check history %d END ----\n\n", historyIndex);
+			model_print("---- Check history #%d END ----\n\n", historyIndex);
 		else
 			model_print("---- Check history END ----\n\n");
 	}

@@ -198,6 +198,18 @@ class ExecutionGraph {
 	SpecAnnotation* getAnnotation(ModelAction *act);
 
 	/**
+		After building up the graph (both the nodes and egdes are correctly
+		built), we also call this function to initialize the most recent
+		justified node of each method node.
+
+		A justified method node of a method m is a method that is in the allPrev
+		set of m, and all other nodes in the allPrev set of m are either before
+		or after it. The most recent justified node is the most recent one in
+		the hb/SC order.
+	*/
+	void initializeJustifiedNode();
+
+	/**
 		After extracting the MethodCall info for each method call, we use this
 	 	function to build the edges (a few different sets of edges that
 		represent the edge of the execution graph (PREV, NEXT & CONCURRENT...)
@@ -274,7 +286,19 @@ class ExecutionGraph {
 	Method getFinishMethod();
 	
 	/** Whether method call node m is a fake node */
-	bool isFakeMethod(Method m);
+	inline bool isFakeMethod(Method m) {
+		return isStartMethod(m) || isFinishMethod(m);
+	}
+
+	/** Whether method call node m is a starting node */
+	inline bool isStartMethod(Method m) {
+		return m->name == GRAPH_START;
+	}
+
+	/** Whether method call node m is a finish node */
+	inline bool isFinishMethod(Method m) {
+		return m->name == GRAPH_FINISH;
+	}
 
 	/**
 		Print out the ordering points and dynamic calling info (return value &

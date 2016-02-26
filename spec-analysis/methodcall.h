@@ -36,6 +36,9 @@ class MethodCall {
 	MethodSet next; // Method calls that are hb right after me
 	MethodSet concurrent; // Method calls that are concurrent with me
 
+	Method justifiedMethod; // The method before me and is not concurrent with
+							// any other mehtods in my allPrev set
+
 	MethodCall(CSTR name, void *value = NULL, ModelAction *begin = NULL);
 	
 	void addPrev(Method m);
