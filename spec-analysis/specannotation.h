@@ -94,8 +94,8 @@ struct CommutativityRule {
 } CommutativityRule;
 
 typedef enum CheckFunctionType {
-	INITIAL, COPY, FINAL, PRINT_STATE,  TRANSITION, PRE_CONDITION, SIDE_EFFECT,
-	POST_CONDITION, PRINT_VALUE
+	INITIAL, COPY, CLEAR, FINAL, PRINT_STATE, TRANSITION, PRE_CONDITION,
+	SIDE_EFFECT, POST_CONDITION, PRINT_VALUE
 } CheckFunctionType;
 
 typedef struct NamedFunction {
@@ -106,7 +106,6 @@ typedef struct NamedFunction {
 	/**
 		StateTransition_t transition;
 		CheckState_t preCondition;
-		UpdateState_t sideEffect;
 		CheckState_t postCondition;
 	*/
 	NamedFunction(CSTR name, CheckFunctionType type, void *function);
@@ -116,13 +115,11 @@ typedef
 struct StateFunctions {
 	NamedFunction *transition;
 	NamedFunction *preCondition;
-	NamedFunction *sideEffect;
 	NamedFunction *postCondition;
 	NamedFunction *print;
 
 	StateFunctions(NamedFunction *transition, NamedFunction *preCondition,
-		NamedFunction *sideEffect, NamedFunction *postCondition, NamedFunction
-		*print);
+		NamedFunction *postCondition, NamedFunction *print);
 
 } StateFunctions;
 
@@ -159,6 +156,14 @@ struct AnnoInit {
 		CopyState_t --> copy 
 	*/
 	NamedFunction *copy;
+
+	/**
+		For clearing out an existing state object
+
+		UpdateState_t --> delete 
+	*/
+	NamedFunction *clear;
+
 	
 	/**
 		For printing out the state 
@@ -176,8 +181,8 @@ struct AnnoInit {
 	int commuteRuleNum;
 
 	AnnoInit(NamedFunction *initial, NamedFunction *final, NamedFunction *copy,
-		NamedFunction *printState, CommutativityRule *commuteRules, int
-		ruleNum);
+		NamedFunction *clear, NamedFunction *printState, CommutativityRule
+		*commuteRules, int ruleNum);
 			
 	void addInterfaceFunctions(CSTR name, StateFunctions *funcs);
 

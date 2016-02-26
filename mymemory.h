@@ -51,8 +51,6 @@
 extern "C" {
 #endif
 
-extern bool IN_TRACE_ANALYSIS;
-
 void *model_malloc(size_t size);
 void *model_calloc(size_t count, size_t size);
 void model_free(void *ptr);

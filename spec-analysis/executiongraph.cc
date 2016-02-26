@@ -21,62 +21,6 @@ PotentialOP::PotentialOP(ModelAction *op, CSTR label) :
 }
 
 
-/********************    StateFunctionRecord    ********************/
-StateFunctionRecord::StateFunctionRecord(NamedFunction *func, Method m1,
-	Method m2) : name(func->name), type(func->type), m1(m1), m2(m2) { }
-
-void StateFunctionRecord::print() {
-	switch (type) {
-		case INITIAL:
-			model_print("@Initial %s on ", name);
-			m1->print(false, false);
-			break;
-		case COPY:
-			model_print("@Copy %s from ", name);
-			m2->print(false, false);
-			model_print(" to ");
-			m1->print(false, false);
-			break;
-		case FINAL:
-			model_print("@Final %s on ", name);
-			m1->print(false, false);
-			break;
-		case TRANSITION:
-			model_print("@Transition %s on ", name);
-			m2->print(false, false);
-			model_print(", target ->");
-			m1->print(false, false);
-			break;
-		case PRE_CONDITION:
-			model_print("@PreCondition %s on ", name);
-			m1->print(false, false);
-			break;
-		case SIDE_EFFECT:
-			model_print("@SideEffect %s on ", name);
-			m1->print(false, false);
-			break;
-		case POST_CONDITION:
-			model_print("@PostCondition %s on ", name);
-			m1->print(false, false);
-			break;
-		default:
-			model_print("Unknown CheckFunctionTyep (never should be here!!\n");
-			ASSERT(false);
-			break;
-	}
-	model_print("\n");
-}
-
-
-/********************    HistoryRecordItem     ********************/
-HistoryRecordItem::HistoryRecordItem(Method m) : method(m), recordList(new
-	FunctionRecordList) { }
-
-void HistoryRecordItem::addFunctionRecord(StateFunctionRecord *r) {
-	recordList->push_back(r);
-}
-
-
 /********************    ExecutionGraph    ********************/
 /*********    ExecutionGraph (public functions)   **********/
 /**
@@ -605,6 +549,10 @@ void ExecutionGraph::processInitAnnotation(AnnoInit *annoInit) {
 	ASSERT (func && func->type == COPY);
 	copy= annoInit->copy;
 
+	func = annoInit->clear;
+	ASSERT (func && func->type == CLEAR);
+	clear= annoInit->clear;
+
 	func = annoInit->printState;
 	ASSERT (func && func->type == PRINT_STATE);
 	printState = annoInit->printState;
@@ -625,12 +573,6 @@ void ExecutionGraph::processInitAnnotation(AnnoInit *annoInit) {
 	edges between them to yield an execution graph for checking
 */
 void ExecutionGraph::buildEdges() {
-	// Add two special nodes (START & FINISH) at the beginning & end of methodList
-	Method startMethod = new MethodCall(GRAPH_START);
-	Method finishMethod = new MethodCall(GRAPH_FINISH);
-	
-	methodList->push_front(startMethod);
-	methodList->push_back(finishMethod);
 
 	MethodList::iterator iter1, iter2;
 	// First build the allPrev and allNext set (don't care if they are right
@@ -652,6 +594,24 @@ void ExecutionGraph::buildEdges() {
 			}
 		}
 	}
+
+	// Initialize two special nodes (START & FINISH)
+	Method startMethod = new MethodCall(GRAPH_START);
+	Method finishMethod = new MethodCall(GRAPH_FINISH);
+	// Initialize startMethod and finishMethd
+	startMethod->allNext->insert(finishMethod);
+	finishMethod->allPrev->insert(startMethod);
+	for (MethodList::iterator iter = methodList->begin(); iter !=
+		methodList->end(); iter++) {
+		Method m = *iter;
+		startMethod->allNext->insert(m);
+		m->allPrev->insert(startMethod);
+		m->allNext->insert(finishMethod);
+		finishMethod->allPrev->insert(m);
+	}
+	// Push these two special nodes to the beginning & end of methodList
+	methodList->push_front(startMethod);
+	methodList->push_back(finishMethod);
 	
 	// Now build the prev, next and concurrent sets
 	for (MethodList::iterator iter = methodList->begin(); iter != methodList->end();
@@ -821,9 +781,9 @@ int ExecutionGraph::conflict(Method m1, Method m2) {
 	ASSERT (m1 != m2);
 	
 	if (m1->name == GRAPH_START)
-		return true;
+		return 1;
 	if (m2->name == GRAPH_FINISH)
-		return true;
+		return 1;
 
 	action_list_t *OPs1= m1->orderingPoints;
 	action_list_t *OPs2= m2->orderingPoints;
@@ -1002,34 +962,6 @@ bool ExecutionGraph::isFakeMethod(Method m) {
 	return m->name == GRAPH_START || m->name == GRAPH_FINISH;
 }
 
-
-void ExecutionGraph::printHistoryRecord(HistoryRecord *records) {
-	for (HistoryRecord::iterator it = records->begin(); it != records->end();
-		it++) {
-		HistoryRecordItem *item = *it;
-		Method m = item->method;
-		FunctionRecordList *funcList = item->recordList;
-		m->print(false, false);
-		model_print(":\n");
-		if (!isFakeMethod(m)) {
-			StateFunctions *funcs = funcMap->get(m->name);
-			ASSERT (funcs);
-			UpdateState_t print = (UpdateState_t) funcs->print->function;
-			if (print) {
-				model_print("**********  dynamic info  **********\n");
-				(*print)(m);
-				model_print("**********  dynamic info  **********\n");
-			}
-		}
-		for (FunctionRecordList::iterator funcIt = funcList->begin(); funcIt !=
-			funcList->end(); funcIt++) {
-			StateFunctionRecord *func = *funcIt;
-			model_print("   ");
-			func->print();
-		}
-	}
-}
-
 /**
 	Print out the ordering points and dynamic calling info (return value &
 	arguments) of all the methods in the methodList
@@ -1069,16 +1001,24 @@ void ExecutionGraph::printMethodInfo(Method m, bool verbose) {
 	}
 }
 
+
+/** Clear the states of the method call */
+void ExecutionGraph::clearStates() {
+	UpdateState_t clearFunc = (UpdateState_t) clear->function;
+	for (MethodList::iterator it = methodList->begin(); it != methodList->end();
+		it++) {
+		Method m = *it;
+		if (m->state)
+			(*clearFunc)(m);
+	}
+}
+
 /**
 	Checking the state specification (in sequential order)
 */
 bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 	if (verbose)
 		model_print("---- Start to check on state specification ----\n");
-
-	// Record the histroy execution
-	HistoryRecord *historyRecord = new HistoryRecord;
-	HistoryRecordItem *recordItem = NULL;
 
 	// @Initial state (with a fake starting node)
 	Method startMethod = getStartMethod();
@@ -1095,26 +1035,12 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 		}
 	}
 	
-	// Record @Initial
-	// Create a record item for the startMethod
-	recordItem = new HistoryRecordItem(startMethod);
-	// Add the @Initial call to the record item
-	recordItem->addFunctionRecord(
-		new StateFunctionRecord(initial, startMethod, NULL));
-	// Add this record to the history record
-	historyRecord->push_back(recordItem);
-
 	for (MethodList::iterator it = history->begin(); it != history->end();
 		it++) {
 		Method m = *it;
 		if (isFakeMethod(m))
 			continue;
 
-		// Create a record item for method m 
-		recordItem = new HistoryRecordItem(m);
-		// Add this record to the history record
-		historyRecord->push_back(recordItem);
-	
 		StateFunctions *funcs = NULL;
 		StateTransition_t transition = NULL;
 		
@@ -1153,11 +1079,6 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 						(*printStateFunc)(m);
 					}
 				}
-
-				// Record @Copy
-				// Add the @Copy call to the record item
-				recordItem->addFunctionRecord(
-					new StateFunctionRecord(copy, m, justified));
 				break;
 			}
 		}
@@ -1167,8 +1088,11 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 		for (MethodList::iterator execIter = ++justifiedIter; execIter != it;
 			execIter++) {
 			Method exec = *execIter;
+			ASSERT (!isFakeMethod(exec));
 			if (MethodCall::belong(m->allPrev, exec)) {
 				ASSERT (!isFakeMethod(exec));
+				if (exec->name == GRAPH_START || exec->name == GRAPH_FINISH)
+					continue;
 				funcs = funcMap->get(exec->name);
 				ASSERT (funcs);
 				transition = (StateTransition_t)
@@ -1193,11 +1117,6 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 						(*printStateFunc)(m);
 					}
 				}
-
-				// Add the @Transition call to the record item
-				recordItem->addFunctionRecord(
-					new StateFunctionRecord(funcs->transition, m, exec));
-
 			}
 		}
 
@@ -1213,10 +1132,6 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 		// @PreCondition of Mehtod m
 		if (preCondition) {
 			satisfied = (*preCondition)(m);
-			
-			// Add the @PreCondition call to the record item
-			recordItem->addFunctionRecord(
-				new StateFunctionRecord(funcs->preCondition, m, NULL));
 
 			if (!satisfied) {
 				model_print("PreCondition is not satisfied. Problematic method"
@@ -1225,11 +1140,11 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 				model_print("Problmatic execution graph: \n");
 				print();
 				printOneHistory(history, "Problematic Seqneutial History");
-				model_print("Problematic history execution record: \n");
-				//printHistoryRecord(historyRecord);
 				if (verbose)
 					model_print("---- Check on state specification ends"
 						" ----\n\n");
+				// Clear out the states created when checking
+				clearStates();
 				return false;
 			}
 		}
@@ -1248,42 +1163,13 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 				model_print("\t**********  State Info  **********\n");
 				(*printStateFunc)(m);
 			}
-		}
-
-		// Add the @Transition call to the record item
-		recordItem->addFunctionRecord(
-			new StateFunctionRecord(funcs->transition, m, m));
-		
-		// @SideEffect of Method m
-		//if (sideEffect)
-		//	(*sideEffect)(m);
-		// @PostCondition of Method m
-		/*
-		if (postCondition) {
-			satisfied = (*postCondition)(m);
-
-			// Add the @PostCondition call to the record item
-			recordItem->addFunctionRecord(
-				new StateFunctionRecord(funcs->postCondition, m, NULL));
-
-			if (!satisfied) {
-				model_print("PostCondition is not satisfied (Problematic method call"
-				 " printed");
-				m->print(true, true);
-				model_print("Problmatic execution graph: \n");
-				print();
-				printOneHistory(history, "Problematic Seqneutial History");
-				model_print("Problematic history execution record: \n");
-				printHistoryRecord(historyRecord);
-
-				return false;
-			}
-		}
-		*/
+		}	
 	}
 
 	if (verbose)
 		model_print("---- Check on state specification ends ----\n\n");
+	// Clear out the states created when checking
+	clearStates();
 	return true;
 }
 

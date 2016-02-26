@@ -13,8 +13,6 @@
 
 #define REQUESTS_BEFORE_ALLOC 1024
 
-bool IN_TRACE_ANALYSIS = false;
-
 size_t allocatedReqs[REQUESTS_BEFORE_ALLOC] = { 0 };
 int nextRequest = 0;
 int howManyFreed = 0;
@@ -182,7 +180,7 @@ void *malloc(size_t size)
 {
 	if (user_snapshot_space) {
 		/* Only perform user allocations from user context */
-		ASSERT(!model || thread_current() || IN_TRACE_ANALYSIS);
+		ASSERT(!model || thread_current());
 		return user_malloc(size);
 	} else
 		return HandleEarlyAllocationRequest(size);
