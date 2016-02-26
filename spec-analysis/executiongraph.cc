@@ -81,7 +81,7 @@ bool ExecutionGraph::hasCycle() {
 		return true;
 	if (randomHistory)
 		return false;
-	randomHistory = generateOneHistory();
+	randomHistory = generateOneRandomHistory();
 	return cyclic;
 }
 
@@ -140,54 +140,54 @@ bool ExecutionGraph::checkAdmissibility() {
 }
 
 
-/**
-	To generate one random topological sorting
-*/
-MethodList* ExecutionGraph::generateOneHistory() {
-	if (cyclic)
+/** Generate one random topological sorting */
+MethodList* ExecutionGraph::generateOneRandomHistory() {
+	MethodList *res = new MethodList;
+	int liveNodeNum = methodList->size();
+	generateOneRandomHistoryHelper(res, liveNodeNum);
+	if (cyclic) {
+		delete res;
 		return NULL;
-	if (randomHistory) {
-		return randomHistory;
 	}
-
-	MethodListVector *results = new MethodListVector;
-	MethodList *curList = new MethodList;
-	int numLiveNodes = methodList->size();
-	bool generateOne = true;
-	bool found = false;
-	generateHistoriesHelper(results, curList, numLiveNodes, generateOne, found);
-	
-	if (results->size() > 0)
-		return (*results)[0];
-	else
-		return NULL; // To indicate there is a cycle
+	return res;
 }
+
+/** To check one generated history */
+bool ExecutionGraph::checkOneHistory(MethodList *history, bool verbose) {
+	bool pass = checkStateSpec(history, verbose);
+	if (!pass) {
+		// Print out the graph
+		model_print("Problmatic execution graph: \n");
+		print();
+	} else if (verbose) {
+		// Print out the graph in verbose
+		model_print("Execution graph: \n");
+		print();
+	}
+	return pass;
+}
+
 
 /**
-	To generate all possible histories 
+	To generate and check all possible histories.
+	
+	If stopOnFailure is true, we stop generating any history and end the
+	checking process. Verbose flag controls how the checking process is exposed. 
 */
-MethodListVector* ExecutionGraph::generateAllHistories() {
-	MethodListVector *results = new MethodListVector ;
+bool ExecutionGraph::checkAllHistories(bool stopOnFailure, bool verbose) {
 	MethodList *curList = new MethodList;
 	int numLiveNodes = methodList->size();
-	bool generateOne = false;
-	bool found = false;
-	generateHistoriesHelper(results, curList, numLiveNodes, generateOne, found);
-	
-	return results;
-}
-
-bool ExecutionGraph::checkOneHistory(MethodList *history, bool verbose) {
-	return checkStateSpec(history, verbose);
-}
-
-bool ExecutionGraph::checkAllHistories(MethodListVector *histories, bool verbose) {
-	for (unsigned i = 0; i < histories->size(); i++) {
-		MethodList *history = (*histories)[i];
-		if (!checkOneHistory(history, verbose))
-			return false;
+	bool pass = checkAllHistoriesHelper(curList, numLiveNodes, stopOnFailure, verbose);
+	if (!pass) {
+		// Print out the graph
+		model_print("Problmatic execution graph: \n");
+		print();
+	} else if (verbose) {
+		// Print out the graph in verbose
+		model_print("Execution graph: \n");
+		print();
 	}
-	return true;
+	return pass;
 }
 
 
@@ -875,37 +875,75 @@ MethodVector* ExecutionGraph::getEndNodes() {
 	resolve the rest.
 	
 	Arguments:
-	results -> all the generated topological sortings (each as a list) will be
-		added in this vector
-	curList -> it represents a temporal result of a specific topological
-		sorting; keep in mind that before calling this function, pass an empty list
-	numLiveNodes -> the number of nodes that are logically alive (that have not
+	curList -> It represents a temporal result of a specific topological
+		sorting; keep in mind that before calling this function, pass an empty
+		list. 
+	numLiveNodes -> The number of nodes that are logically alive (that have not
 		been selected and added in a specific topological sorting yet). We keep
 		such a number as an optimization since when numLinveNodes equals to 0,
 		we can backtrack. Initially it is the size of the method call list.
-	generateOne -> we incorporate the routine of generating one random
-		topological sorting into this method. When this is true, the whole
-		routine will recursively return and end the routine when it finds one
-		history, and the result will be stored as the first element in the
-		results vector. Otherwise, the routine will run until it collects the
-		whole set of all possible histories, and the whole results can be found
-		in the results vector.
-	found -> this argument is also used for generating one random history. We
-		have this argument for the purpose of fast exit when we find one
-		history.
+	verbose -> Whether the verbose mode is on
 */
-void ExecutionGraph::generateHistoriesHelper(MethodListVector* results, MethodList
-	*curList, int &numLiveNodes, bool generateOne, bool &found) {
+bool ExecutionGraph::checkAllHistoriesHelper(MethodList
+	*curList, int &numLiveNodes, bool stopOnFailure, bool verbose) {
+	if (cyclic)
+		return false;
+	
+	bool satisfied = true;
+	if (numLiveNodes == 0) { // Found one sorting, and we can backtrack
+		satisfied = checkStateSpec(curList, verbose);
+		// Don't forget to recycle
+		delete curList;
+		return satisfied;
+	}
+
+	MethodVector *roots = getRootNodes();
+	// Cycle exists (no root nodes but still have live nodes
+	if (roots->size() == 0) {
+		model_print("There is a cycle in this graph so we cannot generate"
+			" sequential histories\n");
+		cyclic = true;
+		return false;
+	}
+
+	for (unsigned i = 0; i < roots->size(); i++) {
+		Method m = (*roots)[i];
+		m->exist = false;
+		numLiveNodes--;
+		// Copy the whole current list and use that copy for the next recursive
+		// call (because we will need the same copy for other iterations at the
+		// same level of recursive calls)
+		MethodList *newList = new MethodList(*curList);
+		newList->push_back(m);
+		
+		bool oneSatisfied = checkAllHistoriesHelper(newList, numLiveNodes,
+			stopOnFailure, verbose);
+		// Stop the checking once failure or cycle detected
+		if (!oneSatisfied && (cyclic || stopOnFailure)) {
+			delete curList;
+			delete roots;
+			return false;
+		}
+		satisfied &= oneSatisfied;
+		// Recover
+		m->exist = true;
+		numLiveNodes++;
+	}
+	delete curList;
+	delete roots;
+	return satisfied;
+}
+
+/**
+	The helper function to generate one random topological sorting
+*/
+void ExecutionGraph::generateOneRandomHistoryHelper(MethodList
+	*curList, int &numLiveNodes) {
 	if (cyclic)
 		return;
 
-	if (generateOne && found) {
-		return;
-	}
-	
-	if (numLiveNodes == 0) { // Found one sorting, and we can backtrack
-		found = true;
-		results->push_back(new MethodList(*curList));
+	if (numLiveNodes == 0) { // Found one sorting, and we can return 
+		// Don't forget to recycle
 		return;
 	}
 
@@ -918,36 +956,16 @@ void ExecutionGraph::generateHistoriesHelper(MethodListVector* results, MethodLi
 		return;
 	}
 
-	for (unsigned i = 0; i < roots->size(); i++) {
-		Method m;
-		if (generateOne) { // Just randomly pick one
-			srand (time(NULL));
-			int pick = rand() % roots->size();
-			m = (*roots)[pick];
-		} else {
-			m = (*roots)[i];
-		}
-		m->exist = false;
-		numLiveNodes--;
-		// Copy the whole current list and use that copy for the next recursive
-		// call (because we will need the same copy for other iterations at the
-		// same level of recursive calls)
-		MethodList *newList = new MethodList(*curList);
-		newList->push_back(m);
+	srand (time(NULL));
+	int pick = rand() % roots->size();
+	Method m = (*roots)[pick];
 
-		generateHistoriesHelper(results, newList, numLiveNodes, generateOne,
-			found);
+	m->exist = false;
+	numLiveNodes--;
+	curList->push_back(m);
 
-		// Recover
-		m->exist = true;
-		numLiveNodes++;
-		delete newList;
-		
-		// Early exit for the case of just generating one random sorting
-		if (generateOne) 
-			break;
-	}
 	delete roots;
+	generateOneRandomHistoryHelper(curList, numLiveNodes);
 }
 
 Method ExecutionGraph::getStartMethod() {
@@ -1137,8 +1155,6 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 				model_print("PreCondition is not satisfied. Problematic method"
 					" is as follow: \n");
 				m->print(true, true);
-				model_print("Problmatic execution graph: \n");
-				print();
 				printOneHistory(history, "Problematic Seqneutial History");
 				if (verbose)
 					model_print("---- Check on state specification ends"
@@ -1166,10 +1182,14 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose) {
 		}	
 	}
 
-	if (verbose)
-		model_print("---- Check on state specification ends ----\n\n");
 	// Clear out the states created when checking
 	clearStates();
+
+	if (verbose) {
+		model_print("---- Check on state specification ends ----\n\n");
+		// Print the history in verbose mode
+		printOneHistory(history, "Problematic Seqneutial History");
+	}
 	return true;
 }
 

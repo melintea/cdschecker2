@@ -76,14 +76,13 @@ class ExecutionGraph {
 	bool checkAdmissibility();
 
 	/** Generate one random topological sorting */
-	MethodList* generateOneHistory();
+	MethodList* generateOneRandomHistory();
 
-	/** Generate all topological sortings */
-	MethodListVector* generateAllHistories();
+	/** Check whether a specific history is correct */
+	bool checkOneHistory(MethodList *history, bool verbose = false);
 
-	bool checkOneHistory(MethodList *list, bool verbose = false);
-
-	bool checkAllHistories(MethodListVector *sortings, bool verbose = false);
+	/** Check whether all histories are correct */
+	bool checkAllHistories(bool stopOnFailure = true, bool verbose = false);
 	
 	/********** A few public printing functions for DEBUGGING **********/
 
@@ -250,21 +249,21 @@ class ExecutionGraph {
 	MethodVector* getEndNodes();
 
 	/**
-		A helper function for generating sequential histories, and we cau call
-		this function to either generate one random history or all
-		possible histories. Before calling this function, initialize an empty
-		MethodListVector and an empty MethodList, and pass them as the results
-		and curList. Also pass the size of the method list as the numLiveNodes,
-		and found should be passed as false.
+		A helper function for generating and check all sequential histories. Before calling this function, initialize an empty
+		MethodList , and pass it as curList. Also pass the size of the method
+		list as the numLiveNodes.
 
-		If you only want to generate one random history, pass true for
-		generateOne, and the result would be in (*results)[0]. Otherwise, you
-		can pass false to generateOne, and this routine will recursively run and
-		collect the whole set of all possible histories and store it in the
-		results vector.
+		If you only want to stop the checking process when finding one failed
+		history, pass true to stopOnFailure.
 	*/
-	void generateHistoriesHelper(MethodListVector* results,
-		MethodList *curList, int &numLiveNodes, bool generateOne, bool &found);
+	bool checkAllHistoriesHelper(MethodList *curList, int &numLiveNodes, bool
+	stopOnFailure, bool verbose);
+
+	/**
+		The helper function to generate one random topological sorting
+	*/
+	void generateOneRandomHistoryHelper(MethodList
+		*curList, int &numLiveNodes);
 
 	/** Return the fake nodes -- START & END */
 	Method getStartMethod();

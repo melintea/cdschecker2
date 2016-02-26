@@ -50,7 +50,7 @@ void SPECAnalysis::finish() {
 			model_print("However! You have executions with a cyclic graph.\n");
 		if (stats->inadmissibilityCnt > 0)
 			model_print("However! You have inadmissible executions.\n");
-		if (stats->noOrderingPointCnt > 0)
+		if (stats->noOrderingPointCnt > 0 && print_always)
 			model_print("You have execution graphs that have no ordering points.\n");
 
 	}
@@ -138,13 +138,11 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	
 	bool pass = false;
 	MethodList *history = NULL;
-	MethodListVector *histories= NULL;
 	if (check_one) { // Only check one random sorting
-		history = graph->generateOneHistory();
+		history = graph->generateOneRandomHistory();
 		pass = graph->checkOneHistory(history, print_always && !quiet);
 	} else { // Check all sortings
-		histories = graph->generateAllHistories();
-		pass = graph->checkAllHistories(histories, print_always && !quiet);
+		pass = graph->checkAllHistories(true, print_always && !quiet);
 	}
 
 	if (!pass) {
@@ -158,10 +156,6 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 		if (print_always && !quiet) { // By default not printing
 			model_print("This execution is consistent with the spec.\n");
 			graph->print();
-			if (check_one)
-				graph->printOneHistory(history);
-			else
-				graph->printAllHistories(histories);
 		}
 	}
 }
