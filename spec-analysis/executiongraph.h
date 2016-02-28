@@ -34,9 +34,6 @@ class Graph;
 
 
 typedef SnapList<PotentialOP*> PotentialOPList;
-typedef SnapList<Method> MethodList;
-typedef SnapVector<Method> MethodVector;
-typedef SnapVector<MethodList*> MethodListVector;
 
 /**
 	This represents the execution graph at the method call level. Each node is a
@@ -149,7 +146,7 @@ class ExecutionGraph {
 	NamedFunction *printState;
 
 	/** The map from interface label name to the set of spec functions */
-	Map *funcMap;
+	StateFuncMap *funcMap;
 
 	/** The commutativity rule array and its size */
 	CommutativityRule *commuteRules;

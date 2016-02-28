@@ -39,6 +39,24 @@ typedef SnapVector<int> IntVector;
 typedef SnapList<int> IntList;
 typedef SnapSet<int> IntSet;
 
+template<typename Key, typename Value>
+class Map: public unordered_map<Key, Value> {
+	public:
+	typedef unordered_map<Key, Value> map;
+
+	Map() : map() { }
+
+	Value get(Key key) {
+		return (*this)[key];
+	}
+
+	void put(Key key, Value value) {
+		(*this)[key] = value;
+	}
+
+	SNAPSHOTALLOC
+};
+
 class IntMap : public unordered_map<int, int> {
 	public:
 	typedef unordered_map<int, int> map;
@@ -153,6 +171,51 @@ inline void printMap(IntMap *container) {
 	equal to "val" would be "Subset(PREV, Guard(STATE(x) == val))"
 */
 #define Guard(expression) GeneralGuard(Method, expression)
+
+#define MostRecent(guard) mostRecent(_M, guard)
+
+/**
+	A general subset operation that takes a condition and returns all the item
+	for which the boolean guard holds.
+*/
+inline SnapSet<Method>* mostRecent(Method method, std::function<bool(MethodCall*)> condition) {
+	SnapSet<Method> *res = new SnapSet<Method>;
+	// A list of potential nodes that are most recent
+	MethodList *toCheckList = new MethodList;
+	MethodSet prev = method->prev;
+	if (prev->empty()) // method is START node
+		return res;
+	else {
+		ForEach (_M, prev)
+			toCheckList->push_back(_M);
+	}
+	// Searching loop
+	while (!toCheckList->empty()) {
+		Method _M = toCheckList->front();
+		toCheckList->pop_front();
+		
+		if (condition(_M)) {
+			bool recencyFlag = true;
+			ForEach (m, res) {
+				if (MethodCall::belong(_M->allNext, m)) {
+					recencyFlag = false;
+					break;
+				}
+			}
+			if (recencyFlag)
+				res->insert(_M);
+		}
+		else { // Not what we want, keep going up the graph 
+			prev = _M->prev;
+			if (!prev->empty()) {
+				ForEach (_M, prev)
+					toCheckList->push_back(_M);
+			}
+		}
+	}
+	return res;
+}
+
 
 /**
 	A general subset operation that takes a condition and returns all the item

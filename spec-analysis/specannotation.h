@@ -124,7 +124,7 @@ struct StateFunctions {
 } StateFunctions;
 
 /** A map from a constant c-string to its set of checking functions */
-typedef HashTable<CSTR, StateFunctions*, uintptr_t, 4, malloc, calloc, free > Map;
+typedef HashTable<CSTR, StateFunctions*, uintptr_t, 4, malloc, calloc, free > StateFuncMap;
 
 typedef
 struct AnnoInit {
@@ -174,7 +174,7 @@ struct AnnoInit {
 
 	/** For the state functions. We can conveniently access to the set of state
 	 *  functions with a hashmap */
-	Map *funcMap;
+	StateFuncMap *funcMap;
 	
 	/** For commutativity rules */
 	CommutativityRule *commuteRules;

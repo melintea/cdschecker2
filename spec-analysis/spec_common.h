@@ -35,6 +35,4 @@ class SnapSet : public std::set<_Tp, std::less<_Tp>, SnapshotAlloc<_Tp> >
 	SNAPSHOTALLOC
 };
 
-extern SnapshotAlloc<char> snapshotAlloc;
-
 #endif

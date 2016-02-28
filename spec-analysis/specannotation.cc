@@ -42,7 +42,7 @@ AnnoInit::AnnoInit(NamedFunction *initial, NamedFunction *final, NamedFunction
 	clear(clear), printState(printState), commuteRules(commuteRules),
 	commuteRuleNum(ruleNum)
 {
-	funcMap = new Map;
+	funcMap = new StateFuncMap;
 }
 	
 

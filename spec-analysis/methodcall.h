@@ -10,6 +10,11 @@ class MethodCall;
 typedef MethodCall *Method;
 typedef SnapSet<Method> *MethodSet;
 typedef SnapList<ModelAction *> action_list_t;
+
+typedef SnapList<Method> MethodList;
+typedef SnapVector<Method> MethodVector;
+typedef SnapVector<MethodList*> MethodListVector;
+
 /**
 	This is the core class on which the whole checking process will be
 	executing. With the original execution (with the raw annotation
