@@ -5,6 +5,15 @@
 #include <stdlib.h>
 #include "mymemory.h"
 
+/** Comment this out if you don't want unnecessary debugging printing out */
+#define CDSSPEC_DEBUG
+
+#ifdef CDSSPEC_DEBUG
+#define debug_print(fmt, ...) do { dprintf(model_out, fmt, ##__VA_ARGS__); } while (0)
+#else
+#define debug_print(fmt, ...) do { } while (0)
+#endif
+
 #define SPEC_ANALYSIS 1
 
 /** Null function pointer */

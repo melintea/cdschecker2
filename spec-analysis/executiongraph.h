@@ -15,7 +15,7 @@
 #include "specannotation.h"
 
 
-const int UNKNOWN_CONFLICT = 0xffff;
+const int SELF_CYCLE = 0xfffe;
 
 /**
 	Record the a potential commit point information, including the potential
@@ -44,7 +44,7 @@ typedef SnapList<PotentialOP*> PotentialOPList;
 */
 class ExecutionGraph {
 	public:
-	ExecutionGraph(ModelExecution *e);
+	ExecutionGraph(ModelExecution *e, bool allowCyclic);
 
 	/********** Public class interface for the core checking engine **********/
 	/**
@@ -132,6 +132,10 @@ class ExecutionGraph {
 
 	/** Whether there is a cycle in the graph */
 	bool cyclic;
+
+	/** Whether users expect us to check cyclic graph */
+	bool allowCyclic;
+
 
 	/** The state initialization function */
 	NamedFunction *initial;

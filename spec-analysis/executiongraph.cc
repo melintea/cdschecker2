@@ -26,8 +26,7 @@ PotentialOP::PotentialOP(ModelAction *op, CSTR label) :
 /**
 	Initialze the necessary fields 
 */
-ExecutionGraph::ExecutionGraph(ModelExecution *e) {
-	execution = e;
+ExecutionGraph::ExecutionGraph(ModelExecution *e, bool allowCyclic) : execution(e), allowCyclic(allowCyclic) {
 	methodList = new MethodList;
 	randomHistory = NULL;
 
@@ -139,9 +138,77 @@ bool ExecutionGraph::checkAdmissibility() {
 	return admissible;
 }
 
+/** Checking cyclic graph specification */
+bool ExecutionGraph::checkCyclicGraphSpec(bool verbose) {
+	if (verbose) {
+		model_print("---- Start to check cyclic graph ----\n");
+	}
+
+	bool pass = false;
+	for (MethodList::iterator it = methodList->begin(); it != methodList->end();
+		it++) {
+		Method m = *it;
+		if (isFakeMethod(m))
+			continue;
+
+		StateFunctions *funcs = NULL;
+		if (verbose) {
+			m->print(false, false);
+			model_print("\n");
+			
+			funcs = funcMap->get(m->name);
+			ASSERT (funcs);
+			UpdateState_t printValue = (UpdateState_t) funcs->print->function;
+			if (printValue) {
+				model_print("\t**********  Value Info  **********\n");
+				(*printValue)(m);
+			}
+		}
+
+		// Cyclic graph only supports @PreCondition
+		funcs = funcMap->get(m->name);
+		ASSERT (funcs);
+		CheckState_t preCondition = (CheckState_t)
+			funcs->preCondition->function;
+
+		// @PreCondition of Mehtod m
+		if (preCondition) {
+			pass = (*preCondition)(m);
+
+			if (!pass) {
+				model_print("PreCondition is not satisfied. Problematic method"
+					" is as follow: \n");
+				m->print(true, true);
+				if (verbose) {
+					model_print("---- Check cyclic graph END ----\n\n");
+				}
+				return false;
+			}
+		}
+	}
+
+	if (!pass) {
+		// Print out the graph
+		model_print("Problmatic execution graph: \n");
+		print(true);
+	} else if (verbose) {
+		// Print out the graph in verbose
+		model_print("Execution graph: \n");
+		print(true);
+	}
+
+	if (verbose) {
+		model_print("---- Check cyclic graph END ----\n\n");
+	}
+	return true;
+}
+
+
+
 
 /** To check "num" random histories */
 bool ExecutionGraph::checkRandomHistories(int num, bool stopOnFail, bool verbose) {
+	ASSERT (!cyclic);
 	bool pass = true;
 	int i;
 	for (i = 0; i < num; i++) {
@@ -180,6 +247,7 @@ bool ExecutionGraph::checkRandomHistories(int num, bool stopOnFail, bool verbose
 	checking process. Verbose flag controls how the checking process is exposed. 
 */
 bool ExecutionGraph::checkAllHistories(bool stopOnFailure, bool verbose) {
+	ASSERT (!cyclic);
 	MethodList *curList = new MethodList;
 	int numLiveNodes = methodList->size();
 	int historyIndex = 1;
@@ -510,16 +578,8 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	delete popList;
 	// XXX: We just allow methods to have no specified ordering points. In that
 	// case, the method is concurrent with every other method call
-	
 	if (m->orderingPoints->size() == 0) {
 		noOrderingPoint = true;
-		/*
-		model_print("There is no ordering points for method %s.\n",
-			m->name);
-		m->begin->print();
-		broken = true;
-		return NULL;
-		*/
 		return m;
 	} else {
 		// Get a complete method call
@@ -659,16 +719,19 @@ void ExecutionGraph::buildEdges() {
 			Method m2 = *iter2;
 			int val = conflict(m1, m2);
 			if (val == 1) {
-				if (m1 != m2) { // There's a cycle
+				m1->allNext->insert(m2);
+				m2->allPrev->insert(m1);
+			} else if (val == -1) {
+				m2->allNext->insert(m1);
+				m1->allPrev->insert(m2);
+			} else if (val == SELF_CYCLE) {
+				if (allowCyclic) {
+					// m1 -> m2
 					m1->allNext->insert(m2);
 					m2->allPrev->insert(m1);
-					cyclic = true;
-				}
-			} else if (val == -1) {
-				if (m1 != m2) { // There's a cycle
+					// m2 -> m1
 					m2->allNext->insert(m1);
 					m1->allPrev->insert(m2);
-					cyclic = true;
 				}
 			}
 		}
@@ -718,13 +781,8 @@ void ExecutionGraph::buildEdges() {
 		}
 	}
 
-	//AssertEdges();
-
-	if (hasCycle()) {
-		model_print("\tWarning: You have cycle in your execution graph.\n");
-		model_print("\tMake sure that's what you expect.\n");
-	}
-
+	if (!cyclic)
+		AssertEdges();
 	// Initialize the justified method of each method
 	if (!cyclic)
 		initializeJustifiedNode();
@@ -881,16 +939,20 @@ int ExecutionGraph::conflict(Method m1, Method m2) {
 		for (iter2 = OPs2->begin(); iter2 != OPs2->end(); iter2++) {
 			ModelAction *act2 = *iter2;
 			int res = conflict(act1, act2);
+			if (res == 0) // Commuting actions
+				continue;
 			if (val == 0)
 				val = res;
 			else if (val != res) { // Self cycle
 				cyclic = true;
-				model_print("There is a self cycle between the following two "
-					"methods\n");
-				m1->print();
-				m2->print();
-				broken = true;
-				return UNKNOWN_CONFLICT;
+				if (!allowCyclic) {
+					model_print("There is a self cycle between the following two "
+						"methods\n");
+					m1->print();
+					m2->print();
+					broken = true;
+				}
+				return SELF_CYCLE;
 			}
 		}
 	}
@@ -1146,61 +1208,6 @@ void ExecutionGraph::clearStates() {
 		if (m->state)
 			(*clearFunc)(m);
 	}
-}
-
-/** Checking cyclic graph specification */
-bool ExecutionGraph::checkCyclicGraphSpec(bool verbose) {
-	if (verbose) {
-		model_print("---- Start to check cyclic graph ----\n");
-	}
-
-	for (MethodList::iterator it = methodList->begin(); it != methodList->end();
-		it++) {
-		Method m = *it;
-		if (isFakeMethod(m))
-			continue;
-
-		StateFunctions *funcs = NULL;
-		if (verbose) {
-			m->print(false, false);
-			model_print("\n");
-			
-			funcs = funcMap->get(m->name);
-			ASSERT (funcs);
-			UpdateState_t printValue = (UpdateState_t) funcs->print->function;
-			if (printValue) {
-				model_print("\t**********  Value Info  **********\n");
-				(*printValue)(m);
-			}
-		}
-
-		// Cyclic graph only supports @PreCondition
-		funcs = funcMap->get(m->name);
-		ASSERT (funcs);
-		CheckState_t preCondition = (CheckState_t)
-			funcs->preCondition->function;
-
-		bool satisfied;
-		// @PreCondition of Mehtod m
-		if (preCondition) {
-			satisfied = (*preCondition)(m);
-
-			if (!satisfied) {
-				model_print("PreCondition is not satisfied. Problematic method"
-					" is as follow: \n");
-				m->print(true, true);
-				if (verbose) {
-					model_print("---- Check cyclic graph END ----\n\n");
-				}
-				return false;
-			}
-		}
-	}
-
-	if (verbose) {
-		model_print("---- Check cyclic graph END ----\n\n");
-	}
-	return true;
 }
 
 /**

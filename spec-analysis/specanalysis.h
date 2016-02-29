@@ -61,6 +61,8 @@ class SPECAnalysis : public TraceAnalysis {
 	bool print_inadmissible;
 	/* Never print out the graphs of any traces */
 	bool quiet;
+	/* Whether we still want to check cyclic executions */
+	bool checkCyclic;
 	/* Stop checking when seeing one failed history */
 	bool stopOnFail;
 	/* The number of random histories to be checked; If 0, we check all possible

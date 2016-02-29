@@ -17,6 +17,7 @@ SPECAnalysis::SPECAnalysis()
 	print_always = false;
 	print_inadmissible = true;
 	quiet = false;
+	checkCyclic = false;
 	stopOnFail = false;
 	checkRandomNum = 0;
 }
@@ -43,12 +44,21 @@ void SPECAnalysis::finish() {
 	model_print("Cyclic graph: %d\n", stats->cyclicCnt);
 	model_print("Inadmissible executions: %d\n", stats->inadmissibilityCnt);
 	model_print("Failed executions: %d\n", stats->failedCnt);
+
+	if (stats->cyclicCnt > 0 && checkCyclic) {
+		model_print("Warning: You have cycle in your execution graphs.\n");
+	}
+
 	if (stats->failedCnt == 0) {
 		model_print("Yay! All executions have passed the specification.\n");
 		if (stats->brokenCnt > 0)
 			model_print("However! You have executions with a broken graph.\n");
-		if (stats->cyclicCnt > 0)
-			model_print("However! You have executions with a cyclic graph.\n");
+		if (stats->cyclicCnt > 0) {
+			model_print("Warning: You have cyclic execution graphs!\n");
+			if (checkCyclic) {
+				model_print("Make sure that's what you expect.\n");
+			}
+		}
 		if (stats->inadmissibilityCnt > 0)
 			model_print("However! You have inadmissible executions.\n");
 		if (stats->noOrderingPointCnt > 0 && print_always)
@@ -99,6 +109,9 @@ bool SPECAnalysis::option(char * opt) {
 	} else if (strcmp(opt, "quiet")==0) {
 		quiet = true;
 		return false;
+	} else if (strcmp(opt, "check-cyclic") == 0) {
+		checkCyclic = true;
+		return false;
 	} else if (strcmp(opt, "stop-on-fail")==0) {
 		stopOnFail = true;
 		return false;
@@ -133,11 +146,10 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	/* Count the number bug-free traces */
 	stats->bugfreeCnt++;
 
-	// FIXME: define checkCyclic
-	bool checkCyclic = true;
-	ExecutionGraph *graph = new ExecutionGraph(execution);
+	// FIXME: Make checkCyclic false by default
+	ExecutionGraph *graph = new ExecutionGraph(execution, checkCyclic);
 	graph->buildGraph(actions);
-	if (graph->isBroken() && !(graph->hasCycle() && checkCyclic)) {
+	if (graph->isBroken()) {
 		stats->brokenCnt++;
 		if (print_always && !quiet) { // By default not printing
 			model_print("Execution #%d has a broken graph.\n\n",
@@ -173,13 +185,20 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	if (graph->hasCycle()) {
 		/* One more trace with a cycle */
 		stats->cyclicCnt++;
-		if (!quiet)
-			graph->print();
-		if (print_always && !quiet) { // By default not printing
-			model_print("Execution #%d has a cyclic graph.\n\n",
-				execution->get_execution_number());
+		if (!checkCyclic) {
+			if (!quiet)
+				graph->print();
+			if (print_always && !quiet) { // By default not printing
+				model_print("Execution #%d has a cyclic graph.\n\n",
+					execution->get_execution_number());
+			}
+		} else {
+			if (print_always && !quiet) {
+				model_print("Checking cyclic execution #%d...\n",
+					execution->get_execution_number());
+			}
+			pass = graph->checkCyclicGraphSpec(print_always && !quiet);
 		}
-		pass = graph->checkCyclicGraphSpec(print_always && !quiet);
 	} else if (checkRandomNum > 0) { // Only a few random histories
 		if (print_always && !quiet)
 			model_print("Check %d random histories...\n", checkRandomNum);
