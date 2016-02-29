@@ -648,50 +648,26 @@ void ExecutionGraph::initializeJustifiedNode() {
 	for (it++; it != methodList->end(); it++) {
 		Method m = *it;
 		// Walk all the way up, when we have multiple immediately previous
-		// choices, pick one and record others. When we find one node that only
-		// has one immediate prev, check if that node is before all other
-		// recorded nodes. If not, keep going up; otherwise, that node is the
-		// most recent justified node
+		// choices, pick one and check if that node is a justified node --- its
+		// concurrent set should be disjoint with the whole set m->allPrev.  If
+		// not, keep going up; otherwise, that node is the most recent justified
+		// node
 		
-		// A list to record visited nodes that we will later check
-		MethodList *visitedMethods = new MethodList;
 		MethodSet prev = NULL;
 		Method justified = m;
-		SnapSet<Method>::iterator setIt;
 		do {
 			prev = justified->prev;
 			// At the very least we should have the START nodes
 			ASSERT (!prev->empty());
 			
 			// setIt points to the very beginning of allPrev set
-			setIt = prev->begin();
-			if (prev->size() == 1) { // Need extra check
-				justified = *setIt;
-				// Check whether justified is before all recorded nodes
-				bool beforeFlag = true;
-				for (MethodList::iterator visitedIter =
-					visitedMethods->begin(); visitedIter !=
-					visitedMethods->end(); visitedIter++) {
-					Method visited = *visitedIter;
-					if (!isReachable(justified, visited)) {
-						beforeFlag = false;
-						break;
-					}
-				}
-				if (beforeFlag) // Found the justified node
-					break;
-			} else { // Pick one path up and record others
-				// Pick the "beginning" node
-				justified = *setIt;
-				// Record other parents in the list
-				for (setIt++; setIt != prev->end(); setIt++) {
-					Method otherParent = *setIt;
-					visitedMethods->push_back(otherParent);
-				}
-			}
+			SnapSet<Method>::iterator setIt = prev->begin();
+			justified = *setIt;
+			// Check whether justified is really the justified node
+			if (MethodCall::disjoint(justified->concurrent, m->allPrev))
+				break;
 		} while (true);
-		// Recycle list
-		delete visitedMethods;
+		
 		ASSERT (justified != m);
 		// Don't forget to set the method's field
 		m->justifiedMethod = justified;
