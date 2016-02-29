@@ -72,6 +72,9 @@ class ExecutionGraph {
 	/** Check whether the execution is admmisible */
 	bool checkAdmissibility();
 
+	/** Checking cyclic graph specification */
+	bool checkCyclicGraphSpec(bool verbose);
+
 	/** Check whether a number of random history is correct */
 	bool checkRandomHistories(int num = 1, bool stopOnFail = true, bool verbose = false);
 

@@ -133,9 +133,11 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 	/* Count the number bug-free traces */
 	stats->bugfreeCnt++;
 
+	// FIXME: define checkCyclic
+	bool checkCyclic = true;
 	ExecutionGraph *graph = new ExecutionGraph(execution);
 	graph->buildGraph(actions);
-	if (graph->isBroken()) {
+	if (graph->isBroken() && !(graph->hasCycle() && checkCyclic)) {
 		stats->brokenCnt++;
 		if (print_always && !quiet) { // By default not printing
 			model_print("Execution #%d has a broken graph.\n\n",
@@ -167,6 +169,7 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 		return;
 	}
 
+	bool pass = false;
 	if (graph->hasCycle()) {
 		/* One more trace with a cycle */
 		stats->cyclicCnt++;
@@ -176,11 +179,8 @@ void SPECAnalysis::analyze(action_list_t *actions) {
 			model_print("Execution #%d has a cyclic graph.\n\n",
 				execution->get_execution_number());
 		}
-		return;
-	}
-	
-	bool pass = false;
-	if (checkRandomNum > 0) { // Only a few random histories
+		pass = graph->checkCyclicGraphSpec(print_always && !quiet);
+	} else if (checkRandomNum > 0) { // Only a few random histories
 		if (print_always && !quiet)
 			model_print("Check %d random histories...\n", checkRandomNum);
 		pass = graph->checkRandomHistories(checkRandomNum, true, print_always && !quiet);

@@ -659,11 +659,17 @@ void ExecutionGraph::buildEdges() {
 			Method m2 = *iter2;
 			int val = conflict(m1, m2);
 			if (val == 1) {
-				m1->allNext->insert(m2);
-				m2->allPrev->insert(m1);
+				if (m1 != m2) { // There's a cycle
+					m1->allNext->insert(m2);
+					m2->allPrev->insert(m1);
+					cyclic = true;
+				}
 			} else if (val == -1) {
-				m2->allNext->insert(m1);
-				m1->allPrev->insert(m2);
+				if (m1 != m2) { // There's a cycle
+					m2->allNext->insert(m1);
+					m1->allPrev->insert(m2);
+					cyclic = true;
+				}
 			}
 		}
 	}
@@ -712,10 +718,16 @@ void ExecutionGraph::buildEdges() {
 		}
 	}
 
-	AssertEdges();
+	//AssertEdges();
+
+	if (hasCycle()) {
+		model_print("\tWarning: You have cycle in your execution graph.\n");
+		model_print("\tMake sure that's what you expect.\n");
+	}
 
 	// Initialize the justified method of each method
-	initializeJustifiedNode();
+	if (!cyclic)
+		initializeJustifiedNode();
 }
 
 /**
@@ -1134,6 +1146,61 @@ void ExecutionGraph::clearStates() {
 		if (m->state)
 			(*clearFunc)(m);
 	}
+}
+
+/** Checking cyclic graph specification */
+bool ExecutionGraph::checkCyclicGraphSpec(bool verbose) {
+	if (verbose) {
+		model_print("---- Start to check cyclic graph ----\n");
+	}
+
+	for (MethodList::iterator it = methodList->begin(); it != methodList->end();
+		it++) {
+		Method m = *it;
+		if (isFakeMethod(m))
+			continue;
+
+		StateFunctions *funcs = NULL;
+		if (verbose) {
+			m->print(false, false);
+			model_print("\n");
+			
+			funcs = funcMap->get(m->name);
+			ASSERT (funcs);
+			UpdateState_t printValue = (UpdateState_t) funcs->print->function;
+			if (printValue) {
+				model_print("\t**********  Value Info  **********\n");
+				(*printValue)(m);
+			}
+		}
+
+		// Cyclic graph only supports @PreCondition
+		funcs = funcMap->get(m->name);
+		ASSERT (funcs);
+		CheckState_t preCondition = (CheckState_t)
+			funcs->preCondition->function;
+
+		bool satisfied;
+		// @PreCondition of Mehtod m
+		if (preCondition) {
+			satisfied = (*preCondition)(m);
+
+			if (!satisfied) {
+				model_print("PreCondition is not satisfied. Problematic method"
+					" is as follow: \n");
+				m->print(true, true);
+				if (verbose) {
+					model_print("---- Check cyclic graph END ----\n\n");
+				}
+				return false;
+			}
+		}
+	}
+
+	if (verbose) {
+		model_print("---- Check cyclic graph END ----\n\n");
+	}
+	return true;
 }
 
 /**

@@ -32,6 +32,7 @@ typedef SnapVector<MethodList*> MethodListVector;
 class MethodCall {
 	public:
 	unsigned int id; // The method call id (the seq_num of the begin action)
+	int tid; // The thread id
 	CSTR name; // The interface label name
 	void *value; // The pointer that points to the struct that have the return
 				 // value and the arguments
@@ -53,6 +54,8 @@ class MethodCall {
 	void addConcurrent(Method m);
 
 	void addOrderingPoint(ModelAction *act);
+
+	bool before(Method another);
 
 	static bool belong(MethodSet s, Method m);
 
@@ -90,7 +93,8 @@ class MethodCall {
 		Keep a set of all methods that are hb/SC before&after me to calculate my
 		state
 	*/
-	MethodSet allPrev, allNext;
+	MethodSet allPrev;
+	MethodSet allNext;
 
 	/** Logically exist (for generating all possible topological sortings) */
 	bool exist;

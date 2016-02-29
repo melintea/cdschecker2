@@ -131,16 +131,6 @@ inline void printMap(IntMap *container) {
 #define ITEM _M
 #define _M ME
 
-#define ID Id(_M)
-
-#define NAME Name(_M)
-
-#define STATE(field) State(_M, field)
-
-#define VALUE(type, field) Value(_M, type, field)
-#define RET(type) VALUE(type, RET)
-#define ARG(type, arg) VALUE(type, arg)
-
 /**
 	This operation is specifically for Method set. For example, when we want to
 	construct an integer set from the state field "x" (which is an
@@ -344,14 +334,21 @@ inline MethodSet MakeSet(int count, ...) {
 
 /********** Method call related operations **********/
 #define Id(method) method->id
+#define ID Id(_M)
 
 #define Name(method) method->name
-
-#define State(method, field) ((StateStruct*) method->state)->field
+#define NAME Name(_M)
 
 #define Value(method, type, field) ((type*) method->value)->field
 #define Ret(method, type) Value(method, type, RET)
 #define Arg(method, type, arg) Value(method, type, arg)
+
+#define VALUE(type, field) Value(_M, type, field)
+#define RET(type) VALUE(type, RET)
+#define ARG(type, arg) VALUE(type, arg)
+
+#define State(method, field) ((StateStruct*) method->state)->field
+#define STATE(field) State(_M, field)
 
 #define Prev(method) method->prev
 #define PREV _M->prev
@@ -362,6 +359,11 @@ inline MethodSet MakeSet(int count, ...) {
 #define Concurrent(method) method->concurrent
 #define CONCURRENT  _M->concurrent
 
+#define AllPrev(method) method->allPrev
+#define ALLPREV _M->allPrev
+
+#define AllNext(method) method->allNext
+#define ALLNEXT _M->allNext 
 
 /***************************************************************************/
 /***************************************************************************/

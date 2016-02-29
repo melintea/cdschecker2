@@ -18,13 +18,16 @@ MethodCall::MethodCall(CSTR name, void *value, ModelAction *begin) :
 	if (name == GRAPH_START) {
 		this->begin = NULL;
 		id = METHOD_ID_MIN;
+		tid = 1; // Considered to be the main thread
 	} else if (name == GRAPH_FINISH) {
 		this->begin = NULL;
 		id = METHOD_ID_MAX;
+		tid = 1; // Considered to be the main thread
 	} else {
 		this->begin = begin;
 		ASSERT (begin);
 		id = begin->get_seq_number();
+		tid = id_to_int(begin->get_tid());
 	}
 }
 	
@@ -39,6 +42,11 @@ void MethodCall::addOrderingPoint(ModelAction *act) {
 		orderingPoints->end(), act);
 	if (!hasIt)
 		orderingPoints->push_back(act);
+}
+
+
+bool MethodCall::before(Method another) {
+	return belong(allNext, another);
 }
 
 bool MethodCall::belong(MethodSet s, Method m) {
