@@ -1183,8 +1183,6 @@ void ExecutionGraph::clearStates() {
 		it++) {
 		Method m = *it;
 		if (m->state) {
-			model_print("\t@Clear: ");
-			m->print(false, true);
 			(*clearFunc)(m);
 		}
 	}
