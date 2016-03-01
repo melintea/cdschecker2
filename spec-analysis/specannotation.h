@@ -63,7 +63,7 @@ typedef bool (*CheckCommutativity_t)(Method, Method);
 	is the method that should be executed (to access its method call info (ret
 	& args)
 */
-typedef void (*StateTransition_t)(Method, Method);
+typedef bool (*StateTransition_t)(Method, Method);
 typedef bool (*CheckState_t)(Method);
 typedef void (*UpdateState_t)(Method);
 // Copy the second state to the first state

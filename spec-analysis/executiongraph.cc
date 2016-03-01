@@ -251,13 +251,14 @@ bool ExecutionGraph::checkAllHistories(bool stopOnFailure, bool verbose) {
 	MethodList *curList = new MethodList;
 	int numLiveNodes = methodList->size();
 	int historyIndex = 1;
+	if (verbose) {
+		// Print out the graph in verbose
+		print();
+	}
 	bool pass = checkAllHistoriesHelper(curList, numLiveNodes, historyIndex,
 		stopOnFailure, verbose);
-	if (!pass) {
+	if (!pass && !verbose) {
 		// Print out the graph
-		print();
-	} else if (verbose) {
-		// Print out the graph in verbose
 		print();
 	}
 	if (verbose)
@@ -1181,10 +1182,14 @@ void ExecutionGraph::clearStates() {
 	for (MethodList::iterator it = methodList->begin(); it != methodList->end();
 		it++) {
 		Method m = *it;
-		if (m->state)
+		if (m->state) {
+			model_print("\t@Clear: ");
+			m->print(false, true);
 			(*clearFunc)(m);
+		}
 	}
 }
+
 
 /**
 	Checking the state specification (in sequential order)
@@ -1197,6 +1202,11 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 		else
 			model_print("---- Start to check history ----\n");
 	}
+
+	// @Transition can also return a boolean. For example when a steal() and
+	// take() in the deque both gets the last element, then we can see a bug in
+	// the evaluating the list of @Transitions for a following operation.
+	bool satisfied = false;
 
 	// @Initial state (with a fake starting node)
 	Method startMethod = getStartMethod();
@@ -1277,7 +1287,24 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 				transition = (StateTransition_t)
 					funcs->transition->function;
 				// @Transition on the state of Method m with Method exec
-				(*transition)(m, exec);
+				satisfied = (*transition)(m, exec);
+
+				if (!satisfied) { // Error in evaluating @Transition
+					model_print("Transition returns false. Problematic method"
+						" is as follow: \n");
+					m->print(true, true);
+					printOneHistory(history, "Failed History");
+					if (verbose) {
+						if (historyIndex > 0)
+							model_print("---- Check history #%d END ----\n\n",
+								historyIndex);
+						else
+							model_print("---- Check history END ----\n\n");
+					}
+					// Clear out the states created when checking
+					clearStates();
+					return false;
+				}
 	
 				if (verbose) {
 					model_print("\t@Transition on ");
@@ -1307,7 +1334,6 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 		//CheckState_t postCondition = (CheckState_t)
 		//	CheckState_t funcs->postCondition->function;
 
-		bool satisfied;
 		// @PreCondition of Mehtod m
 		if (preCondition) {
 			satisfied = (*preCondition)(m);
@@ -1336,7 +1362,24 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 		ASSERT (funcs);
 		transition = (StateTransition_t) funcs->transition->function;
 		// @Transition on the state of Method m by itself
-		(*transition)(m, m);
+		satisfied = (*transition)(m, m);
+		if (!satisfied) { // Error in evaluating @Transition
+			model_print("Transition returns false. Problematic method"
+				" is as follow: \n");
+			m->print(true, true);
+			printOneHistory(history, "Failed History");
+			if (verbose) {
+				if (historyIndex > 0)
+					model_print("---- Check history #%d END ----\n\n",
+						historyIndex);
+				else
+					model_print("---- Check history END ----\n\n");
+			}
+			// Clear out the states created when checking
+			clearStates();
+			return false;
+		}
+
 
 		if (verbose) {
 			model_print("\t@Transition on myself\n");
