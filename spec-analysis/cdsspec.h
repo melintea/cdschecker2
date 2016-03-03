@@ -339,7 +339,8 @@ inline MethodSet MakeSet(int count, ...) {
 #define Name(method) method->name
 #define NAME Name(_M)
 
-#define Value(method, type, field) ((type*) method->value)->field
+#define StructName(type) __struct_ ## type ## __
+#define Value(method, type, field) ((StructName(type)*) method->value)->field
 #define Ret(method, type) Value(method, type, RET)
 #define Arg(method, type, arg) Value(method, type, arg)
 
