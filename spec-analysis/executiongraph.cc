@@ -477,6 +477,7 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	bool hasAppeared = false;
 	
 	bool methodComplete = false;
+	int nestedLevel = 0;
 	for (iter++; iter != actions->end(); iter++) {
 		act = *iter;
 		SpecAnnotation *anno = getAnnotation(act);
@@ -562,7 +563,15 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 				m->addOrderingPoint(op);
 				break;
 			case INTERFACE_BEGIN:
-				methodComplete = true;		
+				nestedLevel++;
+				break;
+			case INTERFACE_END:
+				if (nestedLevel == 0) {
+					methodComplete = true;
+					iter++;
+				}
+				else
+					nestedLevel--;
 				break;
 			default:
 				model_print("Unknown type!! We should never get here.\n");

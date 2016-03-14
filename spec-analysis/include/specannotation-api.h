@@ -19,6 +19,8 @@ struct AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name);
 
 void _setInterfaceBeginAnnotationValue(struct AnnoInterfaceInfo *info, void *value);
 
+void _createInterfaceEndAnnotation(CSTR name);
+
 void _createOPDefineAnnotation();
 
 void _createPotentialOPAnnotation(CSTR label);

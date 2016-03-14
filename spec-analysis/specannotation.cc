@@ -62,6 +62,11 @@ AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name) {
 	return info;
 }
 
+void _createInterfaceEndAnnotation(CSTR name) {
+	// Create and instrument with the INTERFACE_END annotation
+	cdsannotate(SPEC_ANALYSIS, new SpecAnnotation(INTERFACE_END, (void*) name));
+}
+
 
 void _setInterfaceBeginAnnotationValue(AnnoInterfaceInfo *info, void *value) {
 	info->value = value;
