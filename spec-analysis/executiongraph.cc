@@ -568,7 +568,6 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 			case INTERFACE_END:
 				if (nestedLevel == 0) {
 					methodComplete = true;
-					iter++;
 				}
 				else
 					nestedLevel--;
@@ -583,7 +582,9 @@ Method ExecutionGraph::extractMethod(action_list_t *actions, action_list_t::iter
 	}
 
 	ASSERT (iter == actions->end() || (getAnnotation(*iter) &&
-		getAnnotation(*iter)->type == INTERFACE_BEGIN));
+		getAnnotation(*iter)->type == INTERFACE_END));
+	if (iter != actions->end())
+		iter++;
 
 	delete popList;
 	// XXX: We just allow methods to have no specified ordering points. In that
