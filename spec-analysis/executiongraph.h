@@ -321,9 +321,18 @@ class ExecutionGraph {
 	*/
 	bool checkStateSpec(MethodList *history, bool verbose, int historyNum);
 
+	/**
+		Check the justifying subhistory with respect to history of m.
+	*/
+	bool checkJustifyingSubhistory(MethodList *subhistory, Method cur,
+		bool verbose, int historyIndex);
+
 	/** Print a problematic thread list */
 	void printActions(action_list_t *actions, const char *header = "The problematic thread list:");
 
+	/** Print one jusifying subhistory of method call cur */
+	void printOneSubhistory(MethodList *history, Method cur,
+		CSTR header);
 };
 
 #endif

@@ -64,7 +64,7 @@ typedef bool (*CheckCommutativity_t)(Method, Method);
 	& args)
 */
 typedef bool (*StateTransition_t)(Method, Method);
-typedef bool (*CheckState_t)(Method);
+typedef bool (*CheckState_t)(Method, Method);
 typedef void (*UpdateState_t)(Method);
 // Copy the second state to the first state
 typedef void (*CopyState_t)(Method, Method);
@@ -95,7 +95,7 @@ struct CommutativityRule {
 
 typedef enum CheckFunctionType {
 	INITIAL, COPY, CLEAR, FINAL, PRINT_STATE, TRANSITION, PRE_CONDITION,
-	SIDE_EFFECT, POST_CONDITION, PRINT_VALUE
+	JUSTIFYING_CONDITION, SIDE_EFFECT, POST_CONDITION, PRINT_VALUE
 } CheckFunctionType;
 
 typedef struct NamedFunction {
@@ -115,11 +115,13 @@ typedef
 struct StateFunctions {
 	NamedFunction *transition;
 	NamedFunction *preCondition;
+	NamedFunction *justifyingCondition;
 	NamedFunction *postCondition;
 	NamedFunction *print;
 
 	StateFunctions(NamedFunction *transition, NamedFunction *preCondition,
-		NamedFunction *postCondition, NamedFunction *print);
+		NamedFunction *justifyingCondition, NamedFunction *postCondition,
+		NamedFunction *print);
 
 } StateFunctions;
 

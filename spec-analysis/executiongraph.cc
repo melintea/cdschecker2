@@ -173,7 +173,7 @@ bool ExecutionGraph::checkCyclicGraphSpec(bool verbose) {
 
 		// @PreCondition of Mehtod m
 		if (preCondition) {
-			pass = (*preCondition)(m);
+			pass = (*preCondition)(m, m);
 
 			if (!pass) {
 				model_print("PreCondition is not satisfied. Problematic method"
@@ -255,8 +255,27 @@ bool ExecutionGraph::checkAllHistories(bool stopOnFailure, bool verbose) {
 		// Print out the graph in verbose
 		print();
 	}
+	
+	// FIXME: make stopOnFailure always true
+	stopOnFailure = true;
 	bool pass = checkAllHistoriesHelper(curList, numLiveNodes, historyIndex,
 		stopOnFailure, verbose);
+	if (pass) {
+		for (MethodList::iterator it = methodList->begin(); it !=
+			methodList->end(); it++) {
+			Method m = *it;
+			if (isFakeMethod(m))
+				continue;
+			if (!m->justified) {
+				model_print("\t");
+				m->print(false, false);
+				model_print(": unjustified\n");
+				pass = false;
+				break;
+			}
+		}
+	}
+
 	if (!pass && !verbose) {
 		// Print out the graph
 		print();
@@ -1214,16 +1233,19 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 	// @Transition can also return a boolean. For example when a steal() and
 	// take() in the deque both gets the last element, then we can see a bug in
 	// the evaluating the list of @Transitions for a following operation.
-	bool satisfied = false;
+	bool satisfied = true;
 
 	// @Initial state (with a fake starting node)
 	Method startMethod = getStartMethod();
 	UpdateState_t initialFunc = (UpdateState_t) initial->function;
 	UpdateState_t printStateFunc = (UpdateState_t) printState->function;
+	UpdateState_t clearFunc = (UpdateState_t) clear->function;
 
+	// We execute the equivalent sequential data structure with the state of the
+	// startMethod node 
 	(*initialFunc)(startMethod);
 	if (verbose) {
-		startMethod->print(false, false);
+		startMethod->print(false, true);
 		model_print("\t@Initial on START\n");
 		if (printStateFunc) { // If user has defined the print-out function
 			model_print("\t**********  State Info  **********\n");
@@ -1231,19 +1253,18 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 		}
 	}
 	
+	StateFunctions *funcs = NULL;
+	/** Execute each method call in the history */
 	for (MethodList::iterator it = history->begin(); it != history->end();
 		it++) {
 		Method m = *it;
 		if (isFakeMethod(m))
 			continue;
-
-		StateFunctions *funcs = NULL;
+	
 		StateTransition_t transition = NULL;
 		
 		if (verbose) {
-			m->print(false, false);
-			model_print("\n");
-			
+			m->print(false, true);
 			funcs = funcMap->get(m->name);
 			ASSERT (funcs);
 			UpdateState_t printValue = (UpdateState_t) funcs->print->function;
@@ -1253,98 +1274,14 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 			}
 		}
 
-		// Execute a list of transitions till Method m
-		// Optimization: find the previous justified nodes --- a node that is in
-		// my allPrev set, and no other nodes in allPrev set is concurrent with
-		// it.
-		
-		// concurrent method calls (everyone is either before or after me).
-		MethodList::iterator justifiedIter = it;
-		while (justifiedIter != history->begin()) {
-			justifiedIter--;
-			Method justified = *justifiedIter;
-			if (justified == m->justifiedMethod) {
-				// @Copy function from Method justified to Method m
-				CopyState_t copyFunc = (CopyState_t) copy->function;
-				(*copyFunc)(m, justified);
-
-				if (verbose) {
-					model_print("\t@Copy from justified node: ");
-					justified->print(false, false);
-					model_print("\n");
-					if (printStateFunc) {
-						model_print("\t**********  State Info  **********\n");
-						(*printStateFunc)(m);
-					}
-				}
-				break;
-			}
-		}
-
-		// Now m has the copied state of the most recent justified node, and
-		// justifiedIter points to that justified node
-		for (MethodList::iterator execIter = ++justifiedIter; execIter != it;
-			execIter++) {
-			Method exec = *execIter;
-			ASSERT (!isFakeMethod(exec));
-
-			if (MethodCall::belong(m->allPrev, exec)) {
-				ASSERT (!isFakeMethod(exec));
-				funcs = funcMap->get(exec->name);
-				ASSERT (funcs);
-				transition = (StateTransition_t)
-					funcs->transition->function;
-				// @Transition on the state of Method m with Method exec
-				satisfied = (*transition)(m, exec);
-
-				if (!satisfied) { // Error in evaluating @Transition
-					model_print("Transition returns false. Problematic method"
-						" is as follow: \n");
-					m->print(true, true);
-					printOneHistory(history, "Failed History");
-					if (verbose) {
-						if (historyIndex > 0)
-							model_print("---- Check history #%d END ----\n\n",
-								historyIndex);
-						else
-							model_print("---- Check history END ----\n\n");
-					}
-					// Clear out the states created when checking
-					clearStates();
-					return false;
-				}
-	
-				if (verbose) {
-					model_print("\t@Transition on ");
-					exec->print(false, false);
-					model_print("\n");
-
-					funcs = funcMap->get(exec->name);
-					ASSERT (funcs);
-					UpdateState_t printValue = (UpdateState_t) funcs->print->function;
-					if (printValue) {
-						model_print("\t**********  Value Info  **********\n");
-						(*printValue)(exec);
-					}
-					if (printStateFunc) {
-						model_print("\t**********  State Info  **********\n");
-						(*printStateFunc)(m);
-					}
-				}
-			}
-		}
-
 		funcs = funcMap->get(m->name);
 		ASSERT (funcs);
+
 		CheckState_t preCondition = (CheckState_t)
 			funcs->preCondition->function;
-		//UpdateState_t sideEffect = (UpdateState_t) funcs->sideEffect->function;
-		//CheckState_t postCondition = (CheckState_t)
-		//	CheckState_t funcs->postCondition->function;
-
 		// @PreCondition of Mehtod m
 		if (preCondition) {
-			satisfied = (*preCondition)(m);
+			satisfied = (*preCondition)(startMethod, m);
 
 			if (!satisfied) {
 				model_print("PreCondition is not satisfied. Problematic method"
@@ -1358,19 +1295,15 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 					else
 						model_print("---- Check history END ----\n\n");
 				}
-				// Clear out the states created when checking
-				clearStates();
-				return false;
+				break;
 			}
 		}
 
-		// After checking the PreCondition, we also run the transition on the
-		// current node to update its state
-		funcs = funcMap->get(m->name);
-		ASSERT (funcs);
+		// After checking the PreCondition, we run the transition on the
+		// startMethod node to update its state
 		transition = (StateTransition_t) funcs->transition->function;
-		// @Transition on the state of Method m by itself
-		satisfied = (*transition)(m, m);
+		// @Transition on the state of startMethod
+		satisfied = (*transition)(startMethod, m);
 		if (!satisfied) { // Error in evaluating @Transition
 			model_print("Transition returns false. Problematic method"
 				" is as follow: \n");
@@ -1383,25 +1316,44 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 				else
 					model_print("---- Check history END ----\n\n");
 			}
-			// Clear out the states created when checking
-			clearStates();
-			return false;
+			break;
 		}
 
-
 		if (verbose) {
-			model_print("\t@Transition on myself\n");
+			model_print("\t@Transition on itself\n");
 			if (printStateFunc) {
 				model_print("\t**********  State Info  **********\n");
-				(*printStateFunc)(m);
+				(*printStateFunc)(startMethod);
 			}
-		}	
+		}
+		
+		// @PostCondition of Mehtod m
+		CheckState_t postCondition = (CheckState_t)
+			funcs->postCondition->function;
+		if (postCondition) {
+			satisfied = (*postCondition)(startMethod, m);
+
+			if (!satisfied) {
+				model_print("PostCondition is not satisfied. Problematic method"
+					" is as follow: \n");
+				m->print(true, true);
+				printOneHistory(history, "Failed History");
+				if (verbose) {
+					if (historyIndex > 0)
+						model_print("---- Check history #%d END ----\n\n",
+							historyIndex);
+					else
+						model_print("---- Check history END ----\n\n");
+				}
+				break;
+			}
+		}
 	}
 
 	// Clear out the states created when checking
-	clearStates();
+	(*clearFunc)(startMethod);
 
-	if (verbose) {
+	if (satisfied && verbose) {
 		printOneHistory(history, "Passed History");
 		// Print the history in verbose mode
 		if (historyIndex > 0)
@@ -1409,7 +1361,156 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 		else
 			model_print("---- Check history END ----\n\n");
 	}
-	return true;
+
+	for (MethodList::iterator it = history->begin(); it != history->end();
+		it++) {
+		Method m = *it;
+		if (isFakeMethod(m))
+			continue;
+		// Check justifying subhistory
+		if (!m->justified) {
+			funcs = funcMap->get(m->name);
+			CheckState_t justifyingCondition = (CheckState_t)
+				funcs->justifyingCondition->function;
+				if (!justifyingCondition) {
+					// No need to check justifying condition
+					m->justified = true;
+				} else {
+					checkJustifyingSubhistory(history, m, verbose, historyIndex);
+				}
+		}
+	}
+
+	return satisfied;
+}
+
+bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
+	cur, bool verbose, int historyIndex) {
+	if (verbose) {
+		if (historyIndex > 0)
+			model_print("---- Start to check justifying subhistory #%d ----\n", historyIndex);
+		else
+			model_print("---- Start to check justifying subhistory ----\n");
+		model_print("----  ");
+		cur->print(false, false);
+		model_print(" ----\n");
+	}
+
+	// @Transition can also return a boolean. For example when a steal() and
+	// take() in the deque both gets the last element, then we can see a bug in
+	// the evaluating the list of @Transitions for a following operation.
+	bool satisfied = true;
+
+	// @Initial state (with a fake starting node)
+	Method startMethod = getStartMethod();
+	UpdateState_t initialFunc = (UpdateState_t) initial->function;
+	UpdateState_t printStateFunc = (UpdateState_t) printState->function;
+	UpdateState_t clearFunc = (UpdateState_t) clear->function;
+
+	// We execute the equivalent sequential data structure with the state of the
+	// startMethod node 
+	(*initialFunc)(startMethod);
+	if (verbose) {
+		startMethod->print(false, true);
+		model_print("\t@Initial on START\n");
+		if (printStateFunc) { // If user has defined the print-out function
+			model_print("\t**********  State Info  **********\n");
+			(*printStateFunc)(startMethod);
+		}
+	}
+	
+	StateFunctions *funcs = NULL;
+	/** Execute each method call in the justifying subhistory till cur */
+	for (MethodList::iterator it = history->begin(); it != history->end(); it++) {
+		Method m = *it;
+		if (m == cur)
+			break;
+		if (isFakeMethod(m))
+			continue;
+		
+		// Ignore method calls that are not in my justifying subhistory
+		if (!MethodCall::belong(cur->allPrev, m))
+			continue;
+
+		StateTransition_t transition = NULL;
+		
+		if (verbose) {
+			m->print(false, true);
+			funcs = funcMap->get(m->name);
+			ASSERT (funcs);
+			UpdateState_t printValue = (UpdateState_t) funcs->print->function;
+			if (printValue) {
+				model_print("\t**********  Value Info  **********\n");
+				(*printValue)(m);
+			}
+		}
+
+		funcs = funcMap->get(m->name);
+		ASSERT (funcs);
+
+		// After checking the PreCondition, we run the transition on the
+		// startMethod node to update its state
+		transition = (StateTransition_t) funcs->transition->function;
+		// @Transition on the state of startMethod
+		satisfied = (*transition)(startMethod, m);
+		if (!satisfied) { // Error in evaluating @Transition
+			if (verbose) {
+				printOneSubhistory(history, cur, "Failed Justifying Subhistory");
+				if (historyIndex > 0)
+					model_print("---- Check justifying subhistory #%d END ----\n\n",
+						historyIndex);
+				else
+					model_print("---- Check justifying subhistory END ----\n\n");
+			}
+			break;
+		}
+
+		if (verbose) {
+			model_print("\t@Transition on itself\n");
+			if (printStateFunc) {
+				model_print("\t**********  State Info  **********\n");
+				(*printStateFunc)(startMethod);
+			}
+		}
+	}
+
+	if (satisfied) {
+		// Check the justifying condition on cur
+		funcs = funcMap->get(cur->name);
+		CheckState_t justifyingCondition = (CheckState_t)
+			funcs->justifyingCondition->function;
+		ASSERT (justifyingCondition);
+		// @JustifyingCondition of Mehtod cur
+		satisfied = (*justifyingCondition)(startMethod, cur);
+		if (!satisfied) {
+			if (verbose) {
+				printOneSubhistory(history, cur, "Failed Justifying Subhistory");
+				if (historyIndex > 0)
+					model_print("---- Check justifying subhistory #%d END ----\n\n",
+						historyIndex);
+				else
+					model_print("---- Check justifying subhistory END ----\n\n");
+			}
+		}
+	}
+
+	// Clear out the states created when checking
+	(*clearFunc)(startMethod);
+
+	if (satisfied) {
+		// Set the "justified" flag --- no need to check again for cur
+		cur->justified = true;
+		if (verbose) {
+			printOneSubhistory(history, cur, "Passed Justifying Subhistory");
+			// Print the history in verbose mode
+			if (historyIndex > 0)
+				model_print("---- Check justifying subhistory #%d END ----\n\n", historyIndex);
+			else
+				model_print("---- Check justifying subhistory END ----\n\n");
+		}
+	}
+	
+	return satisfied;
 }
 
 
@@ -1430,3 +1531,19 @@ void ExecutionGraph::printActions(action_list_t *actions, const char *header) {
 	}
 	model_print("---------- Thread List (End) ---------\n");
 }
+
+void ExecutionGraph::printOneSubhistory(MethodList *history, Method cur, CSTR header) {
+	model_print("-------------    %s (exec #%d)   -------------\n", header,
+		execution->get_execution_number());
+	int idx = 1;
+	for (MethodList::iterator it = history->begin(); it != history->end(); it++) {
+		Method m = *it;
+		if (!MethodCall::belong(cur->allPrev, m))
+			continue;
+		model_print("%d. ", idx++);
+		m->print(false);
+	}
+	model_print("-------------    %s (exec #%d) (end)    -------------\n",
+		header, execution->get_execution_number());
+}
+

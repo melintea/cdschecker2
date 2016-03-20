@@ -13,8 +13,8 @@ const unsigned int METHOD_ID_MIN = 0;
 MethodCall::MethodCall(CSTR name, void *value, ModelAction *begin) :
 	name(name), value(value), prev(new SnapSet<Method>), next(new
 	SnapSet<Method>), concurrent(new SnapSet<Method>), justifiedMethod(NULL),
-	end(NULL), orderingPoints(new action_list_t), allPrev(new SnapSet<Method>),
-	allNext(new SnapSet<Method>), exist(true) {
+	justified(false), end(NULL), orderingPoints(new action_list_t), allPrev(new
+	SnapSet<Method>), allNext(new SnapSet<Method>), exist(true) {
 	if (name == GRAPH_START) {
 		this->begin = NULL;
 		id = METHOD_ID_MIN;

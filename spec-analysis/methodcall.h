@@ -45,6 +45,13 @@ class MethodCall {
 	Method justifiedMethod; // The method before me and is not concurrent with
 							// any other mehtods in my allPrev set
 
+	/** 
+		This indicates if the non-deterministic behaviors of this method call
+		has been justified by any of its justifying subhistory. If so, we do not
+		need to check on its justifying subhistory. Initially it is false.
+	*/
+	bool justified; 
+
 	MethodCall(CSTR name, void *value = NULL, ModelAction *begin = NULL);
 	
 	void addPrev(Method m);
