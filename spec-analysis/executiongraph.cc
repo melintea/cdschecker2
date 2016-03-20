@@ -1408,14 +1408,15 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 	UpdateState_t clearFunc = (UpdateState_t) clear->function;
 
 	// We execute the equivalent sequential data structure with the state of the
-	// startMethod node 
-	(*initialFunc)(startMethod);
+	// current method call
+	(*initialFunc)(cur);
 	if (verbose) {
 		startMethod->print(false, true);
-		model_print("\t@Initial on START\n");
+		model_print("\t@Initial on ");
+		cur->print(false, true);
 		if (printStateFunc) { // If user has defined the print-out function
 			model_print("\t**********  State Info  **********\n");
-			(*printStateFunc)(startMethod);
+			(*printStateFunc)(cur);
 		}
 	}
 	
@@ -1452,7 +1453,7 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 		// startMethod node to update its state
 		transition = (StateTransition_t) funcs->transition->function;
 		// @Transition on the state of startMethod
-		satisfied = (*transition)(startMethod, m);
+		satisfied = (*transition)(cur, m);
 		if (!satisfied) { // Error in evaluating @Transition
 			if (verbose) {
 				printOneSubhistory(history, cur, "Failed Justifying Subhistory");
@@ -1481,7 +1482,7 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 			funcs->justifyingCondition->function;
 		ASSERT (justifyingCondition);
 		// @JustifyingCondition of Mehtod cur
-		satisfied = (*justifyingCondition)(startMethod, cur);
+		satisfied = (*justifyingCondition)(cur, cur);
 		if (!satisfied) {
 			if (verbose) {
 				printOneSubhistory(history, cur, "Failed Justifying Subhistory");
