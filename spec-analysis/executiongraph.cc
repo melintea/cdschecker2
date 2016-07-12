@@ -1372,12 +1372,14 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 			funcs = funcMap->get(m->name);
 			CheckState_t justifyingPrecondition = (CheckState_t)
 				funcs->justifyingPrecondition->function;
-				if (!justifyingPrecondition) {
-					// No need to check justifying condition
-					m->justified = true;
-				} else {
-					checkJustifyingSubhistory(history, m, verbose, historyIndex);
-				}
+			CheckState_t justifyingPostcondition = (CheckState_t)
+				funcs->justifyingPostcondition->function;
+            if (!justifyingPrecondition && !justifyingPostcondition ) {
+                // No need to check justifying conditions
+                m->justified = true;
+            } else {
+                checkJustifyingSubhistory(history, m, verbose, historyIndex);
+            }
 		}
 	}
 
@@ -1386,6 +1388,7 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 
 bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 	cur, bool verbose, int historyIndex) {
+
 	if (verbose) {
 		if (historyIndex > 0)
 			model_print("---- Start to check justifying subhistory #%d ----\n", historyIndex);
@@ -1421,6 +1424,7 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 	}
 	
 	StateFunctions *funcs = NULL;
+    StateTransition_t transition = NULL;
 	/** Execute each method call in the justifying subhistory till cur */
 	for (MethodList::iterator it = history->begin(); it != history->end(); it++) {
 		Method m = *it;
@@ -1433,7 +1437,6 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 		if (!MethodCall::belong(cur->allPrev, m))
 			continue;
 
-		StateTransition_t transition = NULL;
 		
 		if (verbose) {
 			m->print(false, true);
@@ -1448,15 +1451,17 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 
 		funcs = funcMap->get(m->name);
 		ASSERT (funcs);
+        transition = (StateTransition_t)
+            funcs->transition->function;
 
-		// After checking the PreCondition, we run the transition on the
-		// startMethod node to update its state
-		transition = (StateTransition_t) funcs->transition->function;
-		// @Transition on the state of startMethod
+		// In checking justifying behaviors, we don't check precondition &
+        // postcondition for other method calls
+        
+		// @Transition on the state of the "cur" method call 
 		satisfied = (*transition)(cur, m);
 		if (!satisfied) { // Error in evaluating @Transition
 			if (verbose) {
-				printOneSubhistory(history, cur, "Failed Justifying Subhistory");
+				printOneSubhistory(history, cur, "Failed Justifying Subhistory on @Transition before");
 				if (historyIndex > 0)
 					model_print("---- Check justifying subhistory #%d END ----\n\n",
 						historyIndex);
@@ -1475,17 +1480,73 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 		}
 	}
 
+    // For justifying subhistory, we only check the @JustifyingPrecondition &
+    // @JustifyingPostcondition for the last method call (the one we are
+    // checking)
+
+    // First check the @JustifyingPrecondition
+	funcs = funcMap->get(cur->name);
 	if (satisfied) {
-		// Check the justifying condition on cur
-		funcs = funcMap->get(cur->name);
+		// Check the justifying preondition on cur
 		CheckState_t justifyingPrecondition = (CheckState_t)
 			funcs->justifyingPrecondition->function;
-		ASSERT (justifyingPrecondition);
-		// @JustifyingPrecondition of Mehtod cur
-		satisfied = (*justifyingPrecondition)(cur, cur);
+		if (justifyingPrecondition) {
+		    // @JustifyingPrecondition of Mehtod cur
+		    satisfied = (*justifyingPrecondition)(cur, cur);
+        } else {
+		    satisfied = true;
+        }
 		if (!satisfied) {
 			if (verbose) {
-				printOneSubhistory(history, cur, "Failed Justifying Subhistory");
+				printOneSubhistory(history, cur, "Failed Justifying Subhistory on @JustifyingPrecondition");
+				if (historyIndex > 0)
+					model_print("---- Check justifying subhistory #%d END ----\n\n",
+						historyIndex);
+				else
+					model_print("---- Check justifying subhistory END ----\n\n");
+			}
+		}
+	}
+
+    // Then execute the @Transition
+    transition = (CheckState_t) funcs->transition->function;
+    // @Transition on the state of the "cur" method call 
+    satisfied = (*transition)(cur, cur);
+    if (!satisfied) { // Error in evaluating @Transition
+        if (verbose) {
+            printOneSubhistory(history, cur, "Failed Justifying Subhistory on @Transition itself");
+            if (historyIndex > 0)
+                model_print("---- Check justifying subhistory #%d END ----\n\n",
+                    historyIndex);
+            else
+                model_print("---- Check justifying subhistory END ----\n\n");
+        }
+        return false;
+    }
+    if (verbose) {
+        model_print("\t@Transition on itself\n");
+        if (printStateFunc) {
+            model_print("\t**********  State Info  **********\n");
+            (*printStateFunc)(startMethod);
+        }
+    }
+
+    // Finally check the @JustifyingPostcondition
+	if (satisfied) {
+		// Check the justifying preondition on cur
+		funcs = funcMap->get(cur->name);
+		CheckState_t justifyingPostcondition = (CheckState_t)
+			funcs->justifyingPostcondition->function;
+		if (justifyingPostcondition) {
+            // @JustifyingPostcondition of Mehtod cur
+            satisfied = (*justifyingPostcondition)(cur, cur);
+        } else {
+		    satisfied = true;
+        }
+
+		if (!satisfied) {
+			if (verbose) {
+				printOneSubhistory(history, cur, "Failed Justifying Subhistory for JustifyingPostcondition");
 				if (historyIndex > 0)
 					model_print("---- Check justifying subhistory #%d END ----\n\n",
 						historyIndex);

@@ -344,10 +344,12 @@ inline MethodSet MakeSet(int count, ...) {
 #define StructName(type) __struct_ ## type ## __
 #define Value(method, type, field) ((StructName(type)*) method->value)->field
 #define Ret(method, type) Value(method, type, RET)
+#define CRet(method, type) Value(method, type, C_RET)
 #define Arg(method, type, arg) Value(method, type, arg)
 
 #define VALUE(type, field) Value(_M, type, field)
 #define RET(type) VALUE(type, RET)
+#define C_RET(type) VALUE(type, C_RET)
 #define ARG(type, arg) VALUE(type, arg)
 
 #define State(method, field) ((StateStruct*) method->state)->field
