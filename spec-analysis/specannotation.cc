@@ -31,9 +31,11 @@ NamedFunction::NamedFunction(CSTR name, CheckFunctionType type, void *function) 
 	type(type), function(function) { }
 
 StateFunctions::StateFunctions(NamedFunction *transition, NamedFunction
-	*preCondition, NamedFunction * justifyingCondition, NamedFunction
-	*postCondition, NamedFunction *print) : transition(transition),
-	preCondition(preCondition), justifyingCondition(justifyingCondition),
+	*preCondition, NamedFunction * justifyingPrecondition,
+    NamedFunction *justifyingPostcondition,
+	NamedFunction *postCondition, NamedFunction *print) : transition(transition),
+	preCondition(preCondition), justifyingPrecondition(justifyingPrecondition),
+    justifyingPostcondition(justifyingPostcondition),
 	postCondition(postCondition), print(print) { }
 
 

@@ -1370,9 +1370,9 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 		// Check justifying subhistory
 		if (!m->justified) {
 			funcs = funcMap->get(m->name);
-			CheckState_t justifyingCondition = (CheckState_t)
-				funcs->justifyingCondition->function;
-				if (!justifyingCondition) {
+			CheckState_t justifyingPrecondition = (CheckState_t)
+				funcs->justifyingPrecondition->function;
+				if (!justifyingPrecondition) {
 					// No need to check justifying condition
 					m->justified = true;
 				} else {
@@ -1478,11 +1478,11 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 	if (satisfied) {
 		// Check the justifying condition on cur
 		funcs = funcMap->get(cur->name);
-		CheckState_t justifyingCondition = (CheckState_t)
-			funcs->justifyingCondition->function;
-		ASSERT (justifyingCondition);
-		// @JustifyingCondition of Mehtod cur
-		satisfied = (*justifyingCondition)(cur, cur);
+		CheckState_t justifyingPrecondition = (CheckState_t)
+			funcs->justifyingPrecondition->function;
+		ASSERT (justifyingPrecondition);
+		// @JustifyingPrecondition of Mehtod cur
+		satisfied = (*justifyingPrecondition)(cur, cur);
 		if (!satisfied) {
 			if (verbose) {
 				printOneSubhistory(history, cur, "Failed Justifying Subhistory");

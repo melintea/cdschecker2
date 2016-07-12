@@ -131,6 +131,8 @@ inline void printMap(IntMap *container) {
 #define ITEM _M
 #define _M ME
 
+#define S_RET __value->S_RET
+
 /**
 	This operation is specifically for Method set. For example, when we want to
 	construct an integer set from the state field "x" (which is an

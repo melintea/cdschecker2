@@ -94,8 +94,9 @@ struct CommutativityRule {
 } CommutativityRule;
 
 typedef enum CheckFunctionType {
-	INITIAL, COPY, CLEAR, FINAL, PRINT_STATE, TRANSITION, PRE_CONDITION,
-	JUSTIFYING_CONDITION, SIDE_EFFECT, POST_CONDITION, PRINT_VALUE
+    INITIAL, COPY, CLEAR, FINAL, PRINT_STATE, TRANSITION, PRE_CONDITION,
+    JUSTIFYING_PRECONDITION, SIDE_EFFECT, JUSTIFYING_POSTCONDITION,
+    POST_CONDITION, PRINT_VALUE
 } CheckFunctionType;
 
 typedef struct NamedFunction {
@@ -115,13 +116,15 @@ typedef
 struct StateFunctions {
 	NamedFunction *transition;
 	NamedFunction *preCondition;
-	NamedFunction *justifyingCondition;
+	NamedFunction *justifyingPrecondition;
+	NamedFunction *justifyingPostcondition;
 	NamedFunction *postCondition;
 	NamedFunction *print;
 
 	StateFunctions(NamedFunction *transition, NamedFunction *preCondition,
-		NamedFunction *justifyingCondition, NamedFunction *postCondition,
-		NamedFunction *print);
+		NamedFunction *justifyingPrecondition,
+        NamedFunction *justifyingPostcondition,
+        NamedFunction *postCondition, NamedFunction *print);
 
 } StateFunctions;
 
