@@ -101,22 +101,20 @@ bool ExecutionGraph::checkAdmissibility() {
 			if (isReachable(m1, m2) || isReachable(m2, m1))
 				continue;
 			
-			/* Now we need to check whether we have a commutativity rule */
-			bool commute = false;
+			/* Now we need to check whether we have a commutativity rule that
+             * says the two method calls should be ordered */
+			bool commute = true;
 			for (int i = 0; i < commuteRuleNum; i++) {
 				CommutativityRule rule = *(commuteRules + i);
-				bool satisfied = false;
 				/* Check whether condition is satisfied */
 				if (!rule.isRightRule(m1, m2)) // Not this rule
 					continue;
 				else
-					satisfied = rule.checkCondition(m1, m2);
-				if (satisfied) { // The rule allows commutativity
-					commute = true;
+					commute = rule.checkCondition(m1, m2);
+				if (!commute) // The rule requires them to be ordered
 					break;
-				}
 			}
-			// We have no rules at all or the condition of the rules is not satisfied
+			// We have a rule that require m1 and m2 to be ordered
 			if (!commute) {
 				admissible = false;
 				model_print("These two nodes should not commute:\n");
@@ -701,6 +699,9 @@ void ExecutionGraph::initializeJustifiedNode() {
 		ASSERT (justified != m);
 		// Don't forget to set the method's field
 		m->justifiedMethod = justified;
+
+        // Ensure we reset the justified field to be false in the beginning
+        m->justified = false;
 	}
 }
 
@@ -1361,7 +1362,14 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 		else
 			model_print("---- Check history END ----\n\n");
 	}
+	
+    if (verbose) {
+		if (historyIndex > 0)
+			model_print("---- Start to check justifying subhistory #%d ----\n", historyIndex);
+		else
+			model_print("---- Start to check justifying subhistory ----\n");
 
+	}
 	for (MethodList::iterator it = history->begin(); it != history->end();
 		it++) {
 		Method m = *it;
@@ -1377,10 +1385,43 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
             if (!justifyingPrecondition && !justifyingPostcondition ) {
                 // No need to check justifying conditions
                 m->justified = true;
+                if (verbose) {
+                    model_print("\tMethod call  ");
+                    m->print(false, false);
+                    model_print(": automatically justified.\n");
+                }
             } else {
-                checkJustifyingSubhistory(history, m, verbose, historyIndex);
+                bool justified = checkJustifyingSubhistory(history, m, verbose, historyIndex);
+                if (justified) {
+                    // Set the "justified" flag --- no need to check again for cur
+                    m->justified = true;
+                    if (verbose) {
+                        model_print("\tMethod call  ");
+                        m->print(false, false);
+                        model_print(": is justified\n");
+                    }
+                } else {
+                    if (verbose) {
+                        model_print("\tMethod call  ");
+                        m->print(false, false);
+                        model_print(": has NOT been justified yet\n");
+                    }
+                }
             }
-		}
+		} else {
+            if (verbose) {
+                model_print("\tMethod call  ");
+                m->print(false, false);
+                model_print(": is justified\n");
+            }
+        }
+	}
+    if (verbose) {
+		if (historyIndex > 0)
+			model_print("---- Start to check justifying subhistory #%d END ----\n\n", historyIndex);
+		else
+			model_print("---- Start to check justifying subhistory # END ----\n\n");
+
 	}
 
 	return satisfied;
@@ -1388,15 +1429,10 @@ bool ExecutionGraph::checkStateSpec(MethodList *history, bool verbose, int
 
 bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 	cur, bool verbose, int historyIndex) {
-
 	if (verbose) {
-		if (historyIndex > 0)
-			model_print("---- Start to check justifying subhistory #%d ----\n", historyIndex);
-		else
-			model_print("---- Start to check justifying subhistory ----\n");
-		model_print("----  ");
+        model_print("\tMethod call  ");
 		cur->print(false, false);
-		model_print(" ----\n");
+		model_print(": is being justified\n");
 	}
 
 	// @Transition can also return a boolean. For example when a steal() and
@@ -1408,6 +1444,7 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 	Method startMethod = getStartMethod();
 	UpdateState_t initialFunc = (UpdateState_t) initial->function;
 	UpdateState_t printStateFunc = (UpdateState_t) printState->function;
+	UpdateState_t printVauleFunc = NULL;
 	UpdateState_t clearFunc = (UpdateState_t) clear->function;
 
 	// We execute the equivalent sequential data structure with the state of the
@@ -1461,23 +1498,20 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 		satisfied = (*transition)(cur, m);
 		if (!satisfied) { // Error in evaluating @Transition
 			if (verbose) {
-				printOneSubhistory(history, cur, "Failed Justifying Subhistory on @Transition before");
-				if (historyIndex > 0)
-					model_print("---- Check justifying subhistory #%d END ----\n\n",
-						historyIndex);
-				else
-					model_print("---- Check justifying subhistory END ----\n\n");
+				model_print("\tFailed @Transition before\n");
 			}
-			break;
-		}
-
-		if (verbose) {
-			model_print("\t@Transition on itself\n");
-			if (printStateFunc) {
-				model_print("\t**********  State Info  **********\n");
-				(*printStateFunc)(startMethod);
-			}
-		}
+            // Clear out the states created when checking
+            (*clearFunc)(startMethod);
+			return false;
+		} else {
+            if (verbose) {
+                model_print("\t@Transition on itself\n");
+                if (printStateFunc) {
+                    model_print("\t**********  State Info  **********\n");
+                    (*printStateFunc)(startMethod);
+                }
+            }
+        }
 	}
 
     // For justifying subhistory, we only check the @JustifyingPrecondition &
@@ -1493,19 +1527,15 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 		if (justifyingPrecondition) {
 		    // @JustifyingPrecondition of Mehtod cur
 		    satisfied = (*justifyingPrecondition)(cur, cur);
-        } else {
-		    satisfied = true;
         }
 		if (!satisfied) {
 			if (verbose) {
-				printOneSubhistory(history, cur, "Failed Justifying Subhistory on @JustifyingPrecondition");
-				if (historyIndex > 0)
-					model_print("---- Check justifying subhistory #%d END ----\n\n",
-						historyIndex);
-				else
-					model_print("---- Check justifying subhistory END ----\n\n");
+                model_print("\tFailed @JustifyingPrecondition\n");
 			}
-		}
+            // Clear out the states created when checking
+            (*clearFunc)(startMethod);
+            return false;
+        }
 	}
 
     // Then execute the @Transition
@@ -1514,13 +1544,10 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
     satisfied = (*transition)(cur, cur);
     if (!satisfied) { // Error in evaluating @Transition
         if (verbose) {
-            printOneSubhistory(history, cur, "Failed Justifying Subhistory on @Transition itself");
-            if (historyIndex > 0)
-                model_print("---- Check justifying subhistory #%d END ----\n\n",
-                    historyIndex);
-            else
-                model_print("---- Check justifying subhistory END ----\n\n");
+            model_print("\tFailed @Transition on itself\n");
         }
+        // Clear out the states created when checking
+        (*clearFunc)(startMethod);
         return false;
     }
     if (verbose) {
@@ -1540,38 +1567,11 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 		if (justifyingPostcondition) {
             // @JustifyingPostcondition of Mehtod cur
             satisfied = (*justifyingPostcondition)(cur, cur);
-        } else {
-		    satisfied = true;
         }
-
-		if (!satisfied) {
-			if (verbose) {
-				printOneSubhistory(history, cur, "Failed Justifying Subhistory for JustifyingPostcondition");
-				if (historyIndex > 0)
-					model_print("---- Check justifying subhistory #%d END ----\n\n",
-						historyIndex);
-				else
-					model_print("---- Check justifying subhistory END ----\n\n");
-			}
-		}
 	}
 
 	// Clear out the states created when checking
 	(*clearFunc)(startMethod);
-
-	if (satisfied) {
-		// Set the "justified" flag --- no need to check again for cur
-		cur->justified = true;
-		if (verbose) {
-			printOneSubhistory(history, cur, "Passed Justifying Subhistory");
-			// Print the history in verbose mode
-			if (historyIndex > 0)
-				model_print("---- Check justifying subhistory #%d END ----\n\n", historyIndex);
-			else
-				model_print("---- Check justifying subhistory END ----\n\n");
-		}
-	}
-	
 	return satisfied;
 }
 
