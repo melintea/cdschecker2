@@ -1,10 +1,7 @@
-FENCE_LOCAL := $(SCFENCE_DIR)/scgen.o \
-	$(SCFENCE_DIR)/inference.o \
-	$(SCFENCE_DIR)/inferset.o \
-	$(SCFENCE_DIR)/inferlist.o \
-	$(SCFENCE_DIR)/patch.o \
-	$(SCFENCE_DIR)/scfence.o
+# This make file is to be added by the Makefile at the main directory
 
-FENCE_OBJS := $(FENCE_LOCAL:%=$(FENCE_DIR)/%)
+SCFENCE_LOCAL := scgen.o inference.o inferset.o inferlist.o patch.o scfence.o
 
-OBJECTS += $(FENCE_OBJS)
+SCFENCE_OBJS := $(SCFENCE_LOCAL:%=$(SCFENCE_DIR)/%)
+
+OBJECTS += $(SCFENCE_OBJS)

@@ -1,7 +1,7 @@
 include common.mk
 
 SPEC_DIR := spec-analysis
-FENCE_DIR := scfence
+SCFENCE_DIR := scfence
 
 OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   nodestack.o clockvector.o main.o snapshot-interface.o cyclegraph.o \
@@ -10,9 +10,13 @@ OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   context.o scanalysis.o execution.o plugins.o libannotate.o
 
 include $(SPEC_DIR)/Makefile
-include $(FENCE_DIR)/Makefile
+include $(SCFENCE_DIR)/Makefile
 
-CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR) -I$(FENCE_DIR)
+# Replace all the basename with 
+ALL_DEPS := $(shell echo $(OBJECTS) | sed -E 's/([^ ]*\/)?([^\/ ]*)/\1\.\2.d/g')
+-include $(ALL_DEPS)
+
+CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR) -I$(SCFENCE_DIR)
 LDFLAGS := -ldl -lrt -rdynamic
 SHARED := -shared
 
@@ -38,8 +42,6 @@ docs: *.c *.cc *.h README.html
 README.html: README.md
 	$(MARKDOWN) $< > $@
 
-$(LIB_SO): $(OBJECTS)
-	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(LDFLAGS)
 
 malloc.o: malloc.c
 	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPLAGS) -Wno-unused-variable
@@ -47,14 +49,11 @@ malloc.o: malloc.c
 %.o: %.cc
 	$(CXX) -MMD -MF $(dir $@).$(notdir $@).d -fPIC -c $< -o $@ $(CPPFLAGS)
 
+$(LIB_SO): $(OBJECTS)
+	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(LDFLAGS)
+
 %.pdf: %.dot
 	dot -Tpdf $< -o $@
-
-# Replace all the basename with 
-ALL_DEPS := $(shell echo $(OBJECTS) | sed -E 's/([^ ]*\/)?([^\/ ]*)/\1\.\2.d/g')
--include $(ALL_DEPS)
-#-include $(OBJECTS:%=.%.d)
-
 
 PHONY += clean
 clean:

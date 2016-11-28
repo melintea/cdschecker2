@@ -18,6 +18,7 @@ bool IN_TRACE_ANALYSIS = false;
 size_t allocatedReqs[REQUESTS_BEFORE_ALLOC] = { 0 };
 int nextRequest = 0;
 int howManyFreed = 0;
+int switch_alloc = 0;
 #if !USE_MPROTECT_SNAPSHOT
 static mspace sStaticSpace = NULL;
 #endif
@@ -126,7 +127,7 @@ void model_free(void *ptr)
 /** Bootstrap allocation. Problem is that the dynamic linker calls require
  *  calloc to work and calloc requires the dynamic linker to work. */
 
-#define BOOTSTRAPBYTES 4096
+#define BOOTSTRAPBYTES 131072
 char bootstrapmemory[BOOTSTRAPBYTES];
 size_t offset = 0;
 
@@ -136,7 +137,7 @@ void * HandleEarlyAllocationRequest(size_t sz)
 	sz = (sz + 7) & ~7;
 
 	if (sz > (BOOTSTRAPBYTES-offset)) {
-		model_print("OUT OF BOOTSTRAP MEMORY\n");
+		model_print("OUT OF BOOTSTRAP MEMORY.  Increase the size of BOOTSTRAPBYTES in mymemory.cc\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -181,6 +182,9 @@ static void * user_malloc(size_t size)
 void *malloc(size_t size)
 {
 	if (user_snapshot_space) {
+		if (switch_alloc) {
+			return model_malloc(size);
+		}
 		/* Only perform user allocations from user context */
 		ASSERT(!model || thread_current() || IN_TRACE_ANALYSIS);
 		return user_malloc(size);
@@ -191,8 +195,12 @@ void *malloc(size_t size)
 /** @brief Snapshotting free implementation for user programs */
 void free(void * ptr)
 {
-	if (!DontFree(ptr))
+	if (!DontFree(ptr)) {
+		if (switch_alloc) {
+			return model_free(ptr);
+		}
 		mspace_free(user_snapshot_space, ptr);
+	}
 }
 
 /** @brief Snapshotting realloc implementation for user programs */
