@@ -1,6 +1,7 @@
 include common.mk
 
 SPEC_DIR := spec-analysis
+FENCE_DIR := scfence
 
 OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   nodestack.o clockvector.o main.o snapshot-interface.o cyclegraph.o \
@@ -9,8 +10,9 @@ OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   context.o scanalysis.o execution.o plugins.o libannotate.o
 
 include $(SPEC_DIR)/Makefile
+include $(FENCE_DIR)/Makefile
 
-CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR)
+CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR) -I$(FENCE_DIR)
 LDFLAGS := -ldl -lrt -rdynamic
 SHARED := -shared
 
