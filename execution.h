@@ -122,10 +122,10 @@ public:
 	
 	void get_release_seq_heads(ModelAction *acquire, ModelAction *read, rel_heads_list_t *release_heads);
 
-	SNAPSHOTALLOC
-private:
 	int get_execution_number() const;
 
+	SNAPSHOTALLOC
+private:
 	ModelChecker *model;
 
 	const model_params * const params;

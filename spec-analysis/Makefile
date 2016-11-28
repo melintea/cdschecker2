@@ -1,21 +1,7 @@
-BASE := ..
+# This make file is to be added by the Makefile at the main directory
 
-OBJECTS := specanalysis.o spec_lib.o testanalysis.o
-include $(BASE)/common.mk
+LOCAL_OBJS := specanalysis.o executiongraph.o specannotation.o methodcall.o
 
-CPPFLAGS += -I$(BASE) -I$(BASE)/include -I.
+SPEC_OBJS := $(LOCAL_OBJS:%=$(SPEC_DIR)/%)
 
-all: $(OBJECTS)
-
-specanalysis.o: specanalysis.cc
-	$(CXX) -c -fPIC -o $@ $< $(CPPFLAGS)
-testanalysis.o: testanalysis.cc
-	$(CXX) -c -fPIC -o $@ $< $(CPPFLAGS)
-
-# Non-model rules
-%.o: %.c
-	$(CC) -c -o $@ $< $(CPPFLAGS)
-
-PHONY += clean
-clean::
-	rm -f *.o
+OBJECTS += $(SPEC_OBJS)

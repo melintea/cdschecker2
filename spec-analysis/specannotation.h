@@ -1,80 +1,230 @@
 #ifndef _SPECANNOTATION_H
 #define _SPECANNOTATION_H
 
-#include "spec_lib.h"
+#include "modeltypes.h"
+#include "model-assert.h"
+#include "methodcall.h"
+#include "action.h"
+#include "spec_common.h"
+#include "hashtable.h"
 
-const unsigned int SPEC_ANALYSIS = 1 << 31;
+using namespace std;
 
-typedef call_id_t (*id_func_t)();
-typedef bool (*check_action_func_t)(void *info, call_id_t id);
+/** 
+	We can only pass a void* pointer from the real program execution to the
+	checking engine, so we need to wrap the key information into that pointer.
+	We use the SpecAnntotation struct to represent that info. Different types
+	here mean different annotations.
 
-typedef enum spec_anno_type {
-	FUNC_TABLE_INIT, HB_INIT, INTERFACE_BEGIN, POTENTIAL_CP_DEFINE, CP_DEFINE,
-	CP_DEFINE_CHECK, INTERFACE_END, HB_CONDITION
-} spec_anno_type;
+	FIXME: Currently we actually do not need to have the INTERFACE_END types. We
+	basically wrap the MethodCall* pointer of the method call in the
+	INTERFACE_BEGIN type of annotation.
+*/
+typedef enum SpecAnnoType {
+	INIT, POTENTIAL_OP, OP_DEFINE, OP_CHECK, OP_CLEAR, OP_CLEAR_DEFINE,
+	INTERFACE_BEGIN, INTERFACE_END
+} SpecAnnoType;
+
+inline CSTR specAnnoType2Str(SpecAnnoType type) {
+	switch (type) {
+		case INIT:
+			return "INIT";
+		case POTENTIAL_OP:
+			return "POTENTIAL_OP";
+		case OP_DEFINE:
+			return "OP_DEFINE";
+		case OP_CHECK:
+			return "OP_CHECK";
+		case OP_CLEAR:
+			return "OP_CLEAR";
+		case OP_CLEAR_DEFINE:
+			return "OP_CLEAR_DEFINE";
+		case INTERFACE_BEGIN:
+			return "INTERFACE_BEGIN";
+		case INTERFACE_END:
+			return "INTERFACE_END";
+		default:
+			return "UNKNOWN_TYPE";
+	}
+}
 
 typedef
-struct spec_annotation {
-	spec_anno_type type;
-	void *annotation;
-} spec_annotation;
+struct SpecAnnotation {
+	SpecAnnoType type;
+	const void *annotation;
 
-typedef
-struct anno_func_table_init {
-	int size;
-	void **table;
-} anno_func_table_init;
+	SpecAnnotation(SpecAnnoType type, const void *anno);
+
+} SpecAnnotation;
+
+typedef bool (*CheckCommutativity_t)(Method, Method);
+/**
+	The first method is the target (to update its state), and the second method
+	is the method that should be executed (to access its method call info (ret
+	& args)
+*/
+typedef bool (*StateTransition_t)(Method, Method);
+typedef bool (*CheckState_t)(Method, Method);
+typedef void (*UpdateState_t)(Method);
+// Copy the second state to the first state
+typedef void (*CopyState_t)(Method, Method);
 
 /**
-	The interfaces and their HB conditions are represented by integers.
+	This struct contains a commutativity rule: two method calls represented by
+	two unique integers and a function that takes two "info" pointers (with the
+	return value and the arguments) and returns a boolean to represent whether
+	the two method calls are commutable.
 */
 typedef
-struct anno_hb_init {
-	int interface_num_before;
-	int hb_condition_num_before;
-	int interface_num_after;
-	int hb_condition_num_after;
-} anno_hb_init;
+struct CommutativityRule {
+	CSTR method1;
+	CSTR method2;
+
+	/** The plain text of the rule (debugging purpose) */
+	CSTR rule;
+	CheckCommutativity_t condition;
+
+	CommutativityRule(CSTR method1, CSTR method2, CSTR rule,
+		CheckCommutativity_t condition);
+
+	bool isRightRule(Method m1, Method m2);
+	
+	bool checkCondition(Method m1, Method m2);
+
+} CommutativityRule;
+
+typedef enum CheckFunctionType {
+    INITIAL, COPY, CLEAR, FINAL, PRINT_STATE, TRANSITION, PRE_CONDITION,
+    JUSTIFYING_PRECONDITION, SIDE_EFFECT, JUSTIFYING_POSTCONDITION,
+    POST_CONDITION, PRINT_VALUE
+} CheckFunctionType;
+
+typedef struct NamedFunction {
+	CSTR name;
+	CheckFunctionType type;
+	void *function;
+
+	/**
+		StateTransition_t transition;
+		CheckState_t preCondition;
+		CheckState_t postCondition;
+	*/
+	NamedFunction(CSTR name, CheckFunctionType type, void *function);
+} NamedFunction;
 
 typedef
-struct anno_interface_begin {
-	int interface_num;
-	char *msg; // For debugging only
-} anno_interface_begin;
+struct StateFunctions {
+	NamedFunction *transition;
+	NamedFunction *preCondition;
+	NamedFunction *justifyingPrecondition;
+	NamedFunction *justifyingPostcondition;
+	NamedFunction *postCondition;
+	NamedFunction *print;
 
-/* 
-	The follwoing function pointers can be put in a static table, not
-	necessarily stored in every function call.
+	StateFunctions(NamedFunction *transition, NamedFunction *preCondition,
+		NamedFunction *justifyingPrecondition,
+        NamedFunction *justifyingPostcondition,
+        NamedFunction *postCondition, NamedFunction *print);
 
-	id_func_t id;
-	check_action_func_t check_action;
-*/
-typedef
-struct anno_interface_end {
-	int interface_num;
-	void *info; // Return value & arguments
-} anno_interface_end;
+} StateFunctions;
 
-typedef
-struct anno_potential_cp_define {
-	int label_num;
-} anno_potential_cp_define;
+/** A map from a constant c-string to its set of checking functions */
+typedef HashTable<CSTR, StateFunctions*, uintptr_t, 4, malloc, calloc, free > StateFuncMap;
 
 typedef
-struct anno_cp_define {
-	int label_num;
-	int potential_cp_label_num;
-} anno_cp_define;
+struct AnnoInit {
+	/**
+		For the initialization of a state; We actually assume there are two
+		special nodes --- INITIAL & FINAL. They actually have a special
+		MethodCall class representing these two nodes, and their interface name
+		would be INITIAL and FINAL. For the initial function, we actually also
+		use it as the state copy function when evaluating the state of other
+		method calls
+
+		UpdateState_t --> initial
+	*/
+	NamedFunction *initial;
+
+	/**
+		TODO: Currently we just have this "final" field, which was supposed to
+		be a final checking function after all method call nodes have been
+		executed on the graph. However, before we think it through, this might
+		potentially be a violation of composability
+
+		CheckState_t --> final;
+	*/
+	NamedFunction *final;
+	
+	/**
+		For copying out an existing state from a previous method call
+
+		CopyState_t --> copy 
+	*/
+	NamedFunction *copy;
+
+	/**
+		For clearing out an existing state object
+
+		UpdateState_t --> delete 
+	*/
+	NamedFunction *clear;
+
+	
+	/**
+		For printing out the state 
+
+		UpdateState_t --> printState
+	*/
+	NamedFunction *printState;
+
+	/** For the state functions. We can conveniently access to the set of state
+	 *  functions with a hashmap */
+	StateFuncMap *funcMap;
+	
+	/** For commutativity rules */
+	CommutativityRule *commuteRules;
+	int commuteRuleNum;
+
+	AnnoInit(NamedFunction *initial, NamedFunction *final, NamedFunction *copy,
+		NamedFunction *clear, NamedFunction *printState, CommutativityRule
+		*commuteRules, int ruleNum);
+			
+	void addInterfaceFunctions(CSTR name, StateFunctions *funcs);
+
+} AnnoInit;
 
 typedef
-struct anno_cp_define_check {
-	int label_num;
-} anno_cp_define_check;
+struct AnnoInterfaceInfo {
+	CSTR name;
+	void *value;
 
-typedef
-struct anno_hb_condition {
-	int interface_num;
-	int hb_condition_num;
-} anno_hb_condition;
+	AnnoInterfaceInfo(CSTR name); 
+} AnnoInterfaceInfo;
+
+/**********    Universal functions for rewriting the program    **********/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+AnnoInterfaceInfo* _createInterfaceBeginAnnotation(CSTR name);
+
+void _createInterfaceEndAnnotation(CSTR name);
+
+void _setInterfaceBeginAnnotationValue(AnnoInterfaceInfo *info, void *value);
+
+void _createOPDefineAnnotation();
+
+void _createPotentialOPAnnotation(CSTR label);
+
+void _createOPCheckAnnotation(CSTR label);
+
+void _createOPClearAnnotation();
+
+void _createOPClearDefineAnnotation();
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif

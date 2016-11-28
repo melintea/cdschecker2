@@ -1,6 +1,5 @@
 #include "plugins.h"
 #include "scanalysis.h"
-#include "testanalysis.h"
 #include "specanalysis.h"
 
 ModelVector<TraceAnalysis *> * registered_analysis;
@@ -10,7 +9,6 @@ void register_plugins() {
 	registered_analysis=new ModelVector<TraceAnalysis *>();
 	installed_analysis=new ModelVector<TraceAnalysis *>();
 	registered_analysis->push_back(new SCAnalysis());
-	registered_analysis->push_back(new TESTAnalysis());
 	registered_analysis->push_back(new SPECAnalysis());
 }
 

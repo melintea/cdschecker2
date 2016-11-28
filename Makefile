@@ -8,9 +8,9 @@ OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 	   snapshot.o malloc.o mymemory.o common.o mutex.o promise.o conditionvariable.o \
 	   context.o scanalysis.o execution.o plugins.o libannotate.o
 
-SPEC_OBJ := $(SPEC_DIR)/specanalysis.o $(SPEC_DIR)/testanalysis.o
+include $(SPEC_DIR)/Makefile
 
-CPPFLAGS += -g -Iinclude -I. -Ispec-analysis
+CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR)
 LDFLAGS := -ldl -lrt -rdynamic
 SHARED := -shared
 
@@ -37,27 +37,27 @@ README.html: README.md
 	$(MARKDOWN) $< > $@
 
 $(LIB_SO): $(OBJECTS)
-	$(MAKE) -C $(SPEC_DIR)
-	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(SPEC_OBJ) $(LDFLAGS)
-
-#$(SPEC_DIR)/%.o:
+	$(CXX) $(SHARED) -o $(LIB_SO) $+ $(LDFLAGS)
 
 malloc.o: malloc.c
-	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPFLAGS) -Wno-unused-variable
+	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPLAGS) -Wno-unused-variable
 
 %.o: %.cc
-	$(CXX) -MMD -MF .$@.d -fPIC -c $< $(CPPFLAGS)
+	$(CXX) -MMD -MF $(dir $@).$(notdir $@).d -fPIC -c $< -o $@ $(CPPFLAGS)
 
 %.pdf: %.dot
 	dot -Tpdf $< -o $@
 
--include $(OBJECTS:%=.%.d)
+# Replace all the basename with 
+ALL_DEPS := $(shell echo $(OBJECTS) | sed -E 's/([^ ]*\/)?([^\/ ]*)/\1\.\2.d/g')
+-include $(ALL_DEPS)
+#-include $(OBJECTS:%=.%.d)
+
 
 PHONY += clean
 clean:
-	rm -f *.o *.so .*.d *.pdf *.dot
+	rm -f *.o *.so $(ALL_DEPS) *.pdf *.dot $(OBJECTS)
 	$(MAKE) -C $(TESTS_DIR) clean
-	$(MAKE) -C $(SPEC_DIR) clean
 
 PHONY += mrclean
 mrclean: clean
