@@ -16,7 +16,7 @@ include $(SCFENCE_DIR)/Makefile
 ALL_DEPS := $(shell echo $(OBJECTS) | sed -E 's/([^ ]*\/)?([^\/ ]*)/\1\.\2.d/g')
 -include $(ALL_DEPS)
 
-CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR) -I$(SCFENCE_DIR)
+CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR) -I$(SCFENCE_DIR) $(LIBBACKTRACE_INCLUDE) -std=c++20
 LDFLAGS := -ldl -lrt -rdynamic
 SHARED := -shared
 

@@ -1,6 +1,89 @@
 CDSChecker: A Model Checker for C11 and C++11 Atomics
 =====================================================
 
+This is a fork of CDSChecker, a model checker for C11/C++11 which exhaustively explores the behaviors of code under the C/C++ memory model.
+
+See https://plrg.ics.uci.edu/software_page/42-2/
+
+This fork sports a bug report with callstack traces as I find the plain bug report hard to make sense of.
+
+The code is forked from [github](https://github.com/bdemsky/cdschecker) and not from [http://plrg.eecs.uci.edu](http://plrg.eecs.uci.edu/git/?p=model-checker.git;a=tree) as it sems more recent. I do not know the differences yet butthe github version has buggy makefiles.
+
+Both of these versions fail to detect memory fences bugs that relacy ([fork1](https://github.com/dvyukov/relacy) or [fork2](https://github.com/ccotter/relacy)) does. For these [c11tester](https://github.com/bdemsky/c11tester) might be a better tool. 
+
+Recipe:
+- ```cd libbacktrace```
+- git clone [libbacktrace](https://github.com/ianlancetaylor/libbacktrace) && ```./configure ...``` and ```make```
+- back to cdschecker
+  - ```make```
+  - ```./run.sh test/deadlock.o```
+
+```
+$ ./run.sh test/deadlock.o
+CDSChecker
+Copyright (c) 2013 Regents of the University of California. All rights reserved.
+Distributed under the GPLv2
+Written by Brian Norris and Brian Demsky
+
+Program output from execution 2:
+---- BEGIN PROGRAM OUTPUT ----
+Main thread: creating 2 threads
+---- END PROGRAM OUTPUT   ----
+
+Bug report: 2 bugs detected
+  [BUG] Deadlock detected (thread 3)
+  [BUG] Deadlock detected
+
+Execution trace 2: DETECTED BUG(S)
+------------------------------------------------------------------------------------
+#    t    Action type     MO       Location         Value               Rf  CV
+------------------------------------------------------------------------------------
+1    1    thread start    seq_cst  0x729a9ba01800   0xdeadbeef              ( 0,  1)
+2    1    thread create   seq_cst  0x729a9bb01ba8   0x729a9bb01b50          ( 0,  2)
+3    2    thread start    seq_cst  0x729a9bb01ee8   0xdeadbeef              ( 0,  2,  3)
+4    2    lock            seq_cst  0x729a9bb01d68   0xdeadbeef              ( 0,  2,  4)
+5    1    thread create   seq_cst  0x729a9bb01bb0   0x729a9bb01b50          ( 0,  5)
+6    3    thread start    seq_cst  0x729a9bc028a0   0xdeadbeef              ( 0,  5,  0,  6)
+7    3    lock            seq_cst  0x729a9bb01d88   0xdeadbeef              ( 0,  5,  0,  7)
+HASH 18015818
+------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------
+#    t    Action type     MO       Location         Value               Rf  CV
+------------------------------------------------------------------------------------
+1    1    thread start    seq_cst  0x729a9ba01800   0xdeadbeef              ( 0,  1)
+callstack.h:59  cdschecker::callstack::collect()
+callstack.h:40  cdschecker::callstack::callstack()
+action.cc:47  ModelAction::ModelAction(action_type, std::memory_order, void*, unsigned long, Thread*)
+threads.cc:51  thread_startup()
+__start_context.S:90  (null)
+
+...
+
+4    2    lock            seq_cst  0x729a9bb01d68   0xdeadbeef              ( 0,  2,  4)
+callstack.h:59  cdschecker::callstack::collect()
+callstack.h:40  cdschecker::callstack::callstack()
+action.cc:47  ModelAction::ModelAction(action_type, std::memory_order, void*, unsigned long, Thread*)
+==========>  mutex.cc:21  std::mutex::lock() <==========
+deadlock.cc:15  a(void*)
+threads.cc:54  thread_startup()
+__start_context.S:90  (null)
+
+...
+
+HASH 18015818
+------------------------------------------------------------------------------------
+******* Model-checking complete: *******
+Number of complete, bug-free executions: 2
+Number of redundant executions: 0
+Number of buggy executions: 1
+Number of infeasible executions: 0
+Total executions: 3
+```
+
+Doc
+---
+
 CDSChecker is a model checker for C11/C++11 which exhaustively explores the
 behaviors of code under the C/C++ memory model. It uses partial order reduction
 as well as a few other novel techniques to eliminate time spent on redundant

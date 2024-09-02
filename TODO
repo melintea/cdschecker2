@@ -1,0 +1,5 @@
+# run.sh -m 2 -f 10 : 
+double-relseq
+deadlock
+pending-release
+releaseseq

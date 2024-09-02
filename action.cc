@@ -51,6 +51,8 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
 
 	Thread *t = thread ? thread : thread_current();
 	this->tid = t->get_id();
+
+	//callstack.dump();
 }
 
 /** @brief ModelAction destructor */
@@ -573,7 +575,7 @@ const char * ModelAction::get_mo_str() const
 }
 
 /** @brief Print nicely-formatted info about this ModelAction */
-void ModelAction::print() const
+void ModelAction::print(bool details) const
 {
 	const char *type_str = get_type_str(), *mo_str = get_mo_str();
 
@@ -599,6 +601,10 @@ void ModelAction::print() const
 		cv->print();
 	} else
 		model_print("\n");
+
+        if (details) {
+	    callstack.print(model_out);
+	}
 }
 
 /** @brief Get a (likely) unique hash for this ModelAction */

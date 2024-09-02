@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <inttypes.h>
 
+#include "callstack.h"
 #include "mymemory.h"
 #include "memoryorder.h"
 #include "modeltypes.h"
@@ -91,7 +92,7 @@ class ModelAction {
 public:
 	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
 	~ModelAction();
-	void print() const;
+	void print(bool details=false) const;
 
 	thread_id_t get_tid() const { return tid; }
 	action_type get_type() const { return type; }
@@ -251,6 +252,11 @@ private:
 	ClockVector *cv;
 
 	bool sleep_flag;
+
+        /**
+	 *  Where was this instantiated from
+	 */
+	cdschecker::callstack callstack;
 };
 
 #endif /* __ACTION_H__ */

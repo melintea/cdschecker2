@@ -1,14 +1,16 @@
 #include <stdio.h>
 #include <threads.h>
+#include <unistd.h>
 #include <mutex>
 
+#include "common.h"
 #include "librace.h"
 
 std::mutex *x;
 std::mutex *y;
 uint32_t shared = 0;
 
-static void a(void *obj)
+void a(void *obj)
 {
 	x->lock();
 	y->lock();
@@ -17,7 +19,7 @@ static void a(void *obj)
 	x->unlock();
 }
 
-static void b(void *obj)
+void b(void *obj)
 {
 	y->lock();
 	x->lock();

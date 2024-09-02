@@ -10,7 +10,7 @@ include $(DIR)/Makefile
 
 DEPS := $(join $(addsuffix ., $(dir $(OBJECTS))), $(addsuffix .d, $(notdir $(OBJECTS))))
 
-CPPFLAGS += -I$(BASE) -I$(BASE)/include
+CPPFLAGS += -I$(BASE) -I$(BASE)/include -fPIC -std=c++20
 CFLAGS += -I$(BASE) -I$(BASE)/include
 
 all: $(OBJECTS)
@@ -18,10 +18,10 @@ all: $(OBJECTS)
 -include $(DEPS)
 
 %.o: %.c
-	$(CC) -MMD -MF $(@D)/.$(@F).d -o $@ $< $(CFLAGS) -L$(BASE) -l$(LIB_NAME)
+	$(CC) -MMD -MF $(@D)/.$(@F).d -o $@ $< $(CFLAGS) $(LIBBACKTRACE_INCLUDE) -L$(BASE) -l$(LIB_NAME) $(LIBBACKTRACE_LIB) -rdynamic
 
 %.o: %.cc
-	$(CXX) -MMD -MF $(@D)/.$(@F).d -o $@ $< $(CPPFLAGS) -L$(BASE) -l$(LIB_NAME)
+	$(CXX) -MMD -MF $(@D)/.$(@F).d -o $@ $< $(CPPFLAGS) $(LIBBACKTRACE_INCLUDE) -L$(BASE) -l$(LIB_NAME) $(LIBBACKTRACE_LIB) -rdynamic
 
 clean::
 	rm -f $(OBJECTS) $(DEPS)
