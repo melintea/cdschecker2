@@ -7,7 +7,7 @@ See https://plrg.ics.uci.edu/software_page/42-2/
 
 This fork sports a bug report with callstack traces as I find the plain bug report hard to make sense of.
 
-The code is forked from [github](https://github.com/bdemsky/cdschecker) and not from [http://plrg.eecs.uci.edu](http://plrg.eecs.uci.edu/git/?p=model-checker.git;a=tree) as it sems more recent. I do not know the differences yet butthe github version has buggy makefiles.
+The code is forked from [github](https://github.com/bdemsky/cdschecker) and not from [http://plrg.eecs.uci.edu](http://plrg.eecs.uci.edu/git/?p=model-checker.git;a=tree) as it sems more recent. I do not know the differences yet but the makefiles are buggy: start compiling clean for any changes to the lib.
 
 Both of these versions fail to detect memory fences bugs that relacy ([fork1](https://github.com/dvyukov/relacy) or [fork2](https://github.com/ccotter/relacy)) does. For these [c11tester](https://github.com/bdemsky/c11tester) might be a better tool. 
 
