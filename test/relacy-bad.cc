@@ -13,11 +13,12 @@
 
 std::atomic<int> a{0};
 int x = 0; // dependent data
+static_assert(sizeof(int) == 4); // load/store 32
 
 
 void fa(void *obj)
 {
-    x = 1;
+    x = 1; store_32(&x, 1);
     // bug: use rl::mo_relaxed aka std::memory_order_relaxed
     // fix: use rl::mo_release aka std::memory_order_release
     a.store(1, std::memory_order_relaxed);
@@ -29,7 +30,8 @@ void fb(void *obj)
     // fix: use rl::mo_acquire aka std::memory_order_acquire
     if (1 == a.load(std::memory_order_relaxed))
     {
-        x = 2;
+        load_32(&x); 
+        x = 2; store_32(&x, 2);
     }
 }
 

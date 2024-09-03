@@ -9,7 +9,9 @@ This fork sports a bug report with callstack traces as I find the plain bug repo
 
 The code is forked from [github](https://github.com/bdemsky/cdschecker) and not from [http://plrg.eecs.uci.edu](http://plrg.eecs.uci.edu/git/?p=model-checker.git;a=tree) as it sems more recent. I do not know the differences yet but the makefiles are buggy: start compiling clean for any changes to the lib.
 
-Both of these versions fail to detect memory fences bugs that relacy ([fork1](https://github.com/dvyukov/relacy) or [fork2](https://github.com/ccotter/relacy)) does. For these [c11tester](https://github.com/bdemsky/c11tester) might be a better tool. 
+Both of these versions fail to detect memory fences bugs that relacy ([fork1](https://github.com/dvyukov/relacy) or [fork2](https://github.com/ccotter/relacy)) does unless using the ```load_X/store_X``` librace; see tests/relacy-{good,bad}.cc. For these [c11tester](https://github.com/bdemsky/c11tester) might be a better tool but I did not manage to compile the pass with a more recent compiler than llvm8. 
+
+The makefiles are buggy; must ```make clean && make``` to pick-up changes. 
 
 Recipe:
 - ```cd libbacktrace```
