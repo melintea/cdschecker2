@@ -18,13 +18,15 @@ bool CommutativityRule::isRightRule(Method m1, Method m2) {
 }
 	
 bool CommutativityRule::checkCondition(Method m1, Method m2) {
-	if (m1->name == method1 && m2->name == method2)
+	if (m1->name == method1 && m2->name == method2) {
 		return (*condition)(m1, m2);
-	else if (m1->name == method2 && m2->name == method1)
+	} else if (m1->name == method2 && m2->name == method1) {
 		return (*condition)(m2, m1);
-	else // The checking should only be called on the right rule
+	} else {// The checking should only be called on the right rule
 		ASSERT(false);
-		return false;
+		//unreacheable
+	}
+	return false;
 }
 
 NamedFunction::NamedFunction(CSTR name, CheckFunctionType type, void *function) : name(name),
