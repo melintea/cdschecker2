@@ -1084,8 +1084,10 @@ bool ModelExecution::initialize_curr_action(ModelAction **curr)
 		if ((*curr)->is_rmwr())
 			newcurr->copy_typeandorder(*curr);
 
-                // This assert is tripped by atomic ops
-		ASSERT((*curr)->get_location() == newcurr->get_location());
+		ASSERT(  ((*curr)->get_location() == newcurr->get_location())
+		      || ((*curr)->get_type() == THREAD_START && newcurr->get_type() == THREAD_START)
+		      || ((*curr)->get_type() == THREAD_FINISH && newcurr->get_type() == THREAD_FINISH)
+		      );
 		newcurr->copy_from_new(*curr);
 
 		/* Discard duplicate ModelAction; use action from NodeStack */
