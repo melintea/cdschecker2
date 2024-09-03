@@ -1,5 +1,5 @@
 //
-// Same test as the relacy one. Nothing detected !
+// Same test as the relacy one
 //
 
 #include "common.h"
