@@ -30,7 +30,6 @@ void fb(void *obj)
     // fix: use rl::mo_acquire aka std::memory_order_acquire
     if (1 == a.load(std::memory_order_relaxed))
     {
-        load_32(&x); 
         x = 2; store_32(&x, 2);
     }
 }
