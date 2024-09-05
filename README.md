@@ -5,17 +5,20 @@ This is a fork of CDSChecker, a model checker for C11/C++11 which exhaustively e
 
 See https://plrg.ics.uci.edu/software_page/42-2/
 
-This fork sports a bug report with callstack traces as I find the plain bug report hard to make sense of.
 
 The code is forked from [github](https://github.com/bdemsky/cdschecker) and not from [http://plrg.eecs.uci.edu](http://plrg.eecs.uci.edu/git/?p=model-checker.git;a=tree) as it sems more recent. I do not know the differences yet. 
 
-Both of these versions fail to detect memory fences bugs that relacy ([fork1](https://github.com/dvyukov/relacy) or [fork2](https://github.com/ccotter/relacy)) does unless using the ```load_X/store_X``` librace; see tests/relacy-{good,bad}.cc. For these [c11tester](https://github.com/bdemsky/c11tester) might be a better tool but I did not manage to compile the pass with a more recent compiler than llvm8. 
+Fork differences:
+- a bug report with callstack traces as I find the plain bug report hard to make sense of. Needs ```libbacktrace```.
+- ```librace2.h``` with ```librace::var<X>``` API built on top of the ```load_X/store_X``` librace API.
+- older compilers probably not supported anymore.
 
-The makefiles are buggy; must ```make clean && make``` to pick-up changes. 
+Notes:
+- The makefiles are buggy; must ```make clean && make``` to pick-up changes. 
 
 Recipe:
 - ```cd libbacktrace```
-- git clone [libbacktrace](https://github.com/ianlancetaylor/libbacktrace) && ```./configure ...``` and ```make```
+- git clone [libbacktrace](https://github.com/ianlancetaylor/libbacktrace) && ```./configure``` and ```make```
 - back to cdschecker
   - ```make```
   - ```./run.sh test/deadlock.o```
@@ -83,8 +86,8 @@ Number of infeasible executions: 0
 Total executions: 3
 ```
 
-Doc
----
+Older documentation
+-------------------
 
 CDSChecker is a model checker for C11/C++11 which exhaustively explores the
 behaviors of code under the C/C++ memory model. It uses partial order reduction
