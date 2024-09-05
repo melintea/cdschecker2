@@ -77,10 +77,15 @@ class var {
 
 public:
 
-    var() :_value() {}
     var(T v) :_value(v) {}
-    operator T() const {return _value;}
+    var()                      = delete;
+    ~var()                     = default;
+    var(const var&)            = delete;
+    var& operator=(const var&) = delete;
+    var(var&&)                 = default;
+    var& operator=(var&&)      = default;
 
+    operator T() const {return _value;}
 
     T load() {
         constexpr auto sz(sizeof(T));
