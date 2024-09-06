@@ -10,7 +10,7 @@ include $(DIR)/Makefile
 
 DEPS := $(join $(addsuffix ., $(dir $(OBJECTS))), $(addsuffix .d, $(notdir $(OBJECTS))))
 
-CPPFLAGS += -I$(BASE) -I$(BASE)/include -fPIC -std=c++20
+CPPFLAGS += -I$(BASE) -I$(BASE)/include -fPIC 
 CFLAGS += -I$(BASE) -I$(BASE)/include
 
 all: $(OBJECTS)

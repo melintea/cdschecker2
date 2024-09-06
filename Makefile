@@ -11,12 +11,14 @@ OBJECTS := libthreads.o schedule.o model.o threads.o librace.o action.o \
 
 include $(SPEC_DIR)/Makefile
 include $(SCFENCE_DIR)/Makefile
+#$(info $$OBJECTS = $(OBJECTS))
 
 # Replace all the basename with 
 ALL_DEPS := $(shell echo $(OBJECTS) | sed -E 's/([^ ]*\/)?([^\/ ]*)/\1\.\2.d/g')
--include $(ALL_DEPS)
+#-include $(ALL_DEPS)
+#$(info $$ALL_DEPS = $(ALL_DEPS))
 
-CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR) -I$(SCFENCE_DIR) $(LIBBACKTRACE_INCLUDE) -std=c++20
+CPPFLAGS += -Iinclude -I. -I$(SPEC_DIR) -I$(SCFENCE_DIR) $(LIBBACKTRACE_INCLUDE)
 LDFLAGS := -ldl -lrt -rdynamic
 SHARED := -shared
 
@@ -44,9 +46,9 @@ README.html: README.md
 
 
 malloc.o: malloc.c
-	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPLAGS) -Wno-unused-variable
+	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPFLAGS) -Wno-unused-variable
 
-%.o: %.cc
+%.o : %.cc
 	$(CXX) -MMD -MF $(dir $@).$(notdir $@).d -fPIC -c $< -o $@ $(CPPFLAGS)
 
 $(LIB_SO): $(OBJECTS)
