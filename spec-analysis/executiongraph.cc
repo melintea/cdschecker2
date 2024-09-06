@@ -1444,7 +1444,7 @@ bool ExecutionGraph::checkJustifyingSubhistory(MethodList *history, Method
 	Method startMethod = getStartMethod();
 	UpdateState_t initialFunc = (UpdateState_t) initial->function;
 	UpdateState_t printStateFunc = (UpdateState_t) printState->function;
-	UpdateState_t printVauleFunc = NULL;
+	//UpdateState_t printVauleFunc = NULL;
 	UpdateState_t clearFunc = (UpdateState_t) clear->function;
 
 	// We execute the equivalent sequential data structure with the state of the

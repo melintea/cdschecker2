@@ -46,7 +46,7 @@ README.html: README.md
 
 
 malloc.o: malloc.c
-	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CPPFLAGS) -Wno-unused-variable
+	$(CC) -fPIC -c malloc.c -DMSPACES -DONLY_MSPACES -DHAVE_MMAP=0 $(CFLAGS) -Wno-unused-variable
 
 %.o : %.cc
 	$(CXX) -MMD -MF $(dir $@).$(notdir $@).d -fPIC -c $< -o $@ $(CPPFLAGS)

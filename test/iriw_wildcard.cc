@@ -60,7 +60,7 @@ int user_main(int argc, char **argv)
 	/*
 	 * This condition should not be hit if the execution is SC */
 	bool sc = (r1 == 1 && r2 == 0 && r3 == 1 && r4 == 0);
-	//MODEL_ASSERT(!sc);
+	MODEL_ASSERT(!sc);
 
 	return 0;
 }

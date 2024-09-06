@@ -3,6 +3,9 @@
 #include "threads-model.h"
 #include "clockvector.h"
 #include "execution.h"
+
+#include <utility>
+
 #include <sys/time.h>
 
 
@@ -451,7 +454,7 @@ int SCAnalysis::buildVectorsFast(action_list_t *list) {
 			writeLists = new SnapVector<SnapVector<ModelAction*>*>;
 			writeMap.put(loc, writeLists);
 		}
-		if (writeLists->size() <= threadid) {
+		if (std::cmp_less(writeLists->size(), threadid)) {  // writeLists->size() <= threadid)
 			writeLists->resize(threadid + 1);
 		}
 		SnapVector<ModelAction*> *writeList = (*writeLists)[threadid];
@@ -619,8 +622,9 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		thread_id_t tid = int_to_id(i);
 		if (tid == read->get_tid())
 			continue;
-		if (writeLists->size() == i)
+		if (std::cmp_equal(writeLists->size(), i)) { // writeLists->size() == i
 			break;
+		}
 		SnapVector<ModelAction*> *writeList = (*writeLists)[i];
 		if (!writeList || writeList->size() == 0)
 			continue;
@@ -642,7 +646,8 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		if (tid == write->get_tid()) {
 			// Update the read->write2 atomatically
 			for (int i = writeList->size() - 1; i >= 0; i--) {
-				if (write == (*writeList)[i] && (i + 1) != writeList->size()) {
+				//if (write == (*writeList)[i] && (i + 1) != writeList->size()) {
+				if (write == (*writeList)[i] && std::cmp_not_equal((i + 1), writeList->size()) ) {
 					write2 = (*writeList)[i + 1];
 					//model_print("corner case\n");
 					//write->print();
@@ -705,7 +710,8 @@ bool SCAnalysis::processReadFast(const ModelAction *read, ClockVector *cv) {
 		
 		// Find the latest write2 (write -> write2) in the list
 		low = earliestPos + 1;
-		if (low == writeList->size()) {
+		//if (low == writeList->size()) {
+		if (std::cmp_equal(low, writeList->size())) {
 			// In case where only 1 action is in the list
 			low = 0;
 		}
