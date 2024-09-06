@@ -16,13 +16,13 @@
 /** Allocate a stack for a new thread. */
 static void * stack_allocate(size_t size)
 {
-	return Thread_malloc(size);
+    return Thread_malloc(size);
 }
 
 /** Free a stack for a terminated thread. */
 static void stack_free(void *stack)
 {
-	Thread_free(stack);
+    Thread_free(stack);
 }
 
 /**
@@ -34,8 +34,8 @@ static void stack_free(void *stack)
  */
 Thread * thread_current(void)
 {
-	ASSERT(model);
-	return model->get_current_thread();
+    ASSERT(model);
+    return model->get_current_thread();
 }
 
 /**
@@ -45,16 +45,16 @@ Thread * thread_current(void)
  */
 void thread_startup()
 {
-	Thread * curr_thread = thread_current();
+    Thread * curr_thread = thread_current();
 
-	/* Add dummy "start" action, just to create a first clock vector */
-	model->switch_to_master(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
+    /* Add dummy "start" action, just to create a first clock vector */
+    model->switch_to_master(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
 
-	/* Call the actual thread function */
-	curr_thread->start_routine(curr_thread->arg);
+    /* Call the actual thread function */
+    curr_thread->start_routine(curr_thread->arg);
 
-	/* Finish thread properly */
-	model->switch_to_master(new ModelAction(THREAD_FINISH, std::memory_order_seq_cst, curr_thread));
+    /* Finish thread properly */
+    model->switch_to_master(new ModelAction(THREAD_FINISH, std::memory_order_seq_cst, curr_thread));
 }
 
 /**
@@ -64,21 +64,21 @@ void thread_startup()
  */
 int Thread::create_context()
 {
-	int ret;
+    int ret;
 
-	ret = getcontext(&context);
-	if (ret)
-		return ret;
+    ret = getcontext(&context);
+    if (ret)
+        return ret;
 
-	/* Initialize new managed context */
-	stack = stack_allocate(STACK_SIZE);
-	context.uc_stack.ss_sp = stack;
-	context.uc_stack.ss_size = STACK_SIZE;
-	context.uc_stack.ss_flags = 0;
-	context.uc_link = model->get_system_context();
-	makecontext(&context, thread_startup, 0);
+    /* Initialize new managed context */
+    stack = stack_allocate(STACK_SIZE);
+    context.uc_stack.ss_sp = stack;
+    context.uc_stack.ss_size = STACK_SIZE;
+    context.uc_stack.ss_flags = 0;
+    context.uc_link = model->get_system_context();
+    makecontext(&context, thread_startup, 0);
 
-	return 0;
+    return 0;
 }
 
 /**
@@ -92,8 +92,8 @@ int Thread::create_context()
  */
 int Thread::swap(Thread *t, ucontext_t *ctxt)
 {
-	t->set_state(THREAD_READY);
-	return model_swapcontext(&t->context, ctxt);
+    t->set_state(THREAD_READY);
+    return model_swapcontext(&t->context, ctxt);
 }
 
 /**
@@ -106,19 +106,19 @@ int Thread::swap(Thread *t, ucontext_t *ctxt)
  */
 int Thread::swap(ucontext_t *ctxt, Thread *t)
 {
-	t->set_state(THREAD_RUNNING);
-	return model_swapcontext(ctxt, &t->context);
+    t->set_state(THREAD_RUNNING);
+    return model_swapcontext(ctxt, &t->context);
 }
 
 
 /** Terminate a thread and free its stack. */
 void Thread::complete()
 {
-	ASSERT(!is_complete());
-	DEBUG("completed thread %d\n", id_to_int(get_id()));
-	state = THREAD_COMPLETED;
-	if (stack)
-		stack_free(stack);
+    ASSERT(!is_complete());
+    DEBUG("completed thread %d\n", id_to_int(get_id()));
+    state = THREAD_COMPLETED;
+    if (stack)
+        stack_free(stack);
 }
 
 /**
@@ -130,19 +130,19 @@ void Thread::complete()
  * @param tid The thread ID to assign
  */
 Thread::Thread(thread_id_t tid) :
-	parent(NULL),
-	creation(NULL),
-	pending(NULL),
-	start_routine(NULL),
-	arg(NULL),
-	stack(NULL),
-	user_thread(NULL),
-	id(tid),
-	state(THREAD_READY), /* Thread is always ready? */
-	last_action_val(0),
-	model_thread(true)
+    parent(NULL),
+    creation(NULL),
+    pending(NULL),
+    start_routine(NULL),
+    arg(NULL),
+    stack(NULL),
+    user_thread(NULL),
+    id(tid),
+    state(THREAD_READY), /* Thread is always ready? */
+    last_action_val(0),
+    model_thread(true)
 {
-	memset(&context, 0, sizeof(context));
+    memset(&context, 0, sizeof(context));
 }
 
 /**
@@ -152,38 +152,38 @@ Thread::Thread(thread_id_t tid) :
  * @param a The parameter to pass to this function.
  */
 Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread *parent) :
-	parent(parent),
-	creation(NULL),
-	pending(NULL),
-	start_routine(func),
-	arg(a),
-	user_thread(t),
-	id(tid),
-	state(THREAD_CREATED),
-	last_action_val(VALUE_NONE),
-	model_thread(false)
+    parent(parent),
+    creation(NULL),
+    pending(NULL),
+    start_routine(func),
+    arg(a),
+    user_thread(t),
+    id(tid),
+    state(THREAD_CREATED),
+    last_action_val(VALUE_NONE),
+    model_thread(false)
 {
-	int ret;
+    int ret;
 
-	/* Initialize state */
-	ret = create_context();
-	if (ret)
-		model_print("Error in create_context\n");
+    /* Initialize state */
+    ret = create_context();
+    if (ret)
+        model_print("Error in create_context\n");
 
-	user_thread->priv = this;
+    user_thread->priv = this;
 }
 
 /** Destructor */
 Thread::~Thread()
 {
-	if (!is_complete())
-		complete();
+    if (!is_complete())
+        complete();
 }
 
 /** @return The thread_id_t corresponding to this Thread object. */
 thread_id_t Thread::get_id() const
 {
-	return id;
+    return id;
 }
 
 /**
@@ -192,8 +192,8 @@ thread_id_t Thread::get_id() const
  */
 void Thread::set_state(thread_state s)
 {
-	ASSERT(s == THREAD_COMPLETED || state != THREAD_COMPLETED);
-	state = s;
+    ASSERT(s == THREAD_COMPLETED || state != THREAD_COMPLETED);
+    state = s;
 }
 
 /**
@@ -202,14 +202,14 @@ void Thread::set_state(thread_state s)
  */
 Thread * Thread::waiting_on() const
 {
-	if (!pending)
-		return NULL;
+    if (!pending)
+        return NULL;
 
-	if (pending->get_type() == THREAD_JOIN)
-		return pending->get_thread_operand();
-	else if (pending->is_lock())
-		return (Thread *)pending->get_mutex()->get_state()->locked;
-	return NULL;
+    if (pending->get_type() == THREAD_JOIN)
+        return pending->get_thread_operand();
+    else if (pending->is_lock())
+        return (Thread *)pending->get_mutex()->get_state()->locked;
+    return NULL;
 }
 
 /**
@@ -221,9 +221,9 @@ Thread * Thread::waiting_on() const
  */
 bool Thread::is_waiting_on(const Thread *t) const
 {
-	Thread *wait;
-	for (wait = waiting_on(); wait != NULL; wait = wait->waiting_on())
-		if (wait == t)
-			return true;
-	return false;
+    Thread *wait;
+    for (wait = waiting_on(); wait != NULL; wait = wait->waiting_on())
+        if (wait == t)
+            return true;
+    return false;
 }

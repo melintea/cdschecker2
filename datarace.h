@@ -13,30 +13,30 @@
 class ModelAction;
 
 struct ShadowTable {
-	void * array[65536];
+    void * array[65536];
 };
 
 struct ShadowBaseTable {
-	uint64_t array[65536];
+    uint64_t array[65536];
 };
 
 struct DataRace {
-	/* Clock and thread associated with first action.  This won't change in
-		 response to synchronization. */
+    /* Clock and thread associated with first action.  This won't change in
+         response to synchronization. */
 
-	thread_id_t oldthread;
-	modelclock_t oldclock;
-	/* Record whether this is a write, so we can tell the user. */
-	bool isoldwrite;
+    thread_id_t oldthread;
+    modelclock_t oldclock;
+    /* Record whether this is a write, so we can tell the user. */
+    bool isoldwrite;
 
-	/* Model action associated with second action.  This could change as
-		 a result of synchronization. */
-	ModelAction *newaction;
-	/* Record whether this is a write, so we can tell the user. */
-	bool isnewwrite;
+    /* Model action associated with second action.  This could change as
+         a result of synchronization. */
+    ModelAction *newaction;
+    /* Record whether this is a write, so we can tell the user. */
+    bool isnewwrite;
 
-	/* Address of data race. */
-	const void *address;
+    /* Address of data race. */
+    const void *address;
 };
 
 #define MASK16BIT 0xffff
@@ -52,12 +52,12 @@ bool haveUnrealizedRaces();
  * @brief A record of information for detecting data races
  */
 struct RaceRecord {
-	modelclock_t *readClock;
-	thread_id_t *thread;
-	int capacity;
-	int numReads;
-	thread_id_t writeThread;
-	modelclock_t writeClock;
+    modelclock_t *readClock;
+    thread_id_t *thread;
+    int capacity;
+    int numReads;
+    thread_id_t writeThread;
+    modelclock_t writeClock;
 };
 
 #define INITCAPACITY 4

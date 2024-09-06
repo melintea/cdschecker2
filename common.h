@@ -28,16 +28,16 @@ void assert_hook(void);
 #ifdef CONFIG_ASSERT
 #define ASSERT(expr) \
 do { \
-	if (!(expr)) { \
-		fprintf(stderr, "Error: assertion failed in %s at line %d\n", __FILE__, __LINE__); \
-		/* print_trace(); // Trace printing may cause dynamic memory allocation */ \
-		assert_hook();				 \
-		exit(EXIT_FAILURE); \
-	} \
+    if (!(expr)) { \
+        fprintf(stderr, "Error: assertion failed in %s at line %d\n", __FILE__, __LINE__); \
+        /* print_trace(); // Trace printing may cause dynamic memory allocation */ \
+        assert_hook();               \
+        exit(EXIT_FAILURE); \
+    } \
 } while (0)
 #else
 #define ASSERT(expr) \
-	do { } while (0)
+    do { } while (0)
 #endif /* CONFIG_ASSERT */
 
 #define error_msg(...) fprintf(stderr, "Error: " __VA_ARGS__)

@@ -8,52 +8,52 @@ class PatchUnit;
 class Patch;
 
 class PatchUnit {
-	private:
-	const ModelAction *act;
-	memory_order mo;
+    private:
+    const ModelAction *act;
+    memory_order mo;
 
-	public:
-	PatchUnit(const ModelAction *act, memory_order mo) {
-		this->act= act;
-		this->mo = mo;
-	}
+    public:
+    PatchUnit(const ModelAction *act, memory_order mo) {
+        this->act= act;
+        this->mo = mo;
+    }
 
-	const ModelAction* getAct() {
-		return act;
-	}
+    const ModelAction* getAct() {
+        return act;
+    }
 
-	memory_order getMO() {
-		return mo;
-	}
+    memory_order getMO() {
+        return mo;
+    }
 
-	SNAPSHOTALLOC
+    SNAPSHOTALLOC
 };
 
 class Patch {
-	private:
-	SnapVector<PatchUnit*> *units;
+    private:
+    SnapVector<PatchUnit*> *units;
 
-	public:
-	Patch(const ModelAction *act, memory_order mo);
+    public:
+    Patch(const ModelAction *act, memory_order mo);
 
-	Patch(const ModelAction *act1, memory_order mo1, const ModelAction *act2,
-		memory_order mo2);
+    Patch(const ModelAction *act1, memory_order mo1, const ModelAction *act2,
+        memory_order mo2);
 
-	Patch();
+    Patch();
 
-	bool canStrengthen(Inference *curInfer);
+    bool canStrengthen(Inference *curInfer);
 
-	bool isApplicable();
+    bool isApplicable();
 
-	void addPatchUnit(const ModelAction *act, memory_order mo);
+    void addPatchUnit(const ModelAction *act, memory_order mo);
 
-	int getSize();
+    int getSize();
 
-	PatchUnit* get(int i);
+    PatchUnit* get(int i);
 
-	void print();
+    void print();
 
-	SNAPSHOTALLOC
+    SNAPSHOTALLOC
 };
 
 #endif

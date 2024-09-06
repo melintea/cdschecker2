@@ -124,7 +124,7 @@ inline void atomic_flag::clear( memory_order __x__ ) volatile
                 __r__; })
 
 #define _ATOMIC_FENCE_( __x__ ) \
-	({ model_fence_action(__x__);})
+    ({ model_fence_action(__x__);})
  
 
 #define ATOMIC_CHAR_LOCK_FREE 1
@@ -2330,12 +2330,12 @@ inline bool atomic_compare_exchange_strong
 inline void* atomic_fetch_add_explicit
 ( volatile atomic_address* __a__, ptrdiff_t __m__, memory_order __x__ )
 {
-	volatile __typeof__((__a__)->__f__)* __p__ = & ((__a__)->__f__);
-	__typeof__((__a__)->__f__) __old__=(__typeof__((__a__)->__f__)) model_rmwr_action((void *)__p__, __x__);
-	__typeof__((__a__)->__f__) __copy__= __old__;
-	__copy__ = (void *) (((char *)__copy__) + __m__);
-	model_rmw_action((void *)__p__, __x__, (uint64_t) __copy__);
-	return __old__;
+    volatile __typeof__((__a__)->__f__)* __p__ = & ((__a__)->__f__);
+    __typeof__((__a__)->__f__) __old__=(__typeof__((__a__)->__f__)) model_rmwr_action((void *)__p__, __x__);
+    __typeof__((__a__)->__f__) __copy__= __old__;
+    __copy__ = (void *) (((char *)__copy__) + __m__);
+    model_rmw_action((void *)__p__, __x__, (uint64_t) __copy__);
+    return __old__;
 }
 
  inline void* atomic_fetch_add
@@ -2345,12 +2345,12 @@ inline void* atomic_fetch_add_explicit
 
 inline void* atomic_fetch_sub_explicit
 ( volatile atomic_address* __a__, ptrdiff_t __m__, memory_order __x__ )
-{	volatile __typeof__((__a__)->__f__)* __p__ = & ((__a__)->__f__);
-	__typeof__((__a__)->__f__) __old__=(__typeof__((__a__)->__f__)) model_rmwr_action((void *)__p__, __x__);
-	__typeof__((__a__)->__f__) __copy__= __old__;
-	__copy__ = (void *) (((char *)__copy__) - __m__);
-	model_rmw_action((void *)__p__, __x__, (uint64_t) __copy__);
-	return __old__;
+{   volatile __typeof__((__a__)->__f__)* __p__ = & ((__a__)->__f__);
+    __typeof__((__a__)->__f__) __old__=(__typeof__((__a__)->__f__)) model_rmwr_action((void *)__p__, __x__);
+    __typeof__((__a__)->__f__) __copy__= __old__;
+    __copy__ = (void *) (((char *)__copy__) - __m__);
+    model_rmw_action((void *)__p__, __x__, (uint64_t) __copy__);
+    return __old__;
 }
 
 inline void* atomic_fetch_sub

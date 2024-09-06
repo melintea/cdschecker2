@@ -1,5 +1,5 @@
 /** @file snapshot.h
- *	@brief Snapshotting interface header file.
+ *  @brief Snapshotting interface header file.
  */
 
 #ifndef _SNAPSHOT_H

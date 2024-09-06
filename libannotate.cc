@@ -9,6 +9,6 @@
  *  structure that the trace understands. */
 
 void cdsannotate(uint64_t analysistype, void *annotation) {
-	/* seq_cst is just a 'don't care' parameter */
-	model->switch_to_master(new ModelAction(ATOMIC_ANNOTATION, std::memory_order_seq_cst, annotation, analysistype));
+    /* seq_cst is just a 'don't care' parameter */
+    model->switch_to_master(new ModelAction(ATOMIC_ANNOTATION, std::memory_order_seq_cst, annotation, analysistype));
 }

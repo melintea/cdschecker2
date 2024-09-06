@@ -19,7 +19,7 @@ class Thread;
 class Promise;
 
 namespace std {
-	class mutex;
+    class mutex;
 }
 
 using std::memory_order;
@@ -50,30 +50,30 @@ using std::memory_order_seq_cst;
 /** @brief Represents an action type, identifying one of several types of
  * ModelAction */
 typedef enum action_type {
-	MODEL_FIXUP_RELSEQ,   /**< Special ModelAction: finalize a release
-	                       *   sequence */
-	THREAD_CREATE,        /**< A thread creation action */
-	THREAD_START,         /**< First action in each thread */
-	THREAD_YIELD,         /**< A thread yield action */
-	THREAD_JOIN,          /**< A thread join action */
-	THREAD_FINISH,        /**< A thread completion action */
-	ATOMIC_UNINIT,        /**< Represents an uninitialized atomic */
-	ATOMIC_READ,          /**< An atomic read action */
-	ATOMIC_WRITE,         /**< An atomic write action */
-	ATOMIC_RMWR,          /**< The read part of an atomic RMW action */
-	ATOMIC_RMW,           /**< The write part of an atomic RMW action */
-	ATOMIC_RMWC,          /**< Convert an atomic RMW action into a READ */
-	ATOMIC_INIT,          /**< Initialization of an atomic object (e.g.,
-	                       *   atomic_init()) */
-	ATOMIC_FENCE,         /**< A fence action */
-	ATOMIC_LOCK,          /**< A lock action */
-	ATOMIC_TRYLOCK,       /**< A trylock action */
-	ATOMIC_UNLOCK,        /**< An unlock action */
-	ATOMIC_NOTIFY_ONE,    /**< A notify_one action */
-	ATOMIC_NOTIFY_ALL,    /**< A notify all action */
-	ATOMIC_WAIT,          /**< A wait action */
-	ATOMIC_ANNOTATION     /**< An annotation action to pass information
-													 to a trace analysis */
+    MODEL_FIXUP_RELSEQ,   /**< Special ModelAction: finalize a release
+                           *   sequence */
+    THREAD_CREATE,        /**< A thread creation action */
+    THREAD_START,         /**< First action in each thread */
+    THREAD_YIELD,         /**< A thread yield action */
+    THREAD_JOIN,          /**< A thread join action */
+    THREAD_FINISH,        /**< A thread completion action */
+    ATOMIC_UNINIT,        /**< Represents an uninitialized atomic */
+    ATOMIC_READ,          /**< An atomic read action */
+    ATOMIC_WRITE,         /**< An atomic write action */
+    ATOMIC_RMWR,          /**< The read part of an atomic RMW action */
+    ATOMIC_RMW,           /**< The write part of an atomic RMW action */
+    ATOMIC_RMWC,          /**< Convert an atomic RMW action into a READ */
+    ATOMIC_INIT,          /**< Initialization of an atomic object (e.g.,
+                           *   atomic_init()) */
+    ATOMIC_FENCE,         /**< A fence action */
+    ATOMIC_LOCK,          /**< A lock action */
+    ATOMIC_TRYLOCK,       /**< A trylock action */
+    ATOMIC_UNLOCK,        /**< An unlock action */
+    ATOMIC_NOTIFY_ONE,    /**< A notify_one action */
+    ATOMIC_NOTIFY_ALL,    /**< A notify all action */
+    ATOMIC_WAIT,          /**< A wait action */
+    ATOMIC_ANNOTATION     /**< An annotation action to pass information
+                                                     to a trace analysis */
 } action_type_t;
 
 /* Forward declaration */
@@ -90,173 +90,173 @@ class ClockVector;
  */
 class ModelAction {
 public:
-	ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
-	~ModelAction();
-	void print(bool details=false) const;
+    ModelAction(action_type_t type, memory_order order, void *loc, uint64_t value = VALUE_NONE, Thread *thread = NULL);
+    ~ModelAction();
+    void print(bool details=false) const;
 
-	thread_id_t get_tid() const { return tid; }
-	action_type get_type() const { return type; }
-	memory_order get_mo() const { return order; }
-	memory_order get_original_mo() const { return original_order; }
-	void set_mo(memory_order order) { this->order = order; }
-	void * get_location() const { return location; }
-	modelclock_t get_seq_number() const { return seq_number; }
-	uint64_t get_value() const { return value; }
-	uint64_t get_reads_from_value() const;
-	uint64_t get_write_value() const;
-	uint64_t get_return_value() const;
-	const ModelAction * get_reads_from() const { return reads_from; }
-	Promise * get_reads_from_promise() const { return reads_from_promise; }
-	std::mutex * get_mutex() const;
+    thread_id_t get_tid() const { return tid; }
+    action_type get_type() const { return type; }
+    memory_order get_mo() const { return order; }
+    memory_order get_original_mo() const { return original_order; }
+    void set_mo(memory_order order) { this->order = order; }
+    void * get_location() const { return location; }
+    modelclock_t get_seq_number() const { return seq_number; }
+    uint64_t get_value() const { return value; }
+    uint64_t get_reads_from_value() const;
+    uint64_t get_write_value() const;
+    uint64_t get_return_value() const;
+    const ModelAction * get_reads_from() const { return reads_from; }
+    Promise * get_reads_from_promise() const { return reads_from_promise; }
+    std::mutex * get_mutex() const;
 
-	Node * get_node() const;
-	void set_node(Node *n) { node = n; }
+    Node * get_node() const;
+    void set_node(Node *n) { node = n; }
 
-	void set_read_from(const ModelAction *act);
-	void set_read_from_promise(Promise *promise);
+    void set_read_from(const ModelAction *act);
+    void set_read_from_promise(Promise *promise);
 
-	/** Store the most recent fence-release from the same thread
-	 *  @param fence The fence-release that occured prior to this */
-	void set_last_fence_release(const ModelAction *fence) { last_fence_release = fence; }
-	/** @return The most recent fence-release from the same thread */
-	const ModelAction * get_last_fence_release() const { return last_fence_release; }
+    /** Store the most recent fence-release from the same thread
+     *  @param fence The fence-release that occured prior to this */
+    void set_last_fence_release(const ModelAction *fence) { last_fence_release = fence; }
+    /** @return The most recent fence-release from the same thread */
+    const ModelAction * get_last_fence_release() const { return last_fence_release; }
 
-	void copy_from_new(ModelAction *newaction);
-	void set_seq_number(modelclock_t num);
-	void set_try_lock(bool obtainedlock);
-	bool is_thread_start() const;
-	bool is_thread_join() const;
-	bool is_relseq_fixup() const;
-	bool is_mutex_op() const;
-	bool is_lock() const;
-	bool is_trylock() const;
-	bool is_unlock() const;
-	bool is_wait() const;
-	bool is_notify() const;
-	bool is_notify_one() const;
-	bool is_success_lock() const;
-	bool is_failed_trylock() const;
-	bool is_atomic_var() const;
-	bool is_uninitialized() const;
-	bool is_read() const;
-	bool is_write() const;
-	bool is_yield() const;
-	bool could_be_write() const;
-	bool is_rmwr() const;
-	bool is_rmwc() const;
-	bool is_rmw() const;
-	bool is_fence() const;
-	bool is_initialization() const;
-	bool is_annotation() const;
-	bool is_relaxed() const;
-	bool is_acquire() const;
-	bool is_release() const;
-	bool is_seqcst() const;
-	bool same_var(const ModelAction *act) const;
-	bool same_thread(const ModelAction *act) const;
-	bool is_conflicting_lock(const ModelAction *act) const;
-	bool could_synchronize_with(const ModelAction *act) const;
+    void copy_from_new(ModelAction *newaction);
+    void set_seq_number(modelclock_t num);
+    void set_try_lock(bool obtainedlock);
+    bool is_thread_start() const;
+    bool is_thread_join() const;
+    bool is_relseq_fixup() const;
+    bool is_mutex_op() const;
+    bool is_lock() const;
+    bool is_trylock() const;
+    bool is_unlock() const;
+    bool is_wait() const;
+    bool is_notify() const;
+    bool is_notify_one() const;
+    bool is_success_lock() const;
+    bool is_failed_trylock() const;
+    bool is_atomic_var() const;
+    bool is_uninitialized() const;
+    bool is_read() const;
+    bool is_write() const;
+    bool is_yield() const;
+    bool could_be_write() const;
+    bool is_rmwr() const;
+    bool is_rmwc() const;
+    bool is_rmw() const;
+    bool is_fence() const;
+    bool is_initialization() const;
+    bool is_annotation() const;
+    bool is_relaxed() const;
+    bool is_acquire() const;
+    bool is_release() const;
+    bool is_seqcst() const;
+    bool same_var(const ModelAction *act) const;
+    bool same_thread(const ModelAction *act) const;
+    bool is_conflicting_lock(const ModelAction *act) const;
+    bool could_synchronize_with(const ModelAction *act) const;
 
-	Thread * get_thread_operand() const;
+    Thread * get_thread_operand() const;
 
-	void create_cv(const ModelAction *parent = NULL);
-	ClockVector * get_cv() const { return cv; }
-	bool synchronize_with(const ModelAction *act);
+    void create_cv(const ModelAction *parent = NULL);
+    ClockVector * get_cv() const { return cv; }
+    bool synchronize_with(const ModelAction *act);
 
-	bool has_synchronized_with(const ModelAction *act) const;
-	bool happens_before(const ModelAction *act) const;
+    bool has_synchronized_with(const ModelAction *act) const;
+    bool happens_before(const ModelAction *act) const;
 
-	inline bool operator <(const ModelAction& act) const {
-		return get_seq_number() < act.get_seq_number();
-	}
-	inline bool operator >(const ModelAction& act) const {
-		return get_seq_number() > act.get_seq_number();
-	}
+    inline bool operator <(const ModelAction& act) const {
+        return get_seq_number() < act.get_seq_number();
+    }
+    inline bool operator >(const ModelAction& act) const {
+        return get_seq_number() > act.get_seq_number();
+    }
 
-	void process_rmw(ModelAction * act);
-	void copy_typeandorder(ModelAction * act);
+    void process_rmw(ModelAction * act);
+    void copy_typeandorder(ModelAction * act);
 
-	void set_sleep_flag() { sleep_flag=true; }
-	bool get_sleep_flag() { return sleep_flag; }
-	unsigned int hash() const;
+    void set_sleep_flag() { sleep_flag=true; }
+    bool get_sleep_flag() { return sleep_flag; }
+    unsigned int hash() const;
 
-	bool equals(const ModelAction *x) const { return this == x; }
-	bool equals(const Promise *x) const { return false; }
+    bool equals(const ModelAction *x) const { return this == x; }
+    bool equals(const Promise *x) const { return false; }
 
-	bool may_read_from(const ModelAction *write) const;
-	bool may_read_from(const Promise *promise) const;
-	MEMALLOC
+    bool may_read_from(const ModelAction *write) const;
+    bool may_read_from(const Promise *promise) const;
+    MEMALLOC
 private:
 
-	const char * get_type_str() const;
-	const char * get_mo_str() const;
+    const char * get_type_str() const;
+    const char * get_mo_str() const;
 
-	/** @brief Type of action (read, write, RMW, fence, thread create, etc.) */
-	action_type type;
+    /** @brief Type of action (read, write, RMW, fence, thread create, etc.) */
+    action_type type;
 
-	/** @brief The memory order for this operation. */
-	memory_order order;
+    /** @brief The memory order for this operation. */
+    memory_order order;
 
-	/** @brief The original memory order parameter for this operation. */
-	memory_order original_order;
+    /** @brief The original memory order parameter for this operation. */
+    memory_order original_order;
 
-	/** @brief A pointer to the memory location for this action. */
-	void *location;
+    /** @brief A pointer to the memory location for this action. */
+    void *location;
 
-	/** @brief The thread id that performed this action. */
-	thread_id_t tid;
+    /** @brief The thread id that performed this action. */
+    thread_id_t tid;
 
-	/** @brief The value written (for write or RMW; undefined for read) */
-	uint64_t value;
+    /** @brief The value written (for write or RMW; undefined for read) */
+    uint64_t value;
 
-	/**
-	 * @brief The store that this action reads from
-	 *
-	 * Only valid for reads
-	 */
-	const ModelAction *reads_from;
+    /**
+     * @brief The store that this action reads from
+     *
+     * Only valid for reads
+     */
+    const ModelAction *reads_from;
 
-	/**
-	 * @brief The promise that this action reads from
-	 *
-	 * Only valid for reads
-	 */
-	Promise *reads_from_promise;
+    /**
+     * @brief The promise that this action reads from
+     *
+     * Only valid for reads
+     */
+    Promise *reads_from_promise;
 
-	/** @brief The last fence release from the same thread */
-	const ModelAction *last_fence_release;
+    /** @brief The last fence release from the same thread */
+    const ModelAction *last_fence_release;
 
-	/**
-	 * @brief A back reference to a Node in NodeStack
-	 *
-	 * Only set if this ModelAction is saved on the NodeStack. (A
-	 * ModelAction can be thrown away before it ever enters the NodeStack.)
-	 */
-	Node *node;
+    /**
+     * @brief A back reference to a Node in NodeStack
+     *
+     * Only set if this ModelAction is saved on the NodeStack. (A
+     * ModelAction can be thrown away before it ever enters the NodeStack.)
+     */
+    Node *node;
 
-	/**
-	 * @brief The sequence number of this action
-	 *
-	 * Except for ATOMIC_UNINIT actions, this number should be unique and
-	 * should represent the action's position in the execution order.
-	 */
-	modelclock_t seq_number;
+    /**
+     * @brief The sequence number of this action
+     *
+     * Except for ATOMIC_UNINIT actions, this number should be unique and
+     * should represent the action's position in the execution order.
+     */
+    modelclock_t seq_number;
 
-	/**
-	 * @brief The clock vector for this operation
-	 *
-	 * Technically, this is only needed for potentially synchronizing
-	 * (e.g., non-relaxed) operations, but it is very handy to have these
-	 * vectors for all operations.
-	 */
-	ClockVector *cv;
+    /**
+     * @brief The clock vector for this operation
+     *
+     * Technically, this is only needed for potentially synchronizing
+     * (e.g., non-relaxed) operations, but it is very handy to have these
+     * vectors for all operations.
+     */
+    ClockVector *cv;
 
-	bool sleep_flag;
+    bool sleep_flag;
 
         /**
-	 *  Where was this instantiated from
-	 */
-	cdschecker::callstack callstack;
+     *  Where was this instantiated from
+     */
+    cdschecker::callstack callstack;
 };
 
 #endif /* __ACTION_H__ */

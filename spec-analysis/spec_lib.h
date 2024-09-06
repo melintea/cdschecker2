@@ -16,15 +16,15 @@ struct spec_list;
 struct list_node;
 
 typedef struct list_node {
-	struct list_node *prev;
-	struct list_node *next;
-	void *data;
+    struct list_node *prev;
+    struct list_node *next;
+    void *data;
 } list_node;
 
 typedef struct spec_list {
-	list_node *head;
-	list_node *tail;
-	int size;
+    list_node *head;
+    list_node *tail;
+    int size;
 } spec_list;
 
 

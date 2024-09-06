@@ -160,6 +160,90 @@ private:
 
 }; // var
 
+
+/*
+ * Check for access both the pointer and the accessed location
+ */
+template <class T>
+class ptr
+{
+private:
+
+    T * _ptr = nullptr;
+
+public:
+
+    ptr(T* p) : _ptr(p) {}
+    ptr()                      = delete;
+    ~ptr()                     = default;
+
+    ptr(const ptr& other) {}
+
+    ptr& operator=(const ptr& other) {}
+
+    ptr(ptr&& other) {}
+
+    void operator=(ptr&& other) {}
+
+    void operator=(T* val) {
+    }
+
+    T* operator->() {
+        return this->_ptr;
+    }
+
+    T& operator*() {
+        return *(this->_ptr);
+    }
+
+    T* load() {
+        constexpr auto sz(sizeof(void*));
+        static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T* must be 8/16/32/64 bits");
+        return librace::load<T>(&_ptr);
+    }
+
+    void store(T* val) {
+        constexpr auto sz(sizeof(void*));
+        static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T* must be 8/16/32/64 bits");
+        return librace::store<T>(&_ptr, val);
+    }
+
+private:
+
+}; //ptr
+
+
+/*
+ TODO
+
+template <class T>
+class my_unique_ptr<T[]>
+{
+private:
+    T* _ptr = nullptr;
+
+public:
+
+    T& operator[](int index)
+    {
+        if(index < 0)
+        {
+            // Throw negative index exception
+            throw(new std::exception("Negative index exception"));
+        }
+        return this->_ptr[index]; // doesn't check out of bounds
+    }
+
+    ~my_unique_ptr() // destructor
+    {
+        __cleanup__();
+    }
+
+private:
+
+}; //ptr[] 
+*/
+
 } //namespace librace
 
 

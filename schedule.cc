@@ -15,32 +15,32 @@
  */
 void enabled_type_to_string(enabled_type_t e, char *str)
 {
-	const char *res;
-	switch (e) {
-	case THREAD_DISABLED:
-		res = "disabled";
-		break;
-	case THREAD_ENABLED:
-		res = "enabled";
-		break;
-	case THREAD_SLEEP_SET:
-		res = "sleep";
-		break;
-	default:
-		ASSERT(0);
-		res = NULL;
-		break;
-	}
-	strcpy(str, res);
+    const char *res;
+    switch (e) {
+    case THREAD_DISABLED:
+        res = "disabled";
+        break;
+    case THREAD_ENABLED:
+        res = "enabled";
+        break;
+    case THREAD_SLEEP_SET:
+        res = "sleep";
+        break;
+    default:
+        ASSERT(0);
+        res = NULL;
+        break;
+    }
+    strcpy(str, res);
 }
 
 /** Constructor */
 Scheduler::Scheduler() :
-	execution(NULL),
-	enabled(NULL),
-	enabled_len(0),
-	curr_thread_index(0),
-	current(NULL)
+    execution(NULL),
+    enabled(NULL),
+    enabled_len(0),
+    curr_thread_index(0),
+    current(NULL)
 {
 }
 
@@ -50,24 +50,24 @@ Scheduler::Scheduler() :
  */
 void Scheduler::register_engine(ModelExecution *execution)
 {
-	this->execution = execution;
+    this->execution = execution;
 }
 
 void Scheduler::set_enabled(Thread *t, enabled_type_t enabled_status) {
-	int threadid = id_to_int(t->get_id());
-	if (threadid >= enabled_len) {
-		enabled_type_t *new_enabled = (enabled_type_t *)snapshot_malloc(sizeof(enabled_type_t) * (threadid + 1));
-		memset(&new_enabled[enabled_len], 0, (threadid + 1 - enabled_len) * sizeof(enabled_type_t));
-		if (enabled != NULL) {
-			memcpy(new_enabled, enabled, enabled_len * sizeof(enabled_type_t));
-			snapshot_free(enabled);
-		}
-		enabled = new_enabled;
-		enabled_len = threadid + 1;
-	}
-	enabled[threadid] = enabled_status;
-	if (enabled_status == THREAD_DISABLED)
-		execution->check_promises_thread_disabled();
+    int threadid = id_to_int(t->get_id());
+    if (threadid >= enabled_len) {
+        enabled_type_t *new_enabled = (enabled_type_t *)snapshot_malloc(sizeof(enabled_type_t) * (threadid + 1));
+        memset(&new_enabled[enabled_len], 0, (threadid + 1 - enabled_len) * sizeof(enabled_type_t));
+        if (enabled != NULL) {
+            memcpy(new_enabled, enabled, enabled_len * sizeof(enabled_type_t));
+            snapshot_free(enabled);
+        }
+        enabled = new_enabled;
+        enabled_len = threadid + 1;
+    }
+    enabled[threadid] = enabled_status;
+    if (enabled_status == THREAD_DISABLED)
+        execution->check_promises_thread_disabled();
 }
 
 /**
@@ -80,7 +80,7 @@ void Scheduler::set_enabled(Thread *t, enabled_type_t enabled_status) {
  */
 bool Scheduler::is_enabled(const Thread *t) const
 {
-	return is_enabled(t->get_id());
+    return is_enabled(t->get_id());
 }
 
 /**
@@ -93,8 +93,8 @@ bool Scheduler::is_enabled(const Thread *t) const
  */
 bool Scheduler::is_enabled(thread_id_t tid) const
 {
-	int i = id_to_int(tid);
-	return (i >= enabled_len) ? false : (enabled[i] != THREAD_DISABLED);
+    int i = id_to_int(tid);
+    return (i >= enabled_len) ? false : (enabled[i] != THREAD_DISABLED);
 }
 
 /**
@@ -104,7 +104,7 @@ bool Scheduler::is_enabled(thread_id_t tid) const
  */
 bool Scheduler::is_sleep_set(const Thread *t) const
 {
-	return get_enabled(t) == THREAD_SLEEP_SET;
+    return get_enabled(t) == THREAD_SLEEP_SET;
 }
 
 /**
@@ -115,29 +115,29 @@ bool Scheduler::is_sleep_set(const Thread *t) const
  */
 bool Scheduler::all_threads_sleeping() const
 {
-	bool sleeping = false;
-	for (int i = 0; i < enabled_len; i++)
-		if (enabled[i] == THREAD_ENABLED)
-			return false;
-		else if (enabled[i] == THREAD_SLEEP_SET)
-			sleeping = true;
-	return sleeping;
+    bool sleeping = false;
+    for (int i = 0; i < enabled_len; i++)
+        if (enabled[i] == THREAD_ENABLED)
+            return false;
+        else if (enabled[i] == THREAD_SLEEP_SET)
+            sleeping = true;
+    return sleeping;
 }
 
 enabled_type_t Scheduler::get_enabled(const Thread *t) const
 {
-	int id = id_to_int(t->get_id());
-	ASSERT(id < enabled_len);
-	return enabled[id];
+    int id = id_to_int(t->get_id());
+    ASSERT(id < enabled_len);
+    return enabled[id];
 }
 
 void Scheduler::update_sleep_set(Node *n) {
-	enabled_type_t *enabled_array = n->get_enabled_array();
-	for (int i = 0; i < enabled_len; i++) {
-		if (enabled_array[i] == THREAD_SLEEP_SET) {
-			enabled[i] = THREAD_SLEEP_SET;
-		}
-	}
+    enabled_type_t *enabled_array = n->get_enabled_array();
+    for (int i = 0; i < enabled_len; i++) {
+        if (enabled_array[i] == THREAD_SLEEP_SET) {
+            enabled[i] = THREAD_SLEEP_SET;
+        }
+    }
 }
 
 /**
@@ -146,8 +146,8 @@ void Scheduler::update_sleep_set(Node *n) {
  */
 void Scheduler::add_sleep(Thread *t)
 {
-	DEBUG("thread %d\n", id_to_int(t->get_id()));
-	set_enabled(t, THREAD_SLEEP_SET);
+    DEBUG("thread %d\n", id_to_int(t->get_id()));
+    set_enabled(t, THREAD_SLEEP_SET);
 }
 
 /**
@@ -156,8 +156,8 @@ void Scheduler::add_sleep(Thread *t)
  */
 void Scheduler::remove_sleep(Thread *t)
 {
-	DEBUG("thread %d\n", id_to_int(t->get_id()));
-	set_enabled(t, THREAD_ENABLED);
+    DEBUG("thread %d\n", id_to_int(t->get_id()));
+    set_enabled(t, THREAD_ENABLED);
 }
 
 /**
@@ -166,9 +166,9 @@ void Scheduler::remove_sleep(Thread *t)
  */
 void Scheduler::add_thread(Thread *t)
 {
-	DEBUG("thread %d\n", id_to_int(t->get_id()));
-	ASSERT(!t->is_model_thread());
-	set_enabled(t, THREAD_ENABLED);
+    DEBUG("thread %d\n", id_to_int(t->get_id()));
+    ASSERT(!t->is_model_thread());
+    set_enabled(t, THREAD_ENABLED);
 }
 
 /**
@@ -177,9 +177,9 @@ void Scheduler::add_thread(Thread *t)
  */
 void Scheduler::remove_thread(Thread *t)
 {
-	if (current == t)
-		current = NULL;
-	set_enabled(t, THREAD_DISABLED);
+    if (current == t)
+        current = NULL;
+    set_enabled(t, THREAD_DISABLED);
 }
 
 /**
@@ -189,8 +189,8 @@ void Scheduler::remove_thread(Thread *t)
  */
 void Scheduler::sleep(Thread *t)
 {
-	set_enabled(t, THREAD_DISABLED);
-	t->set_state(THREAD_BLOCKED);
+    set_enabled(t, THREAD_DISABLED);
+    t->set_state(THREAD_BLOCKED);
 }
 
 /**
@@ -199,9 +199,9 @@ void Scheduler::sleep(Thread *t)
  */
 void Scheduler::wake(Thread *t)
 {
-	ASSERT(!t->is_model_thread());
-	set_enabled(t, THREAD_ENABLED);
-	t->set_state(THREAD_READY);
+    ASSERT(!t->is_model_thread());
+    set_enabled(t, THREAD_ENABLED);
+    t->set_state(THREAD_READY);
 }
 
 /**
@@ -214,48 +214,48 @@ void Scheduler::wake(Thread *t)
  */
 Thread * Scheduler::select_next_thread(Node *n)
 {
-	int old_curr_thread = curr_thread_index;
+    int old_curr_thread = curr_thread_index;
 
-	bool have_enabled_thread_with_priority = false;
-	if (model->params.fairwindow != 0) {
-		for (int i = 0; i < enabled_len; i++) {
-			thread_id_t tid = int_to_id(i);
-			if (n->has_priority(tid)) {
-				DEBUG("Node (tid %d) has priority\n", i);
-				if (enabled[i] != THREAD_DISABLED)
-					have_enabled_thread_with_priority = true;
-			}
-		}
-	}	
+    bool have_enabled_thread_with_priority = false;
+    if (model->params.fairwindow != 0) {
+        for (int i = 0; i < enabled_len; i++) {
+            thread_id_t tid = int_to_id(i);
+            if (n->has_priority(tid)) {
+                DEBUG("Node (tid %d) has priority\n", i);
+                if (enabled[i] != THREAD_DISABLED)
+                    have_enabled_thread_with_priority = true;
+            }
+        }
+    }   
 
-	for (int i = 0; i < enabled_len; i++) {
-		curr_thread_index = (old_curr_thread + i + 1) % enabled_len;
-		thread_id_t curr_tid = int_to_id(curr_thread_index);
-		if (model->params.yieldon) {
-			bool bad_thread = false;
-			for (int j = 0; j < enabled_len; j++) {
-				thread_id_t tother = int_to_id(j);
-				if ((enabled[j] != THREAD_DISABLED) && n->has_priority_over(curr_tid, tother)) {
-					bad_thread=true;
-					break;
-				}
-			}
-			if (bad_thread)
-				continue;
-		}
-		
-		if (enabled[curr_thread_index] == THREAD_ENABLED &&
-				(!have_enabled_thread_with_priority || n->has_priority(curr_tid))) {
-			return model->get_thread(curr_tid);
-		}
-	}
-	
-	/* No thread was enabled */
-	return NULL;
+    for (int i = 0; i < enabled_len; i++) {
+        curr_thread_index = (old_curr_thread + i + 1) % enabled_len;
+        thread_id_t curr_tid = int_to_id(curr_thread_index);
+        if (model->params.yieldon) {
+            bool bad_thread = false;
+            for (int j = 0; j < enabled_len; j++) {
+                thread_id_t tother = int_to_id(j);
+                if ((enabled[j] != THREAD_DISABLED) && n->has_priority_over(curr_tid, tother)) {
+                    bad_thread=true;
+                    break;
+                }
+            }
+            if (bad_thread)
+                continue;
+        }
+        
+        if (enabled[curr_thread_index] == THREAD_ENABLED &&
+                (!have_enabled_thread_with_priority || n->has_priority(curr_tid))) {
+            return model->get_thread(curr_tid);
+        }
+    }
+    
+    /* No thread was enabled */
+    return NULL;
 }
 
 void Scheduler::set_scheduler_thread(thread_id_t tid) {
-	curr_thread_index=id_to_int(tid);
+    curr_thread_index=id_to_int(tid);
 }
 
 /**
@@ -264,11 +264,11 @@ void Scheduler::set_scheduler_thread(thread_id_t tid) {
  */
 void Scheduler::set_current_thread(Thread *t)
 {
-	ASSERT(!t || !t->is_model_thread());
+    ASSERT(!t || !t->is_model_thread());
 
-	current = t;
-	if (DBG_ENABLED())
-		print();
+    current = t;
+    if (DBG_ENABLED())
+        print();
 }
 
 /**
@@ -276,8 +276,8 @@ void Scheduler::set_current_thread(Thread *t)
  */
 Thread * Scheduler::get_current_thread() const
 {
-	ASSERT(!current || !current->is_model_thread());
-	return current;
+    ASSERT(!current || !current->is_model_thread());
+    return current;
 }
 
 /**
@@ -286,13 +286,13 @@ Thread * Scheduler::get_current_thread() const
  */
 void Scheduler::print() const
 {
-	int curr_id = current ? id_to_int(current->get_id()) : -1;
+    int curr_id = current ? id_to_int(current->get_id()) : -1;
 
-	model_print("Scheduler: ");
-	for (int i = 0; i < enabled_len; i++) {
-		char str[20];
-		enabled_type_to_string(enabled[i], str);
-		model_print("[%i: %s%s]", i, i == curr_id ? "current, " : "", str);
-	}
-	model_print("\n");
+    model_print("Scheduler: ");
+    for (int i = 0; i < enabled_len; i++) {
+        char str[20];
+        enabled_type_to_string(enabled[i], str);
+        model_print("[%i: %s%s]", i, i == curr_id ? "current, " : "", str);
+    }
+    model_print("\n");
 }

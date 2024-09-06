@@ -13,21 +13,21 @@ class ModelAction;
 
 class ClockVector {
 public:
-	ClockVector(ClockVector *parent = NULL, const ModelAction *act = NULL);
-	~ClockVector();
-	bool merge(const ClockVector *cv);
-	bool synchronized_since(const ModelAction *act) const;
+    ClockVector(ClockVector *parent = NULL, const ModelAction *act = NULL);
+    ~ClockVector();
+    bool merge(const ClockVector *cv);
+    bool synchronized_since(const ModelAction *act) const;
 
-	void print() const;
-	modelclock_t getClock(thread_id_t thread);
+    void print() const;
+    modelclock_t getClock(thread_id_t thread);
 
-	SNAPSHOTALLOC
+    SNAPSHOTALLOC
 private:
-	/** @brief Holds the actual clock data, as an array. */
-	modelclock_t *clock;
+    /** @brief Holds the actual clock data, as an array. */
+    modelclock_t *clock;
 
-	/** @brief The number of threads recorded in clock (i.e., its length).  */
-	int num_threads;
+    /** @brief The number of threads recorded in clock (i.e., its length).  */
+    int num_threads;
 };
 
 #endif /* __CLOCKVECTOR_H__ */

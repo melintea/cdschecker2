@@ -36,12 +36,12 @@ extern CSTR GRAPH_FINISH;
 template<typename _Tp>
 class SnapSet : public std::set<_Tp, std::less<_Tp>, SnapshotAlloc<_Tp> >
 {   
-	public:
-	typedef std::set<_Tp, std::less<_Tp>, SnapshotAlloc<_Tp> > set;
-	 
-	SnapSet() : set() { }
+    public:
+    typedef std::set<_Tp, std::less<_Tp>, SnapshotAlloc<_Tp> > set;
+     
+    SnapSet() : set() { }
 
-	SNAPSHOTALLOC
+    SNAPSHOTALLOC
 };
 
 #endif

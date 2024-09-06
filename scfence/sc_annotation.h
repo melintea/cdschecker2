@@ -12,35 +12,35 @@
 
 
 inline bool IS_SC_ANNO(ModelAction *act) {
-	return act != NULL && act->is_annotation() &&
-		act->get_value() == SC_ANNOTATION;
+    return act != NULL && act->is_annotation() &&
+        act->get_value() == SC_ANNOTATION;
 }
 
 inline bool IS_ANNO_BEGIN(ModelAction *act) {
-	return (void*) BEGIN == act->get_location();
+    return (void*) BEGIN == act->get_location();
 }
 
 inline bool IS_ANNO_END(ModelAction *act) {
-	return (void*) END == act->get_location();
+    return (void*) END == act->get_location();
 }
 
 inline bool IS_ANNO_KEEP(ModelAction *act) {
-	return (void*) KEEP == act->get_location();
+    return (void*) KEEP == act->get_location();
 }
 
 inline void SC_BEGIN() {
-	void *loc = (void*) BEGIN;
-	cdsannotate(SC_ANNOTATION, loc);
+    void *loc = (void*) BEGIN;
+    cdsannotate(SC_ANNOTATION, loc);
 }
 
 inline void SC_END() {
-	void *loc = (void*) END;
-	cdsannotate(SC_ANNOTATION, loc);
+    void *loc = (void*) END;
+    cdsannotate(SC_ANNOTATION, loc);
 }
 
 inline void SC_KEEP() {
-	void *loc = (void*) KEEP;
-	cdsannotate(SC_ANNOTATION, loc);
+    void *loc = (void*) KEEP;
+    cdsannotate(SC_ANNOTATION, loc);
 }
 
 

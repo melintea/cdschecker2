@@ -21,27 +21,27 @@ ModelChecker *model;
 
 /** @brief Constructor */
 ModelChecker::ModelChecker(struct model_params params) :
-	/* Initialize default scheduler */
-	params(params),
-	restart_flag(false),
-	exit_flag(false),
-	scheduler(new Scheduler()),
-	node_stack(new NodeStack()),
-	execution(new ModelExecution(this, &this->params, scheduler, node_stack)),
-	execution_number(1),
-	diverge(NULL),
-	earliest_diverge(NULL),
-	trace_analyses(),
-	inspect_plugin(NULL)
+    /* Initialize default scheduler */
+    params(params),
+    restart_flag(false),
+    exit_flag(false),
+    scheduler(new Scheduler()),
+    node_stack(new NodeStack()),
+    execution(new ModelExecution(this, &this->params, scheduler, node_stack)),
+    execution_number(1),
+    diverge(NULL),
+    earliest_diverge(NULL),
+    trace_analyses(),
+    inspect_plugin(NULL)
 {
-	memset(&stats,0,sizeof(struct execution_stats));
+    memset(&stats,0,sizeof(struct execution_stats));
 }
 
 /** @brief Destructor */
 ModelChecker::~ModelChecker()
 {
-	delete node_stack;
-	delete scheduler;
+    delete node_stack;
+    delete scheduler;
 }
 
 /**
@@ -50,24 +50,24 @@ ModelChecker::~ModelChecker()
  */
 void ModelChecker::reset_to_initial_state()
 {
-	DEBUG("+++ Resetting to initial state +++\n");
-	node_stack->reset_execution();
+    DEBUG("+++ Resetting to initial state +++\n");
+    node_stack->reset_execution();
 
-	/**
-	 * FIXME: if we utilize partial rollback, we will need to free only
-	 * those pending actions which were NOT pending before the rollback
-	 * point
-	 */
-	for (unsigned int i = 0; i < get_num_threads(); i++)
-		delete get_thread(int_to_id(i))->get_pending();
+    /**
+     * FIXME: if we utilize partial rollback, we will need to free only
+     * those pending actions which were NOT pending before the rollback
+     * point
+     */
+    for (unsigned int i = 0; i < get_num_threads(); i++)
+        delete get_thread(int_to_id(i))->get_pending();
 
-	snapshot_backtrack_before(0);
+    snapshot_backtrack_before(0);
 }
 
 /** @return the number of user threads created during this execution */
 unsigned int ModelChecker::get_num_threads() const
 {
-	return execution->get_num_threads();
+    return execution->get_num_threads();
 }
 
 /**
@@ -78,7 +78,7 @@ unsigned int ModelChecker::get_num_threads() const
  */
 Thread * ModelChecker::get_current_thread() const
 {
-	return scheduler->get_current_thread();
+    return scheduler->get_current_thread();
 }
 
 /**
@@ -94,57 +94,57 @@ Thread * ModelChecker::get_current_thread() const
  */
 Thread * ModelChecker::get_next_thread()
 {
-	thread_id_t tid;
+    thread_id_t tid;
 
-	/*
-	 * Have we completed exploring the preselected path? Then let the
-	 * scheduler decide
-	 */
-	if (diverge == NULL)
-		return scheduler->select_next_thread(node_stack->get_head());
+    /*
+     * Have we completed exploring the preselected path? Then let the
+     * scheduler decide
+     */
+    if (diverge == NULL)
+        return scheduler->select_next_thread(node_stack->get_head());
 
 
-	/* Else, we are trying to replay an execution */
-	ModelAction *next = node_stack->get_next()->get_action();
+    /* Else, we are trying to replay an execution */
+    ModelAction *next = node_stack->get_next()->get_action();
 
-	if (next == diverge) {
-		if (earliest_diverge == NULL || *diverge < *earliest_diverge)
-			earliest_diverge = diverge;
+    if (next == diverge) {
+        if (earliest_diverge == NULL || *diverge < *earliest_diverge)
+            earliest_diverge = diverge;
 
-		Node *nextnode = next->get_node();
-		Node *prevnode = nextnode->get_parent();
-		scheduler->update_sleep_set(prevnode);
+        Node *nextnode = next->get_node();
+        Node *prevnode = nextnode->get_parent();
+        scheduler->update_sleep_set(prevnode);
 
-		/* Reached divergence point */
-		if (nextnode->increment_behaviors()) {
-			/* Execute the same thread with a new behavior */
-			tid = next->get_tid();
-			node_stack->pop_restofstack(2);
-		} else {
-			ASSERT(prevnode);
-			/* Make a different thread execute for next step */
-			scheduler->add_sleep(get_thread(next->get_tid()));
-			tid = prevnode->get_next_backtrack();
-			/* Make sure the backtracked thread isn't sleeping. */
-			node_stack->pop_restofstack(1);
-			if (diverge == earliest_diverge) {
-				earliest_diverge = prevnode->get_action();
-			}
-		}
-		/* Start the round robin scheduler from this thread id */
-		scheduler->set_scheduler_thread(tid);
-		/* The correct sleep set is in the parent node. */
-		execute_sleep_set();
+        /* Reached divergence point */
+        if (nextnode->increment_behaviors()) {
+            /* Execute the same thread with a new behavior */
+            tid = next->get_tid();
+            node_stack->pop_restofstack(2);
+        } else {
+            ASSERT(prevnode);
+            /* Make a different thread execute for next step */
+            scheduler->add_sleep(get_thread(next->get_tid()));
+            tid = prevnode->get_next_backtrack();
+            /* Make sure the backtracked thread isn't sleeping. */
+            node_stack->pop_restofstack(1);
+            if (diverge == earliest_diverge) {
+                earliest_diverge = prevnode->get_action();
+            }
+        }
+        /* Start the round robin scheduler from this thread id */
+        scheduler->set_scheduler_thread(tid);
+        /* The correct sleep set is in the parent node. */
+        execute_sleep_set();
 
-		DEBUG("*** Divergence point ***\n");
+        DEBUG("*** Divergence point ***\n");
 
-		diverge = NULL;
-	} else {
-		tid = next->get_tid();
-	}
-	DEBUG("*** ModelChecker chose next thread = %d ***\n", id_to_int(tid));
-	ASSERT(tid != THREAD_ID_T_NONE);
-	return get_thread(id_to_int(tid));
+        diverge = NULL;
+    } else {
+        tid = next->get_tid();
+    }
+    DEBUG("*** ModelChecker chose next thread = %d ***\n", id_to_int(tid));
+    ASSERT(tid != THREAD_ID_T_NONE);
+    return get_thread(id_to_int(tid));
 }
 
 /**
@@ -154,13 +154,13 @@ Thread * ModelChecker::get_next_thread()
  */
 void ModelChecker::execute_sleep_set()
 {
-	for (unsigned int i = 0; i < get_num_threads(); i++) {
-		thread_id_t tid = int_to_id(i);
-		Thread *thr = get_thread(tid);
-		if (scheduler->is_sleep_set(thr) && thr->get_pending()) {
-			thr->get_pending()->set_sleep_flag();
-		}
-	}
+    for (unsigned int i = 0; i < get_num_threads(); i++) {
+        thread_id_t tid = int_to_id(i);
+        Thread *thr = get_thread(tid);
+        if (scheduler->is_sleep_set(thr) && thr->get_pending()) {
+            thr->get_pending()->set_sleep_flag();
+        }
+    }
 }
 
 /**
@@ -177,14 +177,14 @@ void ModelChecker::execute_sleep_set()
  */
 bool ModelChecker::assert_bug(const char *msg, ...)
 {
-	char str[800];
+    char str[800];
 
-	va_list ap;
-	va_start(ap, msg);
-	vsnprintf(str, sizeof(str), msg, ap);
-	va_end(ap);
+    va_list ap;
+    va_start(ap, msg);
+    vsnprintf(str, sizeof(str), msg, ap);
+    va_end(ap);
 
-	return execution->assert_bug(str);
+    return execution->assert_bug(str);
 }
 
 /**
@@ -194,21 +194,21 @@ bool ModelChecker::assert_bug(const char *msg, ...)
  */
 void ModelChecker::assert_user_bug(const char *msg)
 {
-	/* If feasible bug, bail out now */
-	if (assert_bug(msg))
-		switch_to_master(NULL);
+    /* If feasible bug, bail out now */
+    if (assert_bug(msg))
+        switch_to_master(NULL);
 }
 
 /** @brief Print bug report listing for this execution (if any bugs exist) */
 void ModelChecker::print_bugs() const
 {
-	SnapVector<bug_message *> *bugs = execution->get_bugs();
+    SnapVector<bug_message *> *bugs = execution->get_bugs();
 
-	model_print("Bug report: %zu bug%s detected\n",
-			bugs->size(),
-			bugs->size() > 1 ? "s" : "");
-	for (unsigned int i = 0; i < bugs->size(); i++)
-		(*bugs)[i]->print();
+    model_print("Bug report: %zu bug%s detected\n",
+            bugs->size(),
+            bugs->size() > 1 ? "s" : "");
+    for (unsigned int i = 0; i < bugs->size(); i++)
+        (*bugs)[i]->print();
 }
 
 /**
@@ -219,35 +219,35 @@ void ModelChecker::print_bugs() const
  */
 void ModelChecker::record_stats()
 {
-	stats.num_total++;
-	if (!execution->isfeasibleprefix())
-		stats.num_infeasible++;
-	else if (execution->have_bug_reports())
-		stats.num_buggy_executions++;
-	else if (execution->is_complete_execution())
-		stats.num_complete++;
-	else {
-		stats.num_redundant++;
+    stats.num_total++;
+    if (!execution->isfeasibleprefix())
+        stats.num_infeasible++;
+    else if (execution->have_bug_reports())
+        stats.num_buggy_executions++;
+    else if (execution->is_complete_execution())
+        stats.num_complete++;
+    else {
+        stats.num_redundant++;
 
-		/**
-		 * @todo We can violate this ASSERT() when fairness/sleep sets
-		 * conflict to cause an execution to terminate, e.g. with:
-		 * Scheduler: [0: disabled][1: disabled][2: sleep][3: current, enabled]
-		 */
-		//ASSERT(scheduler->all_threads_sleeping());
-	}
+        /**
+         * @todo We can violate this ASSERT() when fairness/sleep sets
+         * conflict to cause an execution to terminate, e.g. with:
+         * Scheduler: [0: disabled][1: disabled][2: sleep][3: current, enabled]
+         */
+        //ASSERT(scheduler->all_threads_sleeping());
+    }
 }
 
 /** @brief Print execution stats */
 void ModelChecker::print_stats() const
 {
-	model_print("Number of complete, bug-free executions: %d\n", stats.num_complete);
-	model_print("Number of redundant executions: %d\n", stats.num_redundant);
-	model_print("Number of buggy executions: %d\n", stats.num_buggy_executions);
-	model_print("Number of infeasible executions: %d\n", stats.num_infeasible);
-	model_print("Total executions: %d\n", stats.num_total);
-	if (params.verbose)
-		model_print("Total nodes created: %d\n", node_stack->get_total_nodes());
+    model_print("Number of complete, bug-free executions: %d\n", stats.num_complete);
+    model_print("Number of redundant executions: %d\n", stats.num_redundant);
+    model_print("Number of buggy executions: %d\n", stats.num_buggy_executions);
+    model_print("Number of infeasible executions: %d\n", stats.num_infeasible);
+    model_print("Total executions: %d\n", stats.num_total);
+    if (params.verbose)
+        model_print("Total nodes created: %d\n", node_stack->get_total_nodes());
 }
 
 /**
@@ -256,29 +256,29 @@ void ModelChecker::print_stats() const
  */
 void ModelChecker::print_execution(bool printbugs) const
 {
-	model_print("Program output from execution %d:\n",
-			get_execution_number());
-	print_program_output();
+    model_print("Program output from execution %d:\n",
+            get_execution_number());
+    print_program_output();
 
-	if (params.verbose >= 3) {
-		model_print("\nEarliest divergence point since last feasible execution:\n");
-		if (earliest_diverge)
-			earliest_diverge->print();
-		else
-			model_print("(Not set)\n");
+    if (params.verbose >= 3) {
+        model_print("\nEarliest divergence point since last feasible execution:\n");
+        if (earliest_diverge)
+            earliest_diverge->print();
+        else
+            model_print("(Not set)\n");
 
-		model_print("\n");
-		print_stats();
-	}
+        model_print("\n");
+        print_stats();
+    }
 
-	/* Don't print invalid bugs */
-	if (printbugs && execution->have_bug_reports()) {
-		model_print("\n");
-		print_bugs();
-	}
+    /* Don't print invalid bugs */
+    if (printbugs && execution->have_bug_reports()) {
+        model_print("\n");
+        print_bugs();
+    }
 
-	model_print("\n");
-	execution->print_summary();
+    model_print("\n");
+    execution->print_summary();
 }
 
 /**
@@ -290,66 +290,66 @@ void ModelChecker::print_execution(bool printbugs) const
  */
 bool ModelChecker::next_execution()
 {
-	DBG();
-	/* Is this execution a feasible execution that's worth bug-checking? */
-	bool complete = execution->isfeasibleprefix() &&
-		(execution->is_complete_execution() ||
-		 execution->have_bug_reports());
+    DBG();
+    /* Is this execution a feasible execution that's worth bug-checking? */
+    bool complete = execution->isfeasibleprefix() &&
+        (execution->is_complete_execution() ||
+         execution->have_bug_reports());
 
-	/* End-of-execution bug checks */
-	if (complete) {
-		if (execution->is_deadlocked())
-			assert_bug("Deadlock detected");
+    /* End-of-execution bug checks */
+    if (complete) {
+        if (execution->is_deadlocked())
+            assert_bug("Deadlock detected");
 
-		checkDataRaces();
-		run_trace_analyses();
-	} else if (inspect_plugin && !execution->is_complete_execution() &&
-		(execution->too_many_steps())) {
-		 inspect_plugin->analyze(execution->get_action_trace());
-	}
+        checkDataRaces();
+        run_trace_analyses();
+    } else if (inspect_plugin && !execution->is_complete_execution() &&
+        (execution->too_many_steps())) {
+         inspect_plugin->analyze(execution->get_action_trace());
+    }
 
-	record_stats();
+    record_stats();
 
-	/* Output */
-	if ( (complete && params.verbose) || params.verbose>1 || (complete && execution->have_bug_reports()))
-		print_execution(complete);
-	else
-		clear_program_output();
+    /* Output */
+    if ( (complete && params.verbose) || params.verbose>1 || (complete && execution->have_bug_reports()))
+        print_execution(complete);
+    else
+        clear_program_output();
 
-	if (complete)
-		earliest_diverge = NULL;
+    if (complete)
+        earliest_diverge = NULL;
 
-	if (restart_flag) {
-		do_restart();
-		return true;
-	}
+    if (restart_flag) {
+        do_restart();
+        return true;
+    }
 
-	if (exit_flag)
-		return false;
+    if (exit_flag)
+        return false;
 
-	if ((diverge = execution->get_next_backtrack()) == NULL)
-		return false;
+    if ((diverge = execution->get_next_backtrack()) == NULL)
+        return false;
 
-	if (DBG_ENABLED()) {
-		model_print("Next execution will diverge at:\n");
-		diverge->print();
-	}
+    if (DBG_ENABLED()) {
+        model_print("Next execution will diverge at:\n");
+        diverge->print();
+    }
 
-	execution_number++;
+    execution_number++;
 
-	if (params.maxexecutions != 0 && stats.num_complete >= (int)params.maxexecutions)
-		return false;
+    if (params.maxexecutions != 0 && stats.num_complete >= (int)params.maxexecutions)
+        return false;
 
-	reset_to_initial_state();
-	return true;
+    reset_to_initial_state();
+    return true;
 }
 
 /** @brief Run trace analyses on complete trace */
 void ModelChecker::run_trace_analyses() {
-	IN_TRACE_ANALYSIS = true;
-	for (unsigned int i = 0; i < trace_analyses.size(); i++)
-		trace_analyses[i]->analyze(execution->get_action_trace());
-	IN_TRACE_ANALYSIS = false;
+    IN_TRACE_ANALYSIS = true;
+    for (unsigned int i = 0; i < trace_analyses.size(); i++)
+        trace_analyses[i]->analyze(execution->get_action_trace());
+    IN_TRACE_ANALYSIS = false;
 }
 
 /**
@@ -359,7 +359,7 @@ void ModelChecker::run_trace_analyses() {
  */
 Thread * ModelChecker::get_thread(thread_id_t tid) const
 {
-	return execution->get_thread(tid);
+    return execution->get_thread(tid);
 }
 
 /**
@@ -369,7 +369,7 @@ Thread * ModelChecker::get_thread(thread_id_t tid) const
  */
 Thread * ModelChecker::get_thread(const ModelAction *act) const
 {
-	return execution->get_thread(act);
+    return execution->get_thread(act);
 }
 
 /**
@@ -381,8 +381,8 @@ Thread * ModelChecker::get_thread(const ModelAction *act) const
  */
 void ModelChecker::switch_from_master(Thread *thread)
 {
-	scheduler->set_current_thread(thread);
-	Thread::swap(&system_context, thread);
+    scheduler->set_current_thread(thread);
+    Thread::swap(&system_context, thread);
 }
 
 /**
@@ -398,136 +398,136 @@ void ModelChecker::switch_from_master(Thread *thread)
  */
 uint64_t ModelChecker::switch_to_master(ModelAction *act)
 {
-	DBG();
-	Thread *old = thread_current();
-	scheduler->set_current_thread(NULL);
-	ASSERT(!old->get_pending());
-	if (inspect_plugin != NULL) {
-		inspect_plugin->inspectModelAction(act);
-	}
-	old->set_pending(act);
-	if (Thread::swap(old, &system_context) < 0) {
-		perror("swap threads");
-		exit(EXIT_FAILURE);
-	}
-	return old->get_return_value();
+    DBG();
+    Thread *old = thread_current();
+    scheduler->set_current_thread(NULL);
+    ASSERT(!old->get_pending());
+    if (inspect_plugin != NULL) {
+        inspect_plugin->inspectModelAction(act);
+    }
+    old->set_pending(act);
+    if (Thread::swap(old, &system_context) < 0) {
+        perror("swap threads");
+        exit(EXIT_FAILURE);
+    }
+    return old->get_return_value();
 }
 
 /** Wrapper to run the user's main function, with appropriate arguments */
 void user_main_wrapper(void *)
 {
-	user_main(model->params.argc, model->params.argv);
+    user_main(model->params.argc, model->params.argv);
 }
 
 bool ModelChecker::should_terminate_execution()
 {
-	/* Infeasible -> don't take any more steps */
-	if (execution->is_infeasible())
-		return true;
-	else if (execution->isfeasibleprefix() && execution->have_bug_reports()) {
-		execution->set_assert();
-		return true;
-	}
+    /* Infeasible -> don't take any more steps */
+    if (execution->is_infeasible())
+        return true;
+    else if (execution->isfeasibleprefix() && execution->have_bug_reports()) {
+        execution->set_assert();
+        return true;
+    }
 
-	if (execution->too_many_steps())
-		return true;
-	return false;
+    if (execution->too_many_steps())
+        return true;
+    return false;
 }
 
 /** @brief Exit ModelChecker upon returning to the run loop of the
- *	model checker. */
+ *  model checker. */
 void ModelChecker::exit_model_checker()
 {
-	exit_flag = true;
+    exit_flag = true;
 }
 
 /** @brief Restart ModelChecker upon returning to the run loop of the
- *	model checker. */
+ *  model checker. */
 void ModelChecker::restart()
 {
-	restart_flag = true;
+    restart_flag = true;
 }
 
 void ModelChecker::do_restart()
 {
-	restart_flag = false;
-	diverge = NULL;
-	earliest_diverge = NULL;
-	reset_to_initial_state();
-	node_stack->full_reset();
-	memset(&stats,0,sizeof(struct execution_stats));
-	execution_number = 1;
+    restart_flag = false;
+    diverge = NULL;
+    earliest_diverge = NULL;
+    reset_to_initial_state();
+    node_stack->full_reset();
+    memset(&stats,0,sizeof(struct execution_stats));
+    execution_number = 1;
 }
 
 /** @brief Run ModelChecker for the user program */
 void ModelChecker::run()
 {
-	bool has_next;
-	do {
-		thrd_t user_thread;
-		Thread *t = new Thread(execution->get_next_id(), &user_thread, &user_main_wrapper, NULL, NULL);
-		execution->add_thread(t);
+    bool has_next;
+    do {
+        thrd_t user_thread;
+        Thread *t = new Thread(execution->get_next_id(), &user_thread, &user_main_wrapper, NULL, NULL);
+        execution->add_thread(t);
 
-		do {
-			/*
-			 * Stash next pending action(s) for thread(s). There
-			 * should only need to stash one thread's action--the
-			 * thread which just took a step--plus the first step
-			 * for any newly-created thread
-			 */
-			for (unsigned int i = 0; i < get_num_threads(); i++) {
-				thread_id_t tid = int_to_id(i);
-				Thread *thr = get_thread(tid);
-				if (!thr->is_model_thread() && !thr->is_complete() && !thr->get_pending()) {
-					switch_from_master(thr);
-					if (thr->is_waiting_on(thr))
-						assert_bug("Deadlock detected (thread %u)", i);
-				}
-			}
+        do {
+            /*
+             * Stash next pending action(s) for thread(s). There
+             * should only need to stash one thread's action--the
+             * thread which just took a step--plus the first step
+             * for any newly-created thread
+             */
+            for (unsigned int i = 0; i < get_num_threads(); i++) {
+                thread_id_t tid = int_to_id(i);
+                Thread *thr = get_thread(tid);
+                if (!thr->is_model_thread() && !thr->is_complete() && !thr->get_pending()) {
+                    switch_from_master(thr);
+                    if (thr->is_waiting_on(thr))
+                        assert_bug("Deadlock detected (thread %u)", i);
+                }
+            }
 
-			/* Don't schedule threads which should be disabled */
-			for (unsigned int i = 0; i < get_num_threads(); i++) {
-				Thread *th = get_thread(int_to_id(i));
-				ModelAction *act = th->get_pending();
-				if (act && execution->is_enabled(th) && !execution->check_action_enabled(act)) {
-					scheduler->sleep(th);
-				}
-			}
+            /* Don't schedule threads which should be disabled */
+            for (unsigned int i = 0; i < get_num_threads(); i++) {
+                Thread *th = get_thread(int_to_id(i));
+                ModelAction *act = th->get_pending();
+                if (act && execution->is_enabled(th) && !execution->check_action_enabled(act)) {
+                    scheduler->sleep(th);
+                }
+            }
 
-			/* Catch assertions from prior take_step or from
-			 * between-ModelAction bugs (e.g., data races) */
-			if (execution->has_asserted())
-				break;
+            /* Catch assertions from prior take_step or from
+             * between-ModelAction bugs (e.g., data races) */
+            if (execution->has_asserted())
+                break;
 
-			if (!t)
-				t = get_next_thread();
-			if (!t || t->is_model_thread())
-				break;
+            if (!t)
+                t = get_next_thread();
+            if (!t || t->is_model_thread())
+                break;
 
-			/* Consume the next action for a Thread */
-			ModelAction *curr = t->get_pending();
-			t->set_pending(NULL);
-			t = execution->take_step(curr);
-		} while (!should_terminate_execution());
+            /* Consume the next action for a Thread */
+            ModelAction *curr = t->get_pending();
+            t->set_pending(NULL);
+            t = execution->take_step(curr);
+        } while (!should_terminate_execution());
 
-		has_next = next_execution();
-		if (inspect_plugin != NULL && !has_next) {
-			inspect_plugin->actionAtModelCheckingFinish();
-			// Check if the inpect plugin set the restart flag
-			if (restart_flag) {
-				model_print("******* Model-checking RESTART: *******\n");
-				has_next = true;
-				do_restart();
-			}
-		}
-	} while (has_next);
+        has_next = next_execution();
+        if (inspect_plugin != NULL && !has_next) {
+            inspect_plugin->actionAtModelCheckingFinish();
+            // Check if the inpect plugin set the restart flag
+            if (restart_flag) {
+                model_print("******* Model-checking RESTART: *******\n");
+                has_next = true;
+                do_restart();
+            }
+        }
+    } while (has_next);
 
-	execution->fixup_release_sequences();
+    execution->fixup_release_sequences();
 
-	model_print("******* Model-checking complete: *******\n");
-	print_stats();
+    model_print("******* Model-checking complete: *******\n");
+    print_stats();
 
-	/* Have the trace analyses dump their output. */
-	for (unsigned int i = 0; i < trace_analyses.size(); i++)
-		trace_analyses[i]->finish();
+    /* Have the trace analyses dump their output. */
+    for (unsigned int i = 0; i < trace_analyses.size(); i++)
+        trace_analyses[i]->finish();
 }

@@ -12,32 +12,32 @@
 class ModelAction;
 
 typedef enum {
-	WORK_NONE = 0,           /**< No work to be done */
-	WORK_CHECK_CURR_ACTION,  /**< Check the current action; used for the
-	                              first action of the work loop */
-	WORK_CHECK_RELEASE_SEQ,  /**< Check if any pending release sequences
-	                              are resolved */
-	WORK_CHECK_MO_EDGES,     /**< Check if new mo_graph edges can be added */
+    WORK_NONE = 0,           /**< No work to be done */
+    WORK_CHECK_CURR_ACTION,  /**< Check the current action; used for the
+                                  first action of the work loop */
+    WORK_CHECK_RELEASE_SEQ,  /**< Check if any pending release sequences
+                                  are resolved */
+    WORK_CHECK_MO_EDGES,     /**< Check if new mo_graph edges can be added */
 } model_work_t;
 
 /**
  */
 class WorkQueueEntry {
  public:
-	/** @brief Type of work queue entry */
-	model_work_t type;
+    /** @brief Type of work queue entry */
+    model_work_t type;
 
-	/**
-	 * @brief Object affected
-	 * @see CheckRelSeqWorkEntry
-	 */
-	void *location;
+    /**
+     * @brief Object affected
+     * @see CheckRelSeqWorkEntry
+     */
+    void *location;
 
-	/**
-	 * @brief The ModelAction to work on
-	 * @see MOEdgeWorkEntry
-	 */
-	ModelAction *action;
+    /**
+     * @brief The ModelAction to work on
+     * @see MOEdgeWorkEntry
+     */
+    ModelAction *action;
 };
 
 /**
@@ -49,15 +49,15 @@ class WorkQueueEntry {
  */
 class CheckCurrWorkEntry : public WorkQueueEntry {
  public:
-	/**
-	 * @brief Constructor for a "check current action" work entry
-	 * @param curr The current action
-	 */
-	CheckCurrWorkEntry(ModelAction *curr) {
-		type = WORK_CHECK_CURR_ACTION;
-		location = NULL;
-		action = curr;
-	}
+    /**
+     * @brief Constructor for a "check current action" work entry
+     * @param curr The current action
+     */
+    CheckCurrWorkEntry(ModelAction *curr) {
+        type = WORK_CHECK_CURR_ACTION;
+        location = NULL;
+        action = curr;
+    }
 };
 
 /**
@@ -69,15 +69,15 @@ class CheckCurrWorkEntry : public WorkQueueEntry {
  */
 class CheckRelSeqWorkEntry : public WorkQueueEntry {
  public:
-	/**
-	 * @brief Constructor for a "check release sequences" work entry
-	 * @param l The location which must be checked for release sequences
-	 */
-	CheckRelSeqWorkEntry(void *l) {
-		type = WORK_CHECK_RELEASE_SEQ;
-		location = l;
-		action = NULL;
-	}
+    /**
+     * @brief Constructor for a "check release sequences" work entry
+     * @param l The location which must be checked for release sequences
+     */
+    CheckRelSeqWorkEntry(void *l) {
+        type = WORK_CHECK_RELEASE_SEQ;
+        location = l;
+        action = NULL;
+    }
 };
 
 /**
@@ -90,15 +90,15 @@ class CheckRelSeqWorkEntry : public WorkQueueEntry {
  */
 class MOEdgeWorkEntry : public WorkQueueEntry {
  public:
-	/**
-	 * @brief Constructor for a mo_edge work entry
-	 * @param updated The ModelAction which was updated, triggering this work
-	 */
-	MOEdgeWorkEntry(ModelAction *updated) {
-		type = WORK_CHECK_MO_EDGES;
-		location = NULL;
-		action = updated;
-	}
+    /**
+     * @brief Constructor for a mo_edge work entry
+     * @param updated The ModelAction which was updated, triggering this work
+     */
+    MOEdgeWorkEntry(ModelAction *updated) {
+        type = WORK_CHECK_MO_EDGES;
+        location = NULL;
+        action = updated;
+    }
 };
 
 /** @brief typedef for the work queue type */

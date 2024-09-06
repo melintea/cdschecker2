@@ -35,8 +35,8 @@ using std::memory_order;
 #define CV_PRINT(x) (x)->print()
 
 #define WILDCARD_ACT_PRINT(x)\
-	FENCE_PRINT("Wildcard: %d\n", get_wildcard_id_zero((x)->get_original_mo()));\
-	ACT_PRINT(x);
+    FENCE_PRINT("Wildcard: %d\n", get_wildcard_id_zero((x)->get_original_mo()));\
+    ACT_PRINT(x);
 
 #else
 
@@ -70,343 +70,343 @@ typedef SnapList<path_t *> sync_paths_t;
 typedef sync_paths_t paths_t;
 
 typedef struct scfence_priv {
-	scfence_priv() {
-		inferenceSet = new InferenceSet();
-		curInference = new Inference();
-		candidateFile = NULL;
-		inferImplicitMO = false;
-		hasRestarted = false;
-		implicitMOReadBound = DEFAULT_REPETITIVE_READ_BOUND;
-		timeout = 0;
-		gettimeofday(&lastRecordedTime, NULL);
-	}
+    scfence_priv() {
+        inferenceSet = new InferenceSet();
+        curInference = new Inference();
+        candidateFile = NULL;
+        inferImplicitMO = false;
+        hasRestarted = false;
+        implicitMOReadBound = DEFAULT_REPETITIVE_READ_BOUND;
+        timeout = 0;
+        gettimeofday(&lastRecordedTime, NULL);
+    }
 
-	/** The set of the InferenceNode we maintain for exploring */
-	InferenceSet *inferenceSet;
+    /** The set of the InferenceNode we maintain for exploring */
+    InferenceSet *inferenceSet;
 
-	/** The current inference */
-	Inference *curInference;
+    /** The current inference */
+    Inference *curInference;
 
-	/** The file which provides a list of candidate wilcard inferences */
-	char *candidateFile;
+    /** The file which provides a list of candidate wilcard inferences */
+    char *candidateFile;
 
-	/** Whether we consider the repetitive read to infer mo (_m) */
-	bool inferImplicitMO;
-	
-	/** The bound above which we think that write should be the last write (_b) */
-	int implicitMOReadBound;
+    /** Whether we consider the repetitive read to infer mo (_m) */
+    bool inferImplicitMO;
+    
+    /** The bound above which we think that write should be the last write (_b) */
+    int implicitMOReadBound;
 
-	/** Whether we have restarted the model checker */
-	bool hasRestarted;
+    /** Whether we have restarted the model checker */
+    bool hasRestarted;
 
-	/** The amount of time (in second) set to force the analysis to backtrack */
-	int timeout;
+    /** The amount of time (in second) set to force the analysis to backtrack */
+    int timeout;
 
-	/** The time we recorded last time */
-	struct timeval lastRecordedTime;
+    /** The time we recorded last time */
+    struct timeval lastRecordedTime;
 
-	MEMALLOC
+    MEMALLOC
 } scfence_priv;
 
 typedef enum fix_type {
-	BUGGY_EXECUTION,
-	IMPLICIT_MO,
-	NON_SC,
-	DATA_RACE
+    BUGGY_EXECUTION,
+    IMPLICIT_MO,
+    NON_SC,
+    DATA_RACE
 } fix_type_t;
 
 
 class SCFence : public TraceAnalysis {
  public:
-	SCFence();
-	~SCFence();
-	virtual void setExecution(ModelExecution * execution);
-	virtual void analyze(action_list_t *);
-	virtual const char * name();
-	virtual bool option(char *);
-	virtual void finish();
+    SCFence();
+    ~SCFence();
+    virtual void setExecution(ModelExecution * execution);
+    virtual void analyze(action_list_t *);
+    virtual const char * name();
+    virtual bool option(char *);
+    virtual void finish();
 
-	virtual void inspectModelAction(ModelAction *ac);
-	virtual void actionAtInstallation();
-	virtual void actionAtModelCheckingFinish();
+    virtual void inspectModelAction(ModelAction *ac);
+    virtual void actionAtInstallation();
+    virtual void actionAtModelCheckingFinish();
 
-	SNAPSHOTALLOC
+    SNAPSHOTALLOC
 
  private:
-	/** The SC list generator */
-	SCGenerator *scgen;
+    /** The SC list generator */
+    SCGenerator *scgen;
 
-	struct sc_statistics *stats;
+    struct sc_statistics *stats;
 
-	bool time;
+    bool time;
 
-	/** Should we weaken the inferences later */
-	bool weaken;
+    /** Should we weaken the inferences later */
+    bool weaken;
 
-	/** Modification order graph */
-	const CycleGraph *mo_graph;
+    /** Modification order graph */
+    const CycleGraph *mo_graph;
 
-	/** A duplica of the thread lists */
-	SnapVector<action_list_t> *dup_threadlists;
-	ModelExecution *execution;
+    /** A duplica of the thread lists */
+    SnapVector<action_list_t> *dup_threadlists;
+    ModelExecution *execution;
 
-	/** A set of actions that should be ignored in the partially SC analysis */
-	HashTable<const ModelAction*, const ModelAction*, uintptr_t, 4> ignoredActions;
-	int ignoredActionSize;
+    /** A set of actions that should be ignored in the partially SC analysis */
+    HashTable<const ModelAction*, const ModelAction*, uintptr_t, 4> ignoredActions;
+    int ignoredActionSize;
 
-	/** The non-snapshotting private compound data structure that has the
-	 * necessary stuff for the scfence analysis */
-	static scfence_priv *priv;
+    /** The non-snapshotting private compound data structure that has the
+     * necessary stuff for the scfence analysis */
+    static scfence_priv *priv;
 
-	/** For the SC analysis */
-	void update_stats();
+    /** For the SC analysis */
+    void update_stats();
 
-	/** Get the custom input number for implicit bound */
-	int getImplicitMOBound(char *opt);
+    /** Get the custom input number for implicit bound */
+    int getImplicitMOBound(char *opt);
 
-	/** Get the input file for initial parameter assignments */
-	char* getInputFileName(char *opt);
+    /** Get the input file for initial parameter assignments */
+    char* getInputFileName(char *opt);
 
-	/** The function to parse the SCFence plugin options */
-	bool parseOption(char *opt);
+    /** The function to parse the SCFence plugin options */
+    bool parseOption(char *opt);
 
-	/** Helper function for option parsing */
-	char* parseOptionHelper(char *opt, int *optIdx);
+    /** Helper function for option parsing */
+    char* parseOptionHelper(char *opt, int *optIdx);
 
-	/** Initialize the search with a file with a list of potential candidates */
-	void initializeByFile();
+    /** Initialize the search with a file with a list of potential candidates */
+    void initializeByFile();
 
-	/** A pass through the original actions to extract the ignored actions
-	 * (partially SC); it must be called after the threadlist has been built */
-	void extractIgnoredActions();
+    /** A pass through the original actions to extract the ignored actions
+     * (partially SC); it must be called after the threadlist has been built */
+    void extractIgnoredActions();
 
-	/** Functions that work for infering the parameters by impsing
-	 * synchronization */
-	paths_t *get_rf_sb_paths(const ModelAction *act1, const ModelAction *act2);
-	
-	/** Printing function for those paths imposed by happens-before; only for
-	 * the purpose of debugging */
-	void print_rf_sb_paths(paths_t *paths, const ModelAction *start, const ModelAction *end);
+    /** Functions that work for infering the parameters by impsing
+     * synchronization */
+    paths_t *get_rf_sb_paths(const ModelAction *act1, const ModelAction *act2);
+    
+    /** Printing function for those paths imposed by happens-before; only for
+     * the purpose of debugging */
+    void print_rf_sb_paths(paths_t *paths, const ModelAction *start, const ModelAction *end);
 
-	/** Whether there's an edge between from and to actions */
-	bool isSCEdge(const ModelAction *from, const ModelAction *to) {
-		return from->is_seqcst() && to->is_seqcst();
-	}
-	
-	bool isConflicting(const ModelAction *act1, const ModelAction *act2) {
-		return act1->get_location() == act2->get_location() ? (act1->is_write()
-			|| act2->is_write()) : false;
-	}
+    /** Whether there's an edge between from and to actions */
+    bool isSCEdge(const ModelAction *from, const ModelAction *to) {
+        return from->is_seqcst() && to->is_seqcst();
+    }
+    
+    bool isConflicting(const ModelAction *act1, const ModelAction *act2) {
+        return act1->get_location() == act2->get_location() ? (act1->is_write()
+            || act2->is_write()) : false;
+    }
 
-	/** The two important routine when we find or cannot find a fix for the
-	 * current inference */
-	void routineAfterAddFixes();
+    /** The two important routine when we find or cannot find a fix for the
+     * current inference */
+    void routineAfterAddFixes();
 
-	bool routineBacktrack(bool feasible);
+    bool routineBacktrack(bool feasible);
 
-	/** A subroutine to find candidates for pattern (a) */
-	InferenceList* getFixesFromPatternA(action_list_t *list, action_list_t::iterator readIter, action_list_t::iterator writeIter);
+    /** A subroutine to find candidates for pattern (a) */
+    InferenceList* getFixesFromPatternA(action_list_t *list, action_list_t::iterator readIter, action_list_t::iterator writeIter);
 
-	/** A subroutine to find candidates for pattern (b) */
-	InferenceList* getFixesFromPatternB(action_list_t *list, action_list_t::iterator readIter, action_list_t::iterator writeIter);
+    /** A subroutine to find candidates for pattern (b) */
+    InferenceList* getFixesFromPatternB(action_list_t *list, action_list_t::iterator readIter, action_list_t::iterator writeIter);
 
-	/** Check if there exists data races, if so, overwrite act1 & act2 to be the
-	 *  two */
-	bool checkDataRace(action_list_t *list, ModelAction **act1, 
-		ModelAction **act2);
+    /** Check if there exists data races, if so, overwrite act1 & act2 to be the
+     *  two */
+    bool checkDataRace(action_list_t *list, ModelAction **act1, 
+        ModelAction **act2);
 
-	/** Check if there exists data races, if so, generate the fixes */
-	bool addFixesDataRace(action_list_t *list);
+    /** Check if there exists data races, if so, generate the fixes */
+    bool addFixesDataRace(action_list_t *list);
 
-	/** The previous action in sb */
-	ModelAction* sbPrevAction(ModelAction *act);
-	/** The next action in sb */
-	ModelAction* sbNextAction(ModelAction *act);
+    /** The previous action in sb */
+    ModelAction* sbPrevAction(ModelAction *act);
+    /** The next action in sb */
+    ModelAction* sbNextAction(ModelAction *act);
 
-	/** When getting a non-SC execution, find potential fixes and add it to the
-	 *  set */
-	bool addFixesNonSC(action_list_t *list);
+    /** When getting a non-SC execution, find potential fixes and add it to the
+     *  set */
+    bool addFixesNonSC(action_list_t *list);
 
-	/** When getting a buggy execution (we only target the uninitialized loads
-	 * here), find potential fixes and add it to the set */
-	bool addFixesBuggyExecution(action_list_t *list);
+    /** When getting a buggy execution (we only target the uninitialized loads
+     * here), find potential fixes and add it to the set */
+    bool addFixesBuggyExecution(action_list_t *list);
 
-	/** When getting an SC and bug-free execution, we check whether we should
-	 * fix the implicit mo problems. If so, find potential fixes and add it to
-	 * the set */
-	bool addFixesImplicitMO(action_list_t *list);
+    /** When getting an SC and bug-free execution, we check whether we should
+     * fix the implicit mo problems. If so, find potential fixes and add it to
+     * the set */
+    bool addFixesImplicitMO(action_list_t *list);
 
-	/** General fixes wrapper */
-	bool addFixes(action_list_t *list, fix_type_t type);
+    /** General fixes wrapper */
+    bool addFixes(action_list_t *list, fix_type_t type);
 
-	/** Check whether a chosen reads-from path is a release sequence */
-	bool isReleaseSequence(path_t *path);
+    /** Check whether a chosen reads-from path is a release sequence */
+    bool isReleaseSequence(path_t *path);
 
-	/** Impose synchronization to the existing list of inferences (inferList)
-	 *  according to path, begin is the beginning operation, and end is the
-	 *  ending operation. */
-	bool imposeSync(InferenceList* inferList, paths_t *paths, const
-		ModelAction *begin, const ModelAction *end);
-	
-	bool imposeSync(InferenceList* inferList, path_t *path, const
-		ModelAction *begin, const ModelAction *end);
+    /** Impose synchronization to the existing list of inferences (inferList)
+     *  according to path, begin is the beginning operation, and end is the
+     *  ending operation. */
+    bool imposeSync(InferenceList* inferList, paths_t *paths, const
+        ModelAction *begin, const ModelAction *end);
+    
+    bool imposeSync(InferenceList* inferList, path_t *path, const
+        ModelAction *begin, const ModelAction *end);
 
-	/** For a specific pair of write and read actions, figure out the possible
-	 *  acq/rel fences that can impose hb plus the read & write sync pair */
-	SnapVector<Patch*>* getAcqRel(const ModelAction *read,
-		const ModelAction *readBound, const ModelAction *write,
-		const ModelAction *writeBound);
+    /** For a specific pair of write and read actions, figure out the possible
+     *  acq/rel fences that can impose hb plus the read & write sync pair */
+    SnapVector<Patch*>* getAcqRel(const ModelAction *read,
+        const ModelAction *readBound, const ModelAction *write,
+        const ModelAction *writeBound);
 
-	/** Impose SC to the existing list of inferences (inferList) by action1 &
-	 *  action2. */
-	bool imposeSC(action_list_t * actions, InferenceList *inferList, const ModelAction *act1,
-		const ModelAction *act2);
+    /** Impose SC to the existing list of inferences (inferList) by action1 &
+     *  action2. */
+    bool imposeSC(action_list_t * actions, InferenceList *inferList, const ModelAction *act1,
+        const ModelAction *act2);
 
-	/** When we finish model checking or cannot further strenghen with the
-	 * current inference, we commit the current inference (the node at the back
-	 * of the set) to be explored, pop it out of the set; if it is feasible,
-	 * we put it in the result list */
-	void commitInference(Inference *infer, bool feasible) {
-		getSet()->commitInference(infer, feasible);	
-	}
+    /** When we finish model checking or cannot further strenghen with the
+     * current inference, we commit the current inference (the node at the back
+     * of the set) to be explored, pop it out of the set; if it is feasible,
+     * we put it in the result list */
+    void commitInference(Inference *infer, bool feasible) {
+        getSet()->commitInference(infer, feasible); 
+    }
 
-	/** Get the next available unexplored node; @Return NULL 
-	 * if we don't have next, meaning that we are done with exploring */
-	Inference* getNextInference() {
-		return getSet()->getNextInference();
-	}
+    /** Get the next available unexplored node; @Return NULL 
+     * if we don't have next, meaning that we are done with exploring */
+    Inference* getNextInference() {
+        return getSet()->getNextInference();
+    }
 
-	/** Add one possible node that represents a fix for the current inference;
-	 * @Return true if the node to add has not been explored yet
-	 */
-	bool addInference(Inference *infer) {
-		return getSet()->addInference(infer);
-	}
+    /** Add one possible node that represents a fix for the current inference;
+     * @Return true if the node to add has not been explored yet
+     */
+    bool addInference(Inference *infer) {
+        return getSet()->addInference(infer);
+    }
 
-	/** Add the list of fixes to the inference set. We will have to pass in the
-	 *  current inference.;
-	 * @Return true if the node to add has not been explored yet
-	 */
-	bool addCandidates(InferenceList *candidates) {
-		return getSet()->addCandidates(getCurInference(), candidates);
-	}
+    /** Add the list of fixes to the inference set. We will have to pass in the
+     *  current inference.;
+     * @Return true if the node to add has not been explored yet
+     */
+    bool addCandidates(InferenceList *candidates) {
+        return getSet()->addCandidates(getCurInference(), candidates);
+    }
 
-	void addCurInference() {
-		getSet()->addCurInference(getCurInference());
-	}
+    void addCurInference() {
+        getSet()->addCurInference(getCurInference());
+    }
 
-	/** Print the result of inferences  */
-	void printResults() {
-		getSet()->printResults();
-	}
+    /** Print the result of inferences  */
+    void printResults() {
+        getSet()->printResults();
+    }
 
-	/** Print the candidates of inferences  */
-	void printCandidates() {
-		getSet()->printCandidates();
-	}
+    /** Print the candidates of inferences  */
+    void printCandidates() {
+        getSet()->printCandidates();
+    }
 
-	/** The number of nodes in the set (including those parent nodes (set as
-	 * explored) */
-	 int setSize() {
-		return getSet()->getCandidatesSize();
-	 }
+    /** The number of nodes in the set (including those parent nodes (set as
+     * explored) */
+     int setSize() {
+        return getSet()->getCandidatesSize();
+     }
 
-	/** Set the restart flag of the model checker in order to restart the
-	 * checking process */
-	void restartModelChecker();
-	
-	/** Set the exit flag of the model checker in order to exit the whole
-	 * process */
-	void exitModelChecker();
+    /** Set the restart flag of the model checker in order to restart the
+     * checking process */
+    void restartModelChecker();
+    
+    /** Set the exit flag of the model checker in order to exit the whole
+     * process */
+    void exitModelChecker();
 
-	bool modelCheckerAtExitState();
+    bool modelCheckerAtExitState();
 
-	const char* net_mo_str(memory_order order);
+    const char* net_mo_str(memory_order order);
 
-	InferenceSet* getSet() {
-		return priv->inferenceSet;
-	}
+    InferenceSet* getSet() {
+        return priv->inferenceSet;
+    }
 
-	void setHasFixes(bool val) {
-		getCurInference()->setHasFixes(val);
-	}
+    void setHasFixes(bool val) {
+        getCurInference()->setHasFixes(val);
+    }
 
-	bool hasFixes() {
-		return getCurInference()->getHasFixes();
-	}
+    bool hasFixes() {
+        return getCurInference()->getHasFixes();
+    }
 
-	bool isBuggy() {
-		return getCurInference()->getBuggy();
-	}
+    bool isBuggy() {
+        return getCurInference()->getBuggy();
+    }
 
-	void setBuggy(bool val) {
-		getCurInference()->setBuggy(val);
-	}
+    void setBuggy(bool val) {
+        getCurInference()->setBuggy(val);
+    }
 
-	Inference* getCurInference() {
-		return priv->curInference;
-	}
+    Inference* getCurInference() {
+        return priv->curInference;
+    }
 
-	void setCurInference(Inference* infer) {
-		priv->curInference = infer;
-	}
+    void setCurInference(Inference* infer) {
+        priv->curInference = infer;
+    }
 
-	char* getCandidateFile() {
-		return priv->candidateFile;
-	}
+    char* getCandidateFile() {
+        return priv->candidateFile;
+    }
 
-	void setCandidateFile(char* file) {
-		priv->candidateFile = file;
-	}
+    void setCandidateFile(char* file) {
+        priv->candidateFile = file;
+    }
 
-	bool getInferImplicitMO() {
-		return priv->inferImplicitMO;
-	}
+    bool getInferImplicitMO() {
+        return priv->inferImplicitMO;
+    }
 
-	void setInferImplicitMO(bool val) {
-		priv->inferImplicitMO = val;
-	}
+    void setInferImplicitMO(bool val) {
+        priv->inferImplicitMO = val;
+    }
 
-	int getImplicitMOReadBound() {
-		return priv->implicitMOReadBound;
-	}
+    int getImplicitMOReadBound() {
+        return priv->implicitMOReadBound;
+    }
 
-	void setImplicitMOReadBound(int bound) {
-		priv->implicitMOReadBound = bound;
-	}
+    void setImplicitMOReadBound(int bound) {
+        priv->implicitMOReadBound = bound;
+    }
 
-	int getHasRestarted() {
-		return priv->hasRestarted;
-	}
+    int getHasRestarted() {
+        return priv->hasRestarted;
+    }
 
-	void setHasRestarted(int val) {
-		priv->hasRestarted = val;
-	}
+    void setHasRestarted(int val) {
+        priv->hasRestarted = val;
+    }
 
-	void setTimeout(int timeout) {
-		priv->timeout = timeout;
-	}
+    void setTimeout(int timeout) {
+        priv->timeout = timeout;
+    }
 
-	int getTimeout() {
-		return priv->timeout;
-	}
+    int getTimeout() {
+        return priv->timeout;
+    }
 
-	bool isTimeout() {
-		struct timeval now;
-		gettimeofday(&now, NULL);
-		// Check if it should be timeout
-		struct timeval *lastRecordedTime = &priv->lastRecordedTime;
-		unsigned long long elapsedTime = (now.tv_sec*1000000 + now.tv_usec) -
-			(lastRecordedTime->tv_sec*1000000 + lastRecordedTime->tv_usec);
+    bool isTimeout() {
+        struct timeval now;
+        gettimeofday(&now, NULL);
+        // Check if it should be timeout
+        struct timeval *lastRecordedTime = &priv->lastRecordedTime;
+        unsigned long long elapsedTime = (now.tv_sec*1000000 + now.tv_usec) -
+            (lastRecordedTime->tv_sec*1000000 + lastRecordedTime->tv_usec);
 
-		// Update the lastRecordedTime
-		priv->lastRecordedTime = now;
-		if (elapsedTime / 1000000.0 > priv->timeout)
-			return true;
-		else
-			return false;
-	}
+        // Update the lastRecordedTime
+        priv->lastRecordedTime = now;
+        if (elapsedTime / 1000000.0 > priv->timeout)
+            return true;
+        else
+            return false;
+    }
 
-	/********************** SCFence-related stuff (end) **********************/
+    /********************** SCFence-related stuff (end) **********************/
 };
 #endif

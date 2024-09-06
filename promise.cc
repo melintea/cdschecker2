@@ -14,15 +14,15 @@
  * @param fv The future value that is promised
  */
 Promise::Promise(const ModelExecution *execution, ModelAction *read, struct future_value fv) :
-	execution(execution),
-	num_available_threads(0),
-	num_was_available_threads(0),
-	fv(fv),
-	readers(1, read),
-	write(NULL)
+    execution(execution),
+    num_available_threads(0),
+    num_was_available_threads(0),
+    fv(fv),
+    readers(1, read),
+    write(NULL)
 {
-	add_thread(fv.tid);
-	eliminate_thread(read->get_tid());
+    add_thread(fv.tid);
+    eliminate_thread(read->get_tid());
 }
 
 /**
@@ -34,8 +34,8 @@ Promise::Promise(const ModelExecution *execution, ModelAction *read, struct futu
  */
 bool Promise::add_reader(ModelAction *reader)
 {
-	readers.push_back(reader);
-	return eliminate_thread(reader->get_tid());
+    readers.push_back(reader);
+    return eliminate_thread(reader->get_tid());
 }
 
 /**
@@ -47,7 +47,7 @@ bool Promise::add_reader(ModelAction *reader)
  */
 ModelAction * Promise::get_reader(unsigned int i) const
 {
-	return i < readers.size() ? readers[i] : NULL;
+    return i < readers.size() ? readers[i] : NULL;
 }
 
 /**
@@ -60,13 +60,13 @@ ModelAction * Promise::get_reader(unsigned int i) const
  */
 bool Promise::eliminate_thread(thread_id_t tid)
 {
-	unsigned int id = id_to_int(tid);
-	if (!thread_is_available(tid))
-		return false;
+    unsigned int id = id_to_int(tid);
+    if (!thread_is_available(tid))
+        return false;
 
-	available_thread[id] = false;
-	num_available_threads--;
-	return has_failed();
+    available_thread[id] = false;
+    num_available_threads--;
+    return has_failed();
 }
 
 /**
@@ -76,19 +76,19 @@ bool Promise::eliminate_thread(thread_id_t tid)
  */
 void Promise::add_thread(thread_id_t tid)
 {
-	unsigned int id = id_to_int(tid);
-	if (id >= available_thread.size())
-		available_thread.resize(id + 1, false);
-	if (!available_thread[id]) {
-		available_thread[id] = true;
-		num_available_threads++;
-	}
-	if (id >= was_available_thread.size())
-		was_available_thread.resize(id + 1, false);
-	if (!was_available_thread[id]) {
-		was_available_thread[id] = true;
-		num_was_available_threads++;
-	}
+    unsigned int id = id_to_int(tid);
+    if (id >= available_thread.size())
+        available_thread.resize(id + 1, false);
+    if (!available_thread[id]) {
+        available_thread[id] = true;
+        num_available_threads++;
+    }
+    if (id >= was_available_thread.size())
+        was_available_thread.resize(id + 1, false);
+    if (!was_available_thread[id]) {
+        was_available_thread[id] = true;
+        num_was_available_threads++;
+    }
 }
 
 /**
@@ -101,18 +101,18 @@ void Promise::add_thread(thread_id_t tid)
  */
 bool Promise::thread_is_available(thread_id_t tid) const
 {
-	unsigned int id = id_to_int(tid);
-	if (id >= available_thread.size())
-		return false;
-	return available_thread[id];
+    unsigned int id = id_to_int(tid);
+    if (id >= available_thread.size())
+        return false;
+    return available_thread[id];
 }
 
 bool Promise::thread_was_available(thread_id_t tid) const
 {
-	unsigned int id = id_to_int(tid);
-	if (id >= was_available_thread.size())
-		return false;
-	return was_available_thread[id];
+    unsigned int id = id_to_int(tid);
+    if (id >= was_available_thread.size())
+        return false;
+    return was_available_thread[id];
 }
 
 /**
@@ -125,23 +125,23 @@ bool Promise::thread_was_available(thread_id_t tid) const
  */
 unsigned int Promise::max_available_thread_idx() const
 {
-	return available_thread.size();
+    return available_thread.size();
 }
 
 /** @brief Print debug info about the Promise */
 void Promise::print() const
 {
-	model_print("Promised value %#" PRIx64 ", first read from thread %d, available threads to resolve: ",
-			fv.value, id_to_int(get_reader(0)->get_tid()));
-	bool failed = true;
-	for (unsigned int i = 0; i < available_thread.size(); i++)
-		if (available_thread[i]) {
-			model_print("[%d]", i);
-			failed = false;
-		}
-	if (failed)
-		model_print("(none)");
-	model_print("\n");
+    model_print("Promised value %#" PRIx64 ", first read from thread %d, available threads to resolve: ",
+            fv.value, id_to_int(get_reader(0)->get_tid()));
+    bool failed = true;
+    for (unsigned int i = 0; i < available_thread.size(); i++)
+        if (available_thread[i]) {
+            model_print("[%d]", i);
+            failed = false;
+        }
+    if (failed)
+        model_print("(none)");
+    model_print("\n");
 }
 
 /**
@@ -152,7 +152,7 @@ void Promise::print() const
  */
 bool Promise::has_failed() const
 {
-	return num_available_threads == 0;
+    return num_available_threads == 0;
 }
 
 /**
@@ -163,7 +163,7 @@ bool Promise::has_failed() const
  */
 bool Promise::is_compatible(const ModelAction *act) const
 {
-	return thread_is_available(act->get_tid()) && get_reader(0)->same_var(act);
+    return thread_is_available(act->get_tid()) && get_reader(0)->same_var(act);
 }
 
 /**
@@ -174,7 +174,7 @@ bool Promise::is_compatible(const ModelAction *act) const
  */
 bool Promise::is_compatible_exclusive(const ModelAction *act) const
 {
-	return get_num_available_threads() == 1 && is_compatible(act);
+    return get_num_available_threads() == 1 && is_compatible(act);
 }
 
 /**
@@ -184,7 +184,7 @@ bool Promise::is_compatible_exclusive(const ModelAction *act) const
  */
 bool Promise::same_value(const ModelAction *write) const
 {
-	return get_value() == write->get_write_value();
+    return get_value() == write->get_write_value();
 }
 
 /**
@@ -194,11 +194,11 @@ bool Promise::same_value(const ModelAction *write) const
  */
 bool Promise::same_location(const ModelAction *act) const
 {
-	return get_reader(0)->same_var(act);
+    return get_reader(0)->same_var(act);
 }
 
 /** @brief Get this Promise's index within the execution's promise array */
 int Promise::get_index() const
 {
-	return execution->get_promise_number(this);
+    return execution->get_promise_number(this);
 }

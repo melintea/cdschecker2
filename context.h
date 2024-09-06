@@ -16,7 +16,7 @@ int model_swapcontext(ucontext_t *oucp, ucontext_t *ucp);
 
 static inline int model_swapcontext(ucontext_t *oucp, ucontext_t *ucp)
 {
-	return swapcontext(oucp, ucp);
+    return swapcontext(oucp, ucp);
 }
 
 #endif /* !MAC */

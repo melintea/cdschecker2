@@ -20,31 +20,31 @@ atomic_int y;
 
 static void a(void *obj)
 {
-	int r1 = atomic_load_explicit(&x, memory_order_relaxed);
-	int r2 = atomic_load_explicit(&x, memory_order_relaxed);
-	printf("r1 = %d, r2 = %d\n", r1, r2);
+    int r1 = atomic_load_explicit(&x, memory_order_relaxed);
+    int r2 = atomic_load_explicit(&x, memory_order_relaxed);
+    printf("r1 = %d, r2 = %d\n", r1, r2);
 }
 
 static void b(void *obj)
 {
-	atomic_store_explicit(&y, 43, memory_order_relaxed);
-	atomic_store_explicit(&x, 42, memory_order_relaxed);
+    atomic_store_explicit(&y, 43, memory_order_relaxed);
+    atomic_store_explicit(&x, 42, memory_order_relaxed);
 }
 
 int user_main(int argc, char **argv)
 {
-	thrd_t t1, t2;
+    thrd_t t1, t2;
 
-	atomic_init(&x, 0);
-	atomic_init(&y, 0);
+    atomic_init(&x, 0);
+    atomic_init(&y, 0);
 
-	printf("Main thread: creating 2 threads\n");
-	thrd_create(&t1, (thrd_start_t)&a, NULL);
-	thrd_create(&t2, (thrd_start_t)&b, NULL);
+    printf("Main thread: creating 2 threads\n");
+    thrd_create(&t1, (thrd_start_t)&a, NULL);
+    thrd_create(&t2, (thrd_start_t)&b, NULL);
 
-	thrd_join(t1);
-	thrd_join(t2);
-	printf("Main thread is finished\n");
+    thrd_join(t1);
+    thrd_join(t2);
+    printf("Main thread is finished\n");
 
-	return 0;
+    return 0;
 }

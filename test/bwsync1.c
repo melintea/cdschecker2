@@ -28,7 +28,7 @@ static void c(void *obj)
 {
         //      int r1=atomic_load_explicit(&z, memory_order_acquire);
         int r3=atomic_load_explicit(&x, memory_order_acquire);
-		printf("r3=%d\n",r3);
+        printf("r3=%d\n",r3);
 }
 
 static void d(void *obj)

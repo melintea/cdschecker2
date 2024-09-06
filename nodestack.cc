@@ -27,171 +27,171 @@
  * execution trace.
  */
 Node::Node(const struct model_params *params, ModelAction *act, Node *par,
-		int nthreads, Node *prevfairness) :
-	read_from_status(READ_FROM_PAST),
-	action(act),
-	params(params),
-	uninit_action(NULL),
-	parent(par),
-	num_threads(nthreads),
-	explored_children(num_threads),
-	backtrack(num_threads),
-	fairness(num_threads),
-	numBacktracks(0),
-	enabled_array(NULL),
-	read_from_past(),
-	read_from_past_idx(0),
-	read_from_promises(),
-	read_from_promise_idx(-1),
-	future_values(),
-	future_index(-1),
-	resolve_promise(),
-	resolve_promise_idx(-1),
-	relseq_break_writes(),
-	relseq_break_index(0),
-	misc_index(0),
-	misc_max(0),
-	yield_data(NULL)
+        int nthreads, Node *prevfairness) :
+    read_from_status(READ_FROM_PAST),
+    action(act),
+    params(params),
+    uninit_action(NULL),
+    parent(par),
+    num_threads(nthreads),
+    explored_children(num_threads),
+    backtrack(num_threads),
+    fairness(num_threads),
+    numBacktracks(0),
+    enabled_array(NULL),
+    read_from_past(),
+    read_from_past_idx(0),
+    read_from_promises(),
+    read_from_promise_idx(-1),
+    future_values(),
+    future_index(-1),
+    resolve_promise(),
+    resolve_promise_idx(-1),
+    relseq_break_writes(),
+    relseq_break_index(0),
+    misc_index(0),
+    misc_max(0),
+    yield_data(NULL)
 {
-	ASSERT(act);
-	act->set_node(this);
-	int currtid = id_to_int(act->get_tid());
-	int prevtid = prevfairness ? id_to_int(prevfairness->action->get_tid()) : 0;
+    ASSERT(act);
+    act->set_node(this);
+    int currtid = id_to_int(act->get_tid());
+    int prevtid = prevfairness ? id_to_int(prevfairness->action->get_tid()) : 0;
 
-	if (get_params()->fairwindow != 0) {
-		for (int i = 0; i < num_threads; i++) {
-			ASSERT(i < ((int)fairness.size()));
-			struct fairness_info *fi = &fairness[i];
-			struct fairness_info *prevfi = (parent && i < parent->get_num_threads()) ? &parent->fairness[i] : NULL;
-			if (prevfi) {
-				*fi = *prevfi;
-			}
-			if (parent && parent->is_enabled(int_to_id(i))) {
-				fi->enabled_count++;
-			}
-			if (i == currtid) {
-				fi->turns++;
-				fi->priority = false;
-			}
-			/* Do window processing */
-			if (prevfairness != NULL) {
-				if (prevfairness->parent->is_enabled(int_to_id(i)))
-					fi->enabled_count--;
-				if (i == prevtid) {
-					fi->turns--;
-				}
-				/* Need full window to start evaluating
-				 * conditions
-				 * If we meet the enabled count and have no
-				 * turns, give us priority */
-				if ((fi->enabled_count >= get_params()->enabledcount) &&
-						(fi->turns == 0))
-					fi->priority = true;
-			}
-		}
-	}
+    if (get_params()->fairwindow != 0) {
+        for (int i = 0; i < num_threads; i++) {
+            ASSERT(i < ((int)fairness.size()));
+            struct fairness_info *fi = &fairness[i];
+            struct fairness_info *prevfi = (parent && i < parent->get_num_threads()) ? &parent->fairness[i] : NULL;
+            if (prevfi) {
+                *fi = *prevfi;
+            }
+            if (parent && parent->is_enabled(int_to_id(i))) {
+                fi->enabled_count++;
+            }
+            if (i == currtid) {
+                fi->turns++;
+                fi->priority = false;
+            }
+            /* Do window processing */
+            if (prevfairness != NULL) {
+                if (prevfairness->parent->is_enabled(int_to_id(i)))
+                    fi->enabled_count--;
+                if (i == prevtid) {
+                    fi->turns--;
+                }
+                /* Need full window to start evaluating
+                 * conditions
+                 * If we meet the enabled count and have no
+                 * turns, give us priority */
+                if ((fi->enabled_count >= get_params()->enabledcount) &&
+                        (fi->turns == 0))
+                    fi->priority = true;
+            }
+        }
+    }
 }
 
 int Node::get_yield_data(int tid1, int tid2) const {
-	if (tid1<num_threads && tid2 < num_threads)
-		return yield_data[YIELD_INDEX(tid1,tid2,num_threads)];
-	else
-		return YIELD_S | YIELD_D;
+    if (tid1<num_threads && tid2 < num_threads)
+        return yield_data[YIELD_INDEX(tid1,tid2,num_threads)];
+    else
+        return YIELD_S | YIELD_D;
 }
 
 void Node::update_yield(Scheduler * scheduler) {
-	if (yield_data==NULL)
-		yield_data=(int *) model_calloc(1, sizeof(int)*num_threads*num_threads);
-	//handle base case
-	if (parent == NULL) {
-		for(int i = 0; i < num_threads*num_threads; i++) {
-			yield_data[i] = YIELD_S | YIELD_D;
-		}
-		return;
-	}
-	int curr_tid=id_to_int(action->get_tid());
+    if (yield_data==NULL)
+        yield_data=(int *) model_calloc(1, sizeof(int)*num_threads*num_threads);
+    //handle base case
+    if (parent == NULL) {
+        for(int i = 0; i < num_threads*num_threads; i++) {
+            yield_data[i] = YIELD_S | YIELD_D;
+        }
+        return;
+    }
+    int curr_tid=id_to_int(action->get_tid());
 
-	for(int u = 0; u < num_threads; u++) {
-		for(int v = 0; v < num_threads; v++) {
-			int yield_state=parent->get_yield_data(u, v);
-			bool next_enabled=scheduler->is_enabled(int_to_id(v));
-			bool curr_enabled=parent->is_enabled(int_to_id(v));
-			if (!next_enabled) {
-				//Compute intersection of ES and E
-				yield_state&=~YIELD_E;
-				//Check to see if we disabled the thread
-				if (u==curr_tid && curr_enabled)
-					yield_state|=YIELD_D;
-			}
-			yield_data[YIELD_INDEX(u, v, num_threads)]=yield_state;
-		}
-		yield_data[YIELD_INDEX(u, curr_tid, num_threads)]=(yield_data[YIELD_INDEX(u, curr_tid, num_threads)]&~YIELD_P)|YIELD_S;
-	}
-	//handle curr.yield(t) part of computation
-	if (action->is_yield()) {
-		for(int v = 0; v < num_threads; v++) {
-			int yield_state=yield_data[YIELD_INDEX(curr_tid, v, num_threads)];
-			if ((yield_state & (YIELD_E | YIELD_D)) && (!(yield_state & YIELD_S)))
-				yield_state |= YIELD_P;
-			yield_state &= YIELD_P;
-			if (scheduler->is_enabled(int_to_id(v))) {
-				yield_state|=YIELD_E;
-			}
-			yield_data[YIELD_INDEX(curr_tid, v, num_threads)]=yield_state;
-		}
-	}
+    for(int u = 0; u < num_threads; u++) {
+        for(int v = 0; v < num_threads; v++) {
+            int yield_state=parent->get_yield_data(u, v);
+            bool next_enabled=scheduler->is_enabled(int_to_id(v));
+            bool curr_enabled=parent->is_enabled(int_to_id(v));
+            if (!next_enabled) {
+                //Compute intersection of ES and E
+                yield_state&=~YIELD_E;
+                //Check to see if we disabled the thread
+                if (u==curr_tid && curr_enabled)
+                    yield_state|=YIELD_D;
+            }
+            yield_data[YIELD_INDEX(u, v, num_threads)]=yield_state;
+        }
+        yield_data[YIELD_INDEX(u, curr_tid, num_threads)]=(yield_data[YIELD_INDEX(u, curr_tid, num_threads)]&~YIELD_P)|YIELD_S;
+    }
+    //handle curr.yield(t) part of computation
+    if (action->is_yield()) {
+        for(int v = 0; v < num_threads; v++) {
+            int yield_state=yield_data[YIELD_INDEX(curr_tid, v, num_threads)];
+            if ((yield_state & (YIELD_E | YIELD_D)) && (!(yield_state & YIELD_S)))
+                yield_state |= YIELD_P;
+            yield_state &= YIELD_P;
+            if (scheduler->is_enabled(int_to_id(v))) {
+                yield_state|=YIELD_E;
+            }
+            yield_data[YIELD_INDEX(curr_tid, v, num_threads)]=yield_state;
+        }
+    }
 }
 
 /** @brief Node desctructor */
 Node::~Node()
 {
-	delete action;
-	if (uninit_action)
-		delete uninit_action;
-	if (enabled_array)
-		model_free(enabled_array);
-	if (yield_data)
-		model_free(yield_data);
+    delete action;
+    if (uninit_action)
+        delete uninit_action;
+    if (enabled_array)
+        model_free(enabled_array);
+    if (yield_data)
+        model_free(yield_data);
 }
 
 /** Prints debugging info for the ModelAction associated with this Node */
 void Node::print() const
 {
-	action->print();
-	model_print("          thread status: ");
-	if (enabled_array) {
-		for (int i = 0; i < num_threads; i++) {
-			char str[20];
-			enabled_type_to_string(enabled_array[i], str);
-			model_print("[%d: %s]", i, str);
-		}
-		model_print("\n");
-	} else
-		model_print("(info not available)\n");
-	model_print("          backtrack: %s", backtrack_empty() ? "empty" : "non-empty ");
-	for (int i = 0; i < (int)backtrack.size(); i++)
-		if (backtrack[i] == true)
-			model_print("[%d]", i);
-	model_print("\n");
+    action->print();
+    model_print("          thread status: ");
+    if (enabled_array) {
+        for (int i = 0; i < num_threads; i++) {
+            char str[20];
+            enabled_type_to_string(enabled_array[i], str);
+            model_print("[%d: %s]", i, str);
+        }
+        model_print("\n");
+    } else
+        model_print("(info not available)\n");
+    model_print("          backtrack: %s", backtrack_empty() ? "empty" : "non-empty ");
+    for (int i = 0; i < (int)backtrack.size(); i++)
+        if (backtrack[i] == true)
+            model_print("[%d]", i);
+    model_print("\n");
 
-	model_print("          read from past: %s", read_from_past_empty() ? "empty" : "non-empty ");
-	for (int i = read_from_past_idx + 1; i < (int)read_from_past.size(); i++)
-		model_print("[%d]", read_from_past[i]->get_seq_number());
-	model_print("\n");
+    model_print("          read from past: %s", read_from_past_empty() ? "empty" : "non-empty ");
+    for (int i = read_from_past_idx + 1; i < (int)read_from_past.size(); i++)
+        model_print("[%d]", read_from_past[i]->get_seq_number());
+    model_print("\n");
 
-	model_print("          read-from promises: %s", read_from_promise_empty() ? "empty" : "non-empty ");
-	for (int i = read_from_promise_idx + 1; i < (int)read_from_promises.size(); i++)
-		model_print("[%d]", read_from_promises[i]->get_seq_number());
-	model_print("\n");
+    model_print("          read-from promises: %s", read_from_promise_empty() ? "empty" : "non-empty ");
+    for (int i = read_from_promise_idx + 1; i < (int)read_from_promises.size(); i++)
+        model_print("[%d]", read_from_promises[i]->get_seq_number());
+    model_print("\n");
 
-	model_print("          future values: %s", future_value_empty() ? "empty" : "non-empty ");
-	for (int i = future_index + 1; i < (int)future_values.size(); i++)
-		model_print("[%#" PRIx64 "]", future_values[i].value);
-	model_print("\n");
+    model_print("          future values: %s", future_value_empty() ? "empty" : "non-empty ");
+    for (int i = future_index + 1; i < (int)future_values.size(); i++)
+        model_print("[%#" PRIx64 "]", future_values[i].value);
+    model_print("\n");
 
-	model_print("          promises: %s\n", promise_empty() ? "empty" : "non-empty");
-	model_print("          misc: %s\n", misc_empty() ? "empty" : "non-empty");
-	model_print("          rel seq break: %s\n", relseq_break_empty() ? "empty" : "non-empty");
+    model_print("          promises: %s\n", promise_empty() ? "empty" : "non-empty");
+    model_print("          misc: %s\n", misc_empty() ? "empty" : "non-empty");
+    model_print("          rel seq break: %s\n", relseq_break_empty() ? "empty" : "non-empty");
 }
 
 /****************************** threads backtracking **************************/
@@ -205,8 +205,8 @@ void Node::print() const
  */
 bool Node::has_been_explored(thread_id_t tid) const
 {
-	int id = id_to_int(tid);
-	return explored_children[id];
+    int id = id_to_int(tid);
+    return explored_children[id];
 }
 
 /**
@@ -215,18 +215,18 @@ bool Node::has_been_explored(thread_id_t tid) const
  */
 bool Node::backtrack_empty() const
 {
-	return (numBacktracks == 0);
+    return (numBacktracks == 0);
 }
 
 void Node::explore(thread_id_t tid)
 {
-	int i = id_to_int(tid);
-	ASSERT(i < ((int)backtrack.size()));
-	if (backtrack[i]) {
-		backtrack[i] = false;
-		numBacktracks--;
-	}
-	explored_children[i] = true;
+    int i = id_to_int(tid);
+    ASSERT(i < ((int)backtrack.size()));
+    if (backtrack[i]) {
+        backtrack[i] = false;
+        numBacktracks--;
+    }
+    explored_children[i] = true;
 }
 
 /**
@@ -235,16 +235,16 @@ void Node::explore(thread_id_t tid)
  */
 void Node::explore_child(ModelAction *act, enabled_type_t *is_enabled)
 {
-	if (!enabled_array)
-		enabled_array = (enabled_type_t *)model_malloc(sizeof(enabled_type_t) * num_threads);
-	if (is_enabled != NULL)
-		memcpy(enabled_array, is_enabled, sizeof(enabled_type_t) * num_threads);
-	else {
-		for (int i = 0; i < num_threads; i++)
-			enabled_array[i] = THREAD_DISABLED;
-	}
+    if (!enabled_array)
+        enabled_array = (enabled_type_t *)model_malloc(sizeof(enabled_type_t) * num_threads);
+    if (is_enabled != NULL)
+        memcpy(enabled_array, is_enabled, sizeof(enabled_type_t) * num_threads);
+    else {
+        for (int i = 0; i < num_threads; i++)
+            enabled_array[i] = THREAD_DISABLED;
+    }
 
-	explore(act->get_tid());
+    explore(act->get_tid());
 }
 
 /**
@@ -256,37 +256,37 @@ void Node::explore_child(ModelAction *act, enabled_type_t *is_enabled)
  */
 bool Node::set_backtrack(thread_id_t id)
 {
-	int i = id_to_int(id);
-	ASSERT(i < ((int)backtrack.size()));
-	if (backtrack[i])
-		return false;
-	backtrack[i] = true;
-	numBacktracks++;
-	return true;
+    int i = id_to_int(id);
+    ASSERT(i < ((int)backtrack.size()));
+    if (backtrack[i])
+        return false;
+    backtrack[i] = true;
+    numBacktracks++;
+    return true;
 }
 
 thread_id_t Node::get_next_backtrack()
 {
-	/** @todo Find next backtrack */
-	unsigned int i;
-	for (i = 0; i < backtrack.size(); i++)
-		if (backtrack[i] == true)
-			break;
-	/* Backtrack set was empty? */
-	ASSERT(i != backtrack.size());
+    /** @todo Find next backtrack */
+    unsigned int i;
+    for (i = 0; i < backtrack.size(); i++)
+        if (backtrack[i] == true)
+            break;
+    /* Backtrack set was empty? */
+    ASSERT(i != backtrack.size());
 
-	backtrack[i] = false;
-	numBacktracks--;
-	return int_to_id(i);
+    backtrack[i] = false;
+    numBacktracks--;
+    return int_to_id(i);
 }
 
 void Node::clear_backtracking()
 {
-	for (unsigned int i = 0; i < backtrack.size(); i++)
-		backtrack[i] = false;
-	for (unsigned int i = 0; i < explored_children.size(); i++)
-		explored_children[i] = false;
-	numBacktracks = 0;
+    for (unsigned int i = 0; i < backtrack.size(); i++)
+        backtrack[i] = false;
+    for (unsigned int i = 0; i < explored_children.size(); i++)
+        explored_children[i] = false;
+    numBacktracks = 0;
 }
 
 /************************** end threads backtracking **************************/
@@ -299,9 +299,9 @@ void Node::clear_backtracking()
  */
 void Node::set_promise(unsigned int i)
 {
-	if (i >= resolve_promise.size())
-		resolve_promise.resize(i + 1, false);
-	resolve_promise[i] = true;
+    if (i >= resolve_promise.size())
+        resolve_promise.resize(i + 1, false);
+    resolve_promise[i] = true;
 }
 
 /**
@@ -311,7 +311,7 @@ void Node::set_promise(unsigned int i)
  */
 bool Node::get_promise(unsigned int i) const
 {
-	return (i < resolve_promise.size()) && (int)i == resolve_promise_idx;
+    return (i < resolve_promise.size()) && (int)i == resolve_promise_idx;
 }
 
 /**
@@ -320,16 +320,16 @@ bool Node::get_promise(unsigned int i) const
  */
 bool Node::increment_promise()
 {
-	DBG();
-	if (resolve_promise.empty())
-		return false;
-	int prev_idx = resolve_promise_idx;
-	resolve_promise_idx++;
-	for ( ; resolve_promise_idx < (int)resolve_promise.size(); resolve_promise_idx++)
-		if (resolve_promise[resolve_promise_idx])
-			return true;
-	resolve_promise_idx = prev_idx;
-	return false;
+    DBG();
+    if (resolve_promise.empty())
+        return false;
+    int prev_idx = resolve_promise_idx;
+    resolve_promise_idx++;
+    for ( ; resolve_promise_idx < (int)resolve_promise.size(); resolve_promise_idx++)
+        if (resolve_promise[resolve_promise_idx])
+            return true;
+    resolve_promise_idx = prev_idx;
+    return false;
 }
 
 /**
@@ -338,70 +338,70 @@ bool Node::increment_promise()
  */
 bool Node::promise_empty() const
 {
-	for (int i = resolve_promise_idx + 1; i < (int)resolve_promise.size(); i++)
-		if (i >= 0 && resolve_promise[i])
-			return false;
-	return true;
+    for (int i = resolve_promise_idx + 1; i < (int)resolve_promise.size(); i++)
+        if (i >= 0 && resolve_promise[i])
+            return false;
+    return true;
 }
 
 /** @brief Clear any promise-resolution information for this Node */
 void Node::clear_promise_resolutions()
 {
-	resolve_promise.clear();
-	resolve_promise_idx = -1;
+    resolve_promise.clear();
+    resolve_promise_idx = -1;
 }
 
 /******************************* end promise **********************************/
 
 void Node::set_misc_max(int i)
 {
-	misc_max = i;
+    misc_max = i;
 }
 
 int Node::get_misc() const
 {
-	return misc_index;
+    return misc_index;
 }
 
 bool Node::increment_misc()
 {
-	return (misc_index < misc_max) && ((++misc_index) < misc_max);
+    return (misc_index < misc_max) && ((++misc_index) < misc_max);
 }
 
 bool Node::misc_empty() const
 {
-	return (misc_index + 1) >= misc_max;
+    return (misc_index + 1) >= misc_max;
 }
 
 bool Node::is_enabled(Thread *t) const
 {
-	int thread_id = id_to_int(t->get_id());
-	return thread_id < num_threads && (enabled_array[thread_id] != THREAD_DISABLED);
+    int thread_id = id_to_int(t->get_id());
+    return thread_id < num_threads && (enabled_array[thread_id] != THREAD_DISABLED);
 }
 
 enabled_type_t Node::enabled_status(thread_id_t tid) const
 {
-	int thread_id = id_to_int(tid);
-	if (thread_id < num_threads)
-		return enabled_array[thread_id];
-	else
-		return THREAD_DISABLED;
+    int thread_id = id_to_int(tid);
+    if (thread_id < num_threads)
+        return enabled_array[thread_id];
+    else
+        return THREAD_DISABLED;
 }
 
 bool Node::is_enabled(thread_id_t tid) const
 {
-	int thread_id = id_to_int(tid);
-	return thread_id < num_threads && (enabled_array[thread_id] != THREAD_DISABLED);
+    int thread_id = id_to_int(tid);
+    return thread_id < num_threads && (enabled_array[thread_id] != THREAD_DISABLED);
 }
 
 bool Node::has_priority(thread_id_t tid) const
 {
-	return fairness[id_to_int(tid)].priority;
+    return fairness[id_to_int(tid)].priority;
 }
 
 bool Node::has_priority_over(thread_id_t tid1, thread_id_t tid2) const
 {
-	return get_yield_data(id_to_int(tid1), id_to_int(tid2)) & YIELD_P;
+    return get_yield_data(id_to_int(tid1), id_to_int(tid2)) & YIELD_P;
 }
 
 /*********************************** read from ********************************/
@@ -412,9 +412,9 @@ bool Node::has_priority_over(thread_id_t tid1, thread_id_t tid2) const
  */
 read_from_type_t Node::get_read_from_status()
 {
-	if (read_from_status == READ_FROM_PAST && read_from_past.empty())
-		increment_read_from();
-	return read_from_status;
+    if (read_from_status == READ_FROM_PAST && read_from_past.empty())
+        increment_read_from();
+    return read_from_status;
 }
 
 /**
@@ -424,19 +424,19 @@ read_from_type_t Node::get_read_from_status()
  */
 bool Node::increment_read_from()
 {
-	clear_promise_resolutions();
-	if (increment_read_from_past()) {
-	       read_from_status = READ_FROM_PAST;
-	       return true;
-	} else if (increment_read_from_promise()) {
-		read_from_status = READ_FROM_PROMISE;
-		return true;
-	} else if (increment_future_value()) {
-		read_from_status = READ_FROM_FUTURE;
-		return true;
-	}
-	read_from_status = READ_FROM_NONE;
-	return false;
+    clear_promise_resolutions();
+    if (increment_read_from_past()) {
+           read_from_status = READ_FROM_PAST;
+           return true;
+    } else if (increment_read_from_promise()) {
+        read_from_status = READ_FROM_PROMISE;
+        return true;
+    } else if (increment_future_value()) {
+        read_from_status = READ_FROM_FUTURE;
+        return true;
+    }
+    read_from_status = READ_FROM_NONE;
+    return false;
 }
 
 /**
@@ -444,9 +444,9 @@ bool Node::increment_read_from()
  */
 bool Node::read_from_empty() const
 {
-	return read_from_past_empty() &&
-		read_from_promise_empty() &&
-		future_value_empty();
+    return read_from_past_empty() &&
+        read_from_promise_empty() &&
+        future_value_empty();
 }
 
 /**
@@ -456,9 +456,9 @@ bool Node::read_from_empty() const
  */
 unsigned int Node::read_from_size() const
 {
-	return read_from_past.size() +
-		read_from_promises.size() +
-		future_values.size();
+    return read_from_past.size() +
+        read_from_promises.size() +
+        future_values.size();
 }
 
 /******************************* end read from ********************************/
@@ -468,8 +468,8 @@ unsigned int Node::read_from_size() const
 /** @brief Prints info about read_from_past set */
 void Node::print_read_from_past()
 {
-	for (unsigned int i = 0; i < read_from_past.size(); i++)
-		read_from_past[i]->print();
+    for (unsigned int i = 0; i < read_from_past.size(); i++)
+        read_from_past[i]->print();
 }
 
 /**
@@ -478,7 +478,7 @@ void Node::print_read_from_past()
  */
 void Node::add_read_from_past(const ModelAction *act)
 {
-	read_from_past.push_back(act);
+    read_from_past.push_back(act);
 }
 
 /**
@@ -488,20 +488,20 @@ void Node::add_read_from_past(const ModelAction *act)
  */
 const ModelAction * Node::get_read_from_past() const
 {
-	if (read_from_past_idx < read_from_past.size())
-		return read_from_past[read_from_past_idx];
-	else
-		return NULL;
+    if (read_from_past_idx < read_from_past.size())
+        return read_from_past[read_from_past_idx];
+    else
+        return NULL;
 }
 
 const ModelAction * Node::get_read_from_past(int i) const
 {
-	return read_from_past[i];
+    return read_from_past[i];
 }
 
 int Node::get_read_from_past_size() const
 {
-	return read_from_past.size();
+    return read_from_past.size();
 }
 
 /**
@@ -510,7 +510,7 @@ int Node::get_read_from_past_size() const
  */
 bool Node::read_from_past_empty() const
 {
-	return ((read_from_past_idx + 1) >= read_from_past.size());
+    return ((read_from_past_idx + 1) >= read_from_past.size());
 }
 
 /**
@@ -519,12 +519,12 @@ bool Node::read_from_past_empty() const
  */
 bool Node::increment_read_from_past()
 {
-	DBG();
-	if (read_from_past_idx < read_from_past.size()) {
-		read_from_past_idx++;
-		return read_from_past_idx < read_from_past.size();
-	}
-	return false;
+    DBG();
+    if (read_from_past_idx < read_from_past.size()) {
+        read_from_past_idx++;
+        return read_from_past_idx < read_from_past.size();
+    }
+    return false;
 }
 
 /************************** end read from past ********************************/
@@ -538,7 +538,7 @@ bool Node::increment_read_from_past()
  */
 void Node::add_read_from_promise(const ModelAction *reader)
 {
-	read_from_promises.push_back(reader);
+    read_from_promises.push_back(reader);
 }
 
 /**
@@ -548,8 +548,8 @@ void Node::add_read_from_promise(const ModelAction *reader)
  */
 Promise * Node::get_read_from_promise() const
 {
-	ASSERT(read_from_promise_idx >= 0 && read_from_promise_idx < ((int)read_from_promises.size()));
-	return read_from_promises[read_from_promise_idx]->get_reads_from_promise();
+    ASSERT(read_from_promise_idx >= 0 && read_from_promise_idx < ((int)read_from_promises.size()));
+    return read_from_promises[read_from_promise_idx]->get_reads_from_promise();
 }
 
 /**
@@ -561,13 +561,13 @@ Promise * Node::get_read_from_promise() const
  */
 Promise * Node::get_read_from_promise(int i) const
 {
-	return read_from_promises[i]->get_reads_from_promise();
+    return read_from_promises[i]->get_reads_from_promise();
 }
 
 /** @return The size of the read-from-promise set */
 int Node::get_read_from_promise_size() const
 {
-	return read_from_promises.size();
+    return read_from_promises.size();
 }
 
 /**
@@ -576,7 +576,7 @@ int Node::get_read_from_promise_size() const
  */
 bool Node::read_from_promise_empty() const
 {
-	return ((read_from_promise_idx + 1) >= ((int)read_from_promises.size()));
+    return ((read_from_promise_idx + 1) >= ((int)read_from_promises.size()));
 }
 
 /**
@@ -585,12 +585,12 @@ bool Node::read_from_promise_empty() const
  */
 bool Node::increment_read_from_promise()
 {
-	DBG();
-	if (read_from_promise_idx < ((int)read_from_promises.size())) {
-		read_from_promise_idx++;
-		return (read_from_promise_idx < ((int)read_from_promises.size()));
-	}
-	return false;
+    DBG();
+    if (read_from_promise_idx < ((int)read_from_promises.size())) {
+        read_from_promise_idx++;
+        return (read_from_promise_idx < ((int)read_from_promises.size()));
+    }
+    return false;
 }
 
 /************************* end read_from_promises *****************************/
@@ -609,33 +609,33 @@ bool Node::increment_read_from_promise()
  */
 bool Node::add_future_value(struct future_value fv)
 {
-	uint64_t value = fv.value;
-	modelclock_t expiration = fv.expiration;
-	thread_id_t tid = fv.tid;
-	int idx = -1; /* Highest index where value is found */
-	for (unsigned int i = 0; i < future_values.size(); i++) {
-		if (future_values[i].value == value && future_values[i].tid == tid) {
-			if (expiration <= future_values[i].expiration)
-				return false;
-			idx = i;
-		}
-	}
-	if (idx > future_index) {
-		/* Future value hasn't been explored; update expiration */
-		future_values[idx].expiration = expiration;
-		return true;
-	} else if (idx >= 0 && expiration <= future_values[idx].expiration + get_params()->expireslop) {
-		/* Future value has been explored and is within the "sloppy" window */
-		return false;
-	}
+    uint64_t value = fv.value;
+    modelclock_t expiration = fv.expiration;
+    thread_id_t tid = fv.tid;
+    int idx = -1; /* Highest index where value is found */
+    for (unsigned int i = 0; i < future_values.size(); i++) {
+        if (future_values[i].value == value && future_values[i].tid == tid) {
+            if (expiration <= future_values[i].expiration)
+                return false;
+            idx = i;
+        }
+    }
+    if (idx > future_index) {
+        /* Future value hasn't been explored; update expiration */
+        future_values[idx].expiration = expiration;
+        return true;
+    } else if (idx >= 0 && expiration <= future_values[idx].expiration + get_params()->expireslop) {
+        /* Future value has been explored and is within the "sloppy" window */
+        return false;
+    }
 
-	/* Limit the size of the future-values set */
-	if (get_params()->maxfuturevalues > 0 &&
-			(int)future_values.size() >= get_params()->maxfuturevalues)
-		return false;
+    /* Limit the size of the future-values set */
+    if (get_params()->maxfuturevalues > 0 &&
+            (int)future_values.size() >= get_params()->maxfuturevalues)
+        return false;
 
-	future_values.push_back(fv);
-	return true;
+    future_values.push_back(fv);
+    return true;
 }
 
 /**
@@ -645,8 +645,8 @@ bool Node::add_future_value(struct future_value fv)
  */
 struct future_value Node::get_future_value() const
 {
-	ASSERT(future_index >= 0 && future_index < ((int)future_values.size()));
-	return future_values[future_index];
+    ASSERT(future_index >= 0 && future_index < ((int)future_values.size()));
+    return future_values[future_index];
 }
 
 /**
@@ -655,7 +655,7 @@ struct future_value Node::get_future_value() const
  */
 bool Node::future_value_empty() const
 {
-	return ((future_index + 1) >= ((int)future_values.size()));
+    return ((future_index + 1) >= ((int)future_values.size()));
 }
 
 /**
@@ -664,12 +664,12 @@ bool Node::future_value_empty() const
  */
 bool Node::increment_future_value()
 {
-	DBG();
-	if (future_index < ((int)future_values.size())) {
-		future_index++;
-		return (future_index < ((int)future_values.size()));
-	}
-	return false;
+    DBG();
+    if (future_index < ((int)future_values.size())) {
+        future_index++;
+        return (future_index < ((int)future_values.size()));
+    }
+    return false;
 }
 
 /************************** end future values *********************************/
@@ -686,7 +686,7 @@ bool Node::increment_future_value()
  */
 void Node::add_relseq_break(const ModelAction *write)
 {
-	relseq_break_writes.push_back(write);
+    relseq_break_writes.push_back(write);
 }
 
 /**
@@ -698,10 +698,10 @@ void Node::add_relseq_break(const ModelAction *write)
  */
 const ModelAction * Node::get_relseq_break() const
 {
-	if (relseq_break_index < (int)relseq_break_writes.size())
-		return relseq_break_writes[relseq_break_index];
-	else
-		return NULL;
+    if (relseq_break_index < (int)relseq_break_writes.size())
+        return relseq_break_writes[relseq_break_index];
+    else
+        return NULL;
 }
 
 /**
@@ -711,12 +711,12 @@ const ModelAction * Node::get_relseq_break() const
  */
 bool Node::increment_relseq_break()
 {
-	DBG();
-	if (relseq_break_index < ((int)relseq_break_writes.size())) {
-		relseq_break_index++;
-		return (relseq_break_index < ((int)relseq_break_writes.size()));
-	}
-	return false;
+    DBG();
+    if (relseq_break_index < ((int)relseq_break_writes.size())) {
+        relseq_break_index++;
+        return (relseq_break_index < ((int)relseq_break_writes.size()));
+    }
+    return false;
 }
 
 /**
@@ -725,7 +725,7 @@ bool Node::increment_relseq_break()
  */
 bool Node::relseq_break_empty() const
 {
-	return ((relseq_break_index + 1) >= ((int)relseq_break_writes.size()));
+    return ((relseq_break_index + 1) >= ((int)relseq_break_writes.size()));
 }
 
 /******************* end breaking release sequences ***************************/
@@ -736,33 +736,33 @@ bool Node::relseq_break_empty() const
  */
 bool Node::increment_behaviors()
 {
-	/* satisfy a different misc_index values */
-	if (increment_misc())
-		return true;
-	/* satisfy a different set of promises */
-	if (increment_promise())
-		return true;
-	/* read from a different value */
-	if (increment_read_from())
-		return true;
-	/* resolve a release sequence differently */
-	if (increment_relseq_break())
-		return true;
-	return false;
+    /* satisfy a different misc_index values */
+    if (increment_misc())
+        return true;
+    /* satisfy a different set of promises */
+    if (increment_promise())
+        return true;
+    /* read from a different value */
+    if (increment_read_from())
+        return true;
+    /* resolve a release sequence differently */
+    if (increment_relseq_break())
+        return true;
+    return false;
 }
 
 NodeStack::NodeStack() :
-	node_list(),
-	head_idx(-1),
-	total_nodes(0)
+    node_list(),
+    head_idx(-1),
+    total_nodes(0)
 {
-	total_nodes++;
+    total_nodes++;
 }
 
 NodeStack::~NodeStack()
 {
-	for (unsigned int i = 0; i < node_list.size(); i++)
-		delete node_list[i];
+    for (unsigned int i = 0; i < node_list.size(); i++)
+        delete node_list[i];
 }
 
 /**
@@ -771,53 +771,53 @@ NodeStack::~NodeStack()
  */
 void NodeStack::register_engine(const ModelExecution *exec)
 {
-	this->execution = exec;
+    this->execution = exec;
 }
 
 const struct model_params * NodeStack::get_params() const
 {
-	return execution->get_params();
+    return execution->get_params();
 }
 
 void NodeStack::print() const
 {
-	model_print("............................................\n");
-	model_print("NodeStack printing node_list:\n");
-	for (unsigned int it = 0; it < node_list.size(); it++) {
-		if ((int)it == this->head_idx)
-			model_print("vvv following action is the current iterator vvv\n");
-		node_list[it]->print();
-	}
-	model_print("............................................\n");
+    model_print("............................................\n");
+    model_print("NodeStack printing node_list:\n");
+    for (unsigned int it = 0; it < node_list.size(); it++) {
+        if ((int)it == this->head_idx)
+            model_print("vvv following action is the current iterator vvv\n");
+        node_list[it]->print();
+    }
+    model_print("............................................\n");
 }
 
 /** Note: The is_enabled set contains what actions were enabled when
  *  act was chosen. */
 ModelAction * NodeStack::explore_action(ModelAction *act, enabled_type_t *is_enabled)
 {
-	DBG();
+    DBG();
 
-	if ((head_idx + 1) < (int)node_list.size()) {
-		head_idx++;
-		return node_list[head_idx]->get_action();
-	}
+    if ((head_idx + 1) < (int)node_list.size()) {
+        head_idx++;
+        return node_list[head_idx]->get_action();
+    }
 
-	/* Record action */
-	Node *head = get_head();
-	Node *prevfairness = NULL;
-	if (head) {
-		head->explore_child(act, is_enabled);
-		if (get_params()->fairwindow != 0 && head_idx > (int)get_params()->fairwindow)
-			prevfairness = node_list[head_idx - get_params()->fairwindow];
-	}
+    /* Record action */
+    Node *head = get_head();
+    Node *prevfairness = NULL;
+    if (head) {
+        head->explore_child(act, is_enabled);
+        if (get_params()->fairwindow != 0 && head_idx > (int)get_params()->fairwindow)
+            prevfairness = node_list[head_idx - get_params()->fairwindow];
+    }
 
-	int next_threads = execution->get_num_threads();
-	if (act->get_type() == THREAD_CREATE)
-		next_threads++;
-	node_list.push_back(new Node(get_params(), act, head, next_threads, prevfairness));
-	total_nodes++;
-	head_idx++;
-	return NULL;
+    int next_threads = execution->get_num_threads();
+    if (act->get_type() == THREAD_CREATE)
+        next_threads++;
+    node_list.push_back(new Node(get_params(), act, head, next_threads, prevfairness));
+    total_nodes++;
+    head_idx++;
+    return NULL;
 }
 
 /**
@@ -830,46 +830,46 @@ ModelAction * NodeStack::explore_action(ModelAction *act, enabled_type_t *is_ena
  */
 void NodeStack::pop_restofstack(int numAhead)
 {
-	/* Diverging from previous execution; clear out remainder of list */
-	unsigned int it = head_idx + numAhead;
-	for (unsigned int i = it; i < node_list.size(); i++)
-		delete node_list[i];
-	node_list.resize(it);
-	node_list.back()->clear_backtracking();
+    /* Diverging from previous execution; clear out remainder of list */
+    unsigned int it = head_idx + numAhead;
+    for (unsigned int i = it; i < node_list.size(); i++)
+        delete node_list[i];
+    node_list.resize(it);
+    node_list.back()->clear_backtracking();
 }
 
 /** Reset the node stack. */
 void NodeStack::full_reset() 
 {
-	for (unsigned int i = 0; i < node_list.size(); i++)
-		delete node_list[i];
-	node_list.clear();
-	reset_execution();
-	total_nodes = 1;
+    for (unsigned int i = 0; i < node_list.size(); i++)
+        delete node_list[i];
+    node_list.clear();
+    reset_execution();
+    total_nodes = 1;
 }
 
 Node * NodeStack::get_head() const
 {
-	if (node_list.empty() || head_idx < 0)
-		return NULL;
-	return node_list[head_idx];
+    if (node_list.empty() || head_idx < 0)
+        return NULL;
+    return node_list[head_idx];
 }
 
 Node * NodeStack::get_next() const
 {
-	if (node_list.empty()) {
-		DEBUG("Empty\n");
-		return NULL;
-	}
-	unsigned int it = head_idx + 1;
-	if (it == node_list.size()) {
-		DEBUG("At end\n");
-		return NULL;
-	}
-	return node_list[it];
+    if (node_list.empty()) {
+        DEBUG("Empty\n");
+        return NULL;
+    }
+    unsigned int it = head_idx + 1;
+    if (it == node_list.size()) {
+        DEBUG("At end\n");
+        return NULL;
+    }
+    return node_list[it];
 }
 
 void NodeStack::reset_execution()
 {
-	head_idx = -1;
+    head_idx = -1;
 }

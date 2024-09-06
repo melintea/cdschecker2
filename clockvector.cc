@@ -16,22 +16,22 @@
  */
 ClockVector::ClockVector(ClockVector *parent, const ModelAction *act)
 {
-	ASSERT(act);
-	num_threads = int_to_id(act->get_tid()) + 1;
-	if (parent && parent->num_threads > num_threads)
-		num_threads = parent->num_threads;
+    ASSERT(act);
+    num_threads = int_to_id(act->get_tid()) + 1;
+    if (parent && parent->num_threads > num_threads)
+        num_threads = parent->num_threads;
 
-	clock = (modelclock_t *)snapshot_calloc(num_threads, sizeof(int));
-	if (parent)
-		std::memcpy(clock, parent->clock, parent->num_threads * sizeof(modelclock_t));
+    clock = (modelclock_t *)snapshot_calloc(num_threads, sizeof(int));
+    if (parent)
+        std::memcpy(clock, parent->clock, parent->num_threads * sizeof(modelclock_t));
 
-	clock[id_to_int(act->get_tid())] = act->get_seq_number();
+    clock[id_to_int(act->get_tid())] = act->get_seq_number();
 }
 
 /** @brief Destructor */
 ClockVector::~ClockVector()
 {
-	snapshot_free(clock);
+    snapshot_free(clock);
 }
 
 /**
@@ -41,23 +41,23 @@ ClockVector::~ClockVector()
  */
 bool ClockVector::merge(const ClockVector *cv)
 {
-	ASSERT(cv != NULL);
-	bool changed = false;
-	if (cv->num_threads > num_threads) {
-		clock = (modelclock_t *)snapshot_realloc(clock, cv->num_threads * sizeof(modelclock_t));
-		for (int i = num_threads; i < cv->num_threads; i++)
-			clock[i] = 0;
-		num_threads = cv->num_threads;
-	}
+    ASSERT(cv != NULL);
+    bool changed = false;
+    if (cv->num_threads > num_threads) {
+        clock = (modelclock_t *)snapshot_realloc(clock, cv->num_threads * sizeof(modelclock_t));
+        for (int i = num_threads; i < cv->num_threads; i++)
+            clock[i] = 0;
+        num_threads = cv->num_threads;
+    }
 
-	/* Element-wise maximum */
-	for (int i = 0; i < cv->num_threads; i++)
-		if (cv->clock[i] > clock[i]) {
-			clock[i] = cv->clock[i];
-			changed = true;
-		}
-	
-	return changed;
+    /* Element-wise maximum */
+    for (int i = 0; i < cv->num_threads; i++)
+        if (cv->clock[i] > clock[i]) {
+            clock[i] = cv->clock[i];
+            changed = true;
+        }
+    
+    return changed;
 }
 
 /**
@@ -74,28 +74,28 @@ bool ClockVector::merge(const ClockVector *cv)
  */
 bool ClockVector::synchronized_since(const ModelAction *act) const
 {
-	int i = id_to_int(act->get_tid());
+    int i = id_to_int(act->get_tid());
 
-	if (i < num_threads)
-		return act->get_seq_number() <= clock[i];
-	return false;
+    if (i < num_threads)
+        return act->get_seq_number() <= clock[i];
+    return false;
 }
 
 /** Gets the clock corresponding to a given thread id from the clock vector. */
 modelclock_t ClockVector::getClock(thread_id_t thread) {
-	int threadid = id_to_int(thread);
+    int threadid = id_to_int(thread);
 
-	if (threadid < num_threads)
-		return clock[threadid];
-	else
-		return 0;
+    if (threadid < num_threads)
+        return clock[threadid];
+    else
+        return 0;
 }
 
 /** @brief Formats and prints this ClockVector's data. */
 void ClockVector::print() const
 {
-	int i;
-	model_print("(");
-	for (i = 0; i < num_threads; i++)
-		model_print("%2u%s", clock[i], (i == num_threads - 1) ? ")\n" : ", ");
+    int i;
+    model_print("(");
+    for (i = 0; i < num_threads; i++)
+        model_print("%2u%s", clock[i], (i == num_threads - 1) ? ")\n" : ", ");
 }

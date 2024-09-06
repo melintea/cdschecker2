@@ -6,17 +6,17 @@
 
 class TESTAnalysis : public TraceAnalysis {
  public:
-	TESTAnalysis();
-	~TESTAnalysis();
-	virtual void setExecution(ModelExecution * execution);
-	virtual void analyze(action_list_t *actions);
-	virtual const char * name();
-	virtual bool option(char *);
-	virtual void finish();
+    TESTAnalysis();
+    ~TESTAnalysis();
+    virtual void setExecution(ModelExecution * execution);
+    virtual void analyze(action_list_t *actions);
+    virtual const char * name();
+    virtual bool option(char *);
+    virtual void finish();
 
-	SNAPSHOTALLOC
+    SNAPSHOTALLOC
  private:
-	ModelExecution *execution;
+    ModelExecution *execution;
 };
 
 

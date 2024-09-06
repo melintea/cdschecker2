@@ -5,17 +5,17 @@
 #include "mymemory.h"
 
 struct bug_message {
-	bug_message(const char *str) {
-		const char *fmt = "  [BUG] %s\n";
-		msg = (char *)snapshot_malloc(strlen(fmt) + strlen(str));
-		sprintf(msg, fmt, str);
-	}
-	~bug_message() { if (msg) snapshot_free(msg); }
+    bug_message(const char *str) {
+        const char *fmt = "  [BUG] %s\n";
+        msg = (char *)snapshot_malloc(strlen(fmt) + strlen(str));
+        sprintf(msg, fmt, str);
+    }
+    ~bug_message() { if (msg) snapshot_free(msg); }
 
-	char *msg;
-	void print() { model_print("%s", msg); }
+    char *msg;
+    void print() { model_print("%s", msg); }
 
-	SNAPSHOTALLOC
+    SNAPSHOTALLOC
 };
 
 #endif /* __BUGMESSAGE_H__ */

@@ -6,18 +6,18 @@
 
 /** Initializes a CycleGraph object. */
 CycleGraph::CycleGraph() :
-	discovered(new HashTable<const CycleNode *, const CycleNode *, uintptr_t, 4, model_malloc, model_calloc, model_free>(16)),
-	queue(new ModelVector<const CycleNode *>()),
-	hasCycles(false),
-	oldCycles(false)
+    discovered(new HashTable<const CycleNode *, const CycleNode *, uintptr_t, 4, model_malloc, model_calloc, model_free>(16)),
+    queue(new ModelVector<const CycleNode *>()),
+    hasCycles(false),
+    oldCycles(false)
 {
 }
 
 /** CycleGraph destructor */
 CycleGraph::~CycleGraph()
 {
-	delete queue;
-	delete discovered;
+    delete queue;
+    delete discovered;
 }
 
 /**
@@ -27,9 +27,9 @@ CycleGraph::~CycleGraph()
  */
 void CycleGraph::putNode(const ModelAction *act, CycleNode *node)
 {
-	actionToNode.put(act, node);
+    actionToNode.put(act, node);
 #if SUPPORT_MOD_ORDER_DUMP
-	nodeList.push_back(node);
+    nodeList.push_back(node);
 #endif
 }
 
@@ -40,9 +40,9 @@ void CycleGraph::putNode(const ModelAction *act, CycleNode *node)
  */
 void CycleGraph::putNode(const Promise *promise, CycleNode *node)
 {
-	promiseToNode.put(promise, node);
+    promiseToNode.put(promise, node);
 #if SUPPORT_MOD_ORDER_DUMP
-	nodeList.push_back(node);
+    nodeList.push_back(node);
 #endif
 }
 
@@ -52,28 +52,28 @@ void CycleGraph::putNode(const Promise *promise, CycleNode *node)
  */
 void CycleGraph::erasePromiseNode(const Promise *promise)
 {
-	promiseToNode.put(promise, NULL);
+    promiseToNode.put(promise, NULL);
 #if SUPPORT_MOD_ORDER_DUMP
-	/* Remove the promise node from nodeList */
-	CycleNode *node = getNode_noCreate(promise);
-	for (unsigned int i = 0; i < nodeList.size(); )
-		if (nodeList[i] == node)
-			nodeList.erase(nodeList.begin() + i);
-		else
-			i++;
+    /* Remove the promise node from nodeList */
+    CycleNode *node = getNode_noCreate(promise);
+    for (unsigned int i = 0; i < nodeList.size(); )
+        if (nodeList[i] == node)
+            nodeList.erase(nodeList.begin() + i);
+        else
+            i++;
 #endif
 }
 
 /** @return The corresponding CycleNode, if exists; otherwise NULL */
 CycleNode * CycleGraph::getNode_noCreate(const ModelAction *act) const
 {
-	return actionToNode.get(act);
+    return actionToNode.get(act);
 }
 
 /** @return The corresponding CycleNode, if exists; otherwise NULL */
 CycleNode * CycleGraph::getNode_noCreate(const Promise *promise) const
 {
-	return promiseToNode.get(promise);
+    return promiseToNode.get(promise);
 }
 
 /**
@@ -86,12 +86,12 @@ CycleNode * CycleGraph::getNode_noCreate(const Promise *promise) const
  */
 CycleNode * CycleGraph::getNode(const ModelAction *action)
 {
-	CycleNode *node = getNode_noCreate(action);
-	if (node == NULL) {
-		node = new CycleNode(action);
-		putNode(action, node);
-	}
-	return node;
+    CycleNode *node = getNode_noCreate(action);
+    if (node == NULL) {
+        node = new CycleNode(action);
+        putNode(action, node);
+    }
+    return node;
 }
 
 /**
@@ -105,12 +105,12 @@ CycleNode * CycleGraph::getNode(const ModelAction *action)
  */
 CycleNode * CycleGraph::getNode(const Promise *promise)
 {
-	CycleNode *node = getNode_noCreate(promise);
-	if (node == NULL) {
-		node = new CycleNode(promise);
-		putNode(promise, node);
-	}
-	return node;
+    CycleNode *node = getNode_noCreate(promise);
+    if (node == NULL) {
+        node = new CycleNode(promise);
+        putNode(promise, node);
+    }
+    return node;
 }
 
 /**
@@ -124,17 +124,17 @@ CycleNode * CycleGraph::getNode(const Promise *promise)
  */
 bool CycleGraph::resolvePromise(const Promise *promise, ModelAction *writer)
 {
-	CycleNode *promise_node = promiseToNode.get(promise);
-	CycleNode *w_node = actionToNode.get(writer);
-	ASSERT(promise_node);
+    CycleNode *promise_node = promiseToNode.get(promise);
+    CycleNode *w_node = actionToNode.get(writer);
+    ASSERT(promise_node);
 
-	if (w_node)
-		return mergeNodes(w_node, promise_node);
-	/* No existing write-node; just convert the promise-node */
-	promise_node->resolvePromise(writer);
-	erasePromiseNode(promise_node->getPromise());
-	putNode(writer, promise_node);
-	return true;
+    if (w_node)
+        return mergeNodes(w_node, promise_node);
+    /* No existing write-node; just convert the promise-node */
+    promise_node->resolvePromise(writer);
+    erasePromiseNode(promise_node->getPromise());
+    putNode(writer, promise_node);
+    return true;
 }
 
 /**
@@ -150,43 +150,43 @@ bool CycleGraph::resolvePromise(const Promise *promise, ModelAction *writer)
  */
 bool CycleGraph::mergeNodes(CycleNode *w_node, CycleNode *p_node)
 {
-	ASSERT(!w_node->is_promise());
-	ASSERT(p_node->is_promise());
+    ASSERT(!w_node->is_promise());
+    ASSERT(p_node->is_promise());
 
-	const Promise *promise = p_node->getPromise();
-	if (!promise->is_compatible(w_node->getAction()) ||
-			!promise->same_value(w_node->getAction()))
-		return false;
+    const Promise *promise = p_node->getPromise();
+    if (!promise->is_compatible(w_node->getAction()) ||
+            !promise->same_value(w_node->getAction()))
+        return false;
 
-	/* Transfer the RMW */
-	CycleNode *promise_rmw = p_node->getRMW();
-	if (promise_rmw && promise_rmw != w_node->getRMW() && w_node->setRMW(promise_rmw))
-		return false;
+    /* Transfer the RMW */
+    CycleNode *promise_rmw = p_node->getRMW();
+    if (promise_rmw && promise_rmw != w_node->getRMW() && w_node->setRMW(promise_rmw))
+        return false;
 
-	/* Transfer back edges to w_node */
-	while (p_node->getNumBackEdges() > 0) {
-		CycleNode *back = p_node->removeBackEdge();
-		if (back == w_node)
-			continue;
-		addNodeEdge(back, w_node);
-		if (hasCycles)
-			return false;
-	}
+    /* Transfer back edges to w_node */
+    while (p_node->getNumBackEdges() > 0) {
+        CycleNode *back = p_node->removeBackEdge();
+        if (back == w_node)
+            continue;
+        addNodeEdge(back, w_node);
+        if (hasCycles)
+            return false;
+    }
 
-	/* Transfer forward edges to w_node */
-	while (p_node->getNumEdges() > 0) {
-		CycleNode *forward = p_node->removeEdge();
-		if (forward == w_node)
-			continue;
-		addNodeEdge(w_node, forward);
-		if (hasCycles)
-			return false;
-	}
+    /* Transfer forward edges to w_node */
+    while (p_node->getNumEdges() > 0) {
+        CycleNode *forward = p_node->removeEdge();
+        if (forward == w_node)
+            continue;
+        addNodeEdge(w_node, forward);
+        if (hasCycles)
+            return false;
+    }
 
-	erasePromiseNode(promise);
-	/* Not deleting p_node, to maintain consistency if mergeNodes() fails */
+    erasePromiseNode(promise);
+    /* Not deleting p_node, to maintain consistency if mergeNodes() fails */
 
-	return !hasCycles;
+    return !hasCycles;
 }
 
 /**
@@ -197,33 +197,33 @@ bool CycleGraph::mergeNodes(CycleNode *w_node, CycleNode *p_node)
  */
 bool CycleGraph::addNodeEdge(CycleNode *fromnode, CycleNode *tonode)
 {
-	if (fromnode->addEdge(tonode)) {
-		rollbackvector.push_back(fromnode);
-		if (!hasCycles)
-			hasCycles = checkReachable(tonode, fromnode);
-	} else
-		return false; /* No new edge */
+    if (fromnode->addEdge(tonode)) {
+        rollbackvector.push_back(fromnode);
+        if (!hasCycles)
+            hasCycles = checkReachable(tonode, fromnode);
+    } else
+        return false; /* No new edge */
 
-	/*
-	 * If the fromnode has a rmwnode that is not the tonode, we should
-	 * follow its RMW chain to add an edge at the end, unless we encounter
-	 * tonode along the way
-	 */
-	CycleNode *rmwnode = fromnode->getRMW();
-	if (rmwnode) {
-		while (rmwnode != tonode && rmwnode->getRMW())
-			rmwnode = rmwnode->getRMW();
+    /*
+     * If the fromnode has a rmwnode that is not the tonode, we should
+     * follow its RMW chain to add an edge at the end, unless we encounter
+     * tonode along the way
+     */
+    CycleNode *rmwnode = fromnode->getRMW();
+    if (rmwnode) {
+        while (rmwnode != tonode && rmwnode->getRMW())
+            rmwnode = rmwnode->getRMW();
 
-		if (rmwnode != tonode) {
-			if (rmwnode->addEdge(tonode)) {
-				if (!hasCycles)
-					hasCycles = checkReachable(tonode, rmwnode);
+        if (rmwnode != tonode) {
+            if (rmwnode->addEdge(tonode)) {
+                if (!hasCycles)
+                    hasCycles = checkReachable(tonode, rmwnode);
 
-				rollbackvector.push_back(rmwnode);
-			}
-		}
-	}
-	return true;
+                rollbackvector.push_back(rmwnode);
+            }
+        }
+    }
+    return true;
 }
 
 /**
@@ -241,37 +241,37 @@ bool CycleGraph::addNodeEdge(CycleNode *fromnode, CycleNode *tonode)
 template <typename T>
 void CycleGraph::addRMWEdge(const T *from, const ModelAction *rmw)
 {
-	ASSERT(from);
-	ASSERT(rmw);
+    ASSERT(from);
+    ASSERT(rmw);
 
-	CycleNode *fromnode = getNode(from);
-	CycleNode *rmwnode = getNode(rmw);
+    CycleNode *fromnode = getNode(from);
+    CycleNode *rmwnode = getNode(rmw);
 
-	/* We assume that this RMW has no RMW reading from it yet */
-	ASSERT(!rmwnode->getRMW());
+    /* We assume that this RMW has no RMW reading from it yet */
+    ASSERT(!rmwnode->getRMW());
 
-	/* Two RMW actions cannot read from the same write. */
-	if (fromnode->setRMW(rmwnode))
-		hasCycles = true;
-	else
-		rmwrollbackvector.push_back(fromnode);
+    /* Two RMW actions cannot read from the same write. */
+    if (fromnode->setRMW(rmwnode))
+        hasCycles = true;
+    else
+        rmwrollbackvector.push_back(fromnode);
 
-	/* Transfer all outgoing edges from the from node to the rmw node */
-	/* This process should not add a cycle because either:
-	 * (1) The rmw should not have any incoming edges yet if it is the
-	 * new node or
-	 * (2) the fromnode is the new node and therefore it should not
-	 * have any outgoing edges.
-	 */
-	for (unsigned int i = 0; i < fromnode->getNumEdges(); i++) {
-		CycleNode *tonode = fromnode->getEdge(i);
-		if (tonode != rmwnode) {
-			if (rmwnode->addEdge(tonode))
-				rollbackvector.push_back(rmwnode);
-		}
-	}
+    /* Transfer all outgoing edges from the from node to the rmw node */
+    /* This process should not add a cycle because either:
+     * (1) The rmw should not have any incoming edges yet if it is the
+     * new node or
+     * (2) the fromnode is the new node and therefore it should not
+     * have any outgoing edges.
+     */
+    for (unsigned int i = 0; i < fromnode->getNumEdges(); i++) {
+        CycleNode *tonode = fromnode->getEdge(i);
+        if (tonode != rmwnode) {
+            if (rmwnode->addEdge(tonode))
+                rollbackvector.push_back(rmwnode);
+        }
+    }
 
-	addNodeEdge(fromnode, rmwnode);
+    addNodeEdge(fromnode, rmwnode);
 }
 /* Instantiate two forms of CycleGraph::addRMWEdge */
 template void CycleGraph::addRMWEdge(const ModelAction *from, const ModelAction *rmw);
@@ -293,13 +293,13 @@ template void CycleGraph::addRMWEdge(const Promise *from, const ModelAction *rmw
 template <typename T, typename U>
 bool CycleGraph::addEdge(const T *from, const U *to)
 {
-	ASSERT(from);
-	ASSERT(to);
+    ASSERT(from);
+    ASSERT(to);
 
-	CycleNode *fromnode = getNode(from);
-	CycleNode *tonode = getNode(to);
+    CycleNode *fromnode = getNode(from);
+    CycleNode *tonode = getNode(to);
 
-	return addNodeEdge(fromnode, tonode);
+    return addNodeEdge(fromnode, tonode);
 }
 /* Instantiate four forms of CycleGraph::addEdge */
 template bool CycleGraph::addEdge(const ModelAction *from, const ModelAction *to);
@@ -311,51 +311,51 @@ template bool CycleGraph::addEdge(const Promise *from, const Promise *to);
 
 static void print_node(FILE *file, const CycleNode *node, int label)
 {
-	if (node->is_promise()) {
-		const Promise *promise = node->getPromise();
-		int idx = promise->get_index();
-		fprintf(file, "P%u", idx);
-		if (label) {
-			int first = 1;
-			fprintf(file, " [label=\"P%d, T", idx);
-			for (unsigned int i = 0 ; i < promise->max_available_thread_idx(); i++)
-				if (promise->thread_is_available(int_to_id(i))) {
-					fprintf(file, "%s%u", first ? "": ",", i);
-					first = 0;
-				}
-			fprintf(file, "\"]");
-		}
-	} else {
-		const ModelAction *act = node->getAction();
-		modelclock_t idx = act->get_seq_number();
-		fprintf(file, "N%u", idx);
-		if (label)
-			fprintf(file, " [label=\"N%u, T%u\"]", idx, act->get_tid());
-	}
+    if (node->is_promise()) {
+        const Promise *promise = node->getPromise();
+        int idx = promise->get_index();
+        fprintf(file, "P%u", idx);
+        if (label) {
+            int first = 1;
+            fprintf(file, " [label=\"P%d, T", idx);
+            for (unsigned int i = 0 ; i < promise->max_available_thread_idx(); i++)
+                if (promise->thread_is_available(int_to_id(i))) {
+                    fprintf(file, "%s%u", first ? "": ",", i);
+                    first = 0;
+                }
+            fprintf(file, "\"]");
+        }
+    } else {
+        const ModelAction *act = node->getAction();
+        modelclock_t idx = act->get_seq_number();
+        fprintf(file, "N%u", idx);
+        if (label)
+            fprintf(file, " [label=\"N%u, T%u\"]", idx, act->get_tid());
+    }
 }
 
 static void print_edge(FILE *file, const CycleNode *from, const CycleNode *to, const char *prop)
 {
-	print_node(file, from, 0);
-	fprintf(file, " -> ");
-	print_node(file, to, 0);
-	if (prop && strlen(prop))
-		fprintf(file, " [%s]", prop);
-	fprintf(file, ";\n");
+    print_node(file, from, 0);
+    fprintf(file, " -> ");
+    print_node(file, to, 0);
+    if (prop && strlen(prop))
+        fprintf(file, " [%s]", prop);
+    fprintf(file, ";\n");
 }
 
 void CycleGraph::dot_print_node(FILE *file, const ModelAction *act)
 {
-	print_node(file, getNode(act), 1);
+    print_node(file, getNode(act), 1);
 }
 
 template <typename T, typename U>
 void CycleGraph::dot_print_edge(FILE *file, const T *from, const U *to, const char *prop)
 {
-	CycleNode *fromnode = getNode(from);
-	CycleNode *tonode = getNode(to);
+    CycleNode *fromnode = getNode(from);
+    CycleNode *tonode = getNode(to);
 
-	print_edge(file, fromnode, tonode, prop);
+    print_edge(file, fromnode, tonode, prop);
 }
 /* Instantiate two forms of CycleGraph::dot_print_edge */
 template void CycleGraph::dot_print_edge(FILE *file, const Promise *from, const ModelAction *to, const char *prop);
@@ -363,26 +363,26 @@ template void CycleGraph::dot_print_edge(FILE *file, const ModelAction *from, co
 
 void CycleGraph::dumpNodes(FILE *file) const
 {
-	for (unsigned int i = 0; i < nodeList.size(); i++) {
-		CycleNode *n = nodeList[i];
-		print_node(file, n, 1);
-		fprintf(file, ";\n");
-		if (n->getRMW())
-			print_edge(file, n, n->getRMW(), "style=dotted");
-		for (unsigned int j = 0; j < n->getNumEdges(); j++)
-			print_edge(file, n, n->getEdge(j), NULL);
-	}
+    for (unsigned int i = 0; i < nodeList.size(); i++) {
+        CycleNode *n = nodeList[i];
+        print_node(file, n, 1);
+        fprintf(file, ";\n");
+        if (n->getRMW())
+            print_edge(file, n, n->getRMW(), "style=dotted");
+        for (unsigned int j = 0; j < n->getNumEdges(); j++)
+            print_edge(file, n, n->getEdge(j), NULL);
+    }
 }
 
 void CycleGraph::dumpGraphToFile(const char *filename) const
 {
-	char buffer[200];
-	sprintf(buffer, "%s.dot", filename);
-	FILE *file = fopen(buffer, "w");
-	fprintf(file, "digraph %s {\n", filename);
-	dumpNodes(file);
-	fprintf(file, "}\n");
-	fclose(file);
+    char buffer[200];
+    sprintf(buffer, "%s.dot", filename);
+    FILE *file = fopen(buffer, "w");
+    fprintf(file, "digraph %s {\n", filename);
+    dumpNodes(file);
+    fprintf(file, "}\n");
+    fclose(file);
 }
 #endif
 
@@ -394,24 +394,24 @@ void CycleGraph::dumpGraphToFile(const char *filename) const
  */
 bool CycleGraph::checkReachable(const CycleNode *from, const CycleNode *to) const
 {
-	discovered->reset();
-	queue->clear();
-	queue->push_back(from);
-	discovered->put(from, from);
-	while (!queue->empty()) {
-		const CycleNode *node = queue->back();
-		queue->pop_back();
-		if (node == to)
-			return true;
-		for (unsigned int i = 0; i < node->getNumEdges(); i++) {
-			CycleNode *next = node->getEdge(i);
-			if (!discovered->contains(next)) {
-				discovered->put(next, next);
-				queue->push_back(next);
-			}
-		}
-	}
-	return false;
+    discovered->reset();
+    queue->clear();
+    queue->push_back(from);
+    discovered->put(from, from);
+    while (!queue->empty()) {
+        const CycleNode *node = queue->back();
+        queue->pop_back();
+        if (node == to)
+            return true;
+        for (unsigned int i = 0; i < node->getNumEdges(); i++) {
+            CycleNode *next = node->getEdge(i);
+            if (!discovered->contains(next)) {
+                discovered->put(next, next);
+                queue->push_back(next);
+            }
+        }
+    }
+    return false;
 }
 
 /**
@@ -423,87 +423,87 @@ bool CycleGraph::checkReachable(const CycleNode *from, const CycleNode *to) cons
 template <typename T, typename U>
 bool CycleGraph::checkReachable(const T *from, const U *to) const
 {
-	CycleNode *fromnode = getNode_noCreate(from);
-	CycleNode *tonode = getNode_noCreate(to);
+    CycleNode *fromnode = getNode_noCreate(from);
+    CycleNode *tonode = getNode_noCreate(to);
 
-	if (!fromnode || !tonode)
-		return false;
+    if (!fromnode || !tonode)
+        return false;
 
-	return checkReachable(fromnode, tonode);
+    return checkReachable(fromnode, tonode);
 }
 /* Instantiate four forms of CycleGraph::checkReachable */
 template bool CycleGraph::checkReachable(const ModelAction *from,
-		const ModelAction *to) const;
+        const ModelAction *to) const;
 template bool CycleGraph::checkReachable(const ModelAction *from,
-		const Promise *to) const;
+        const Promise *to) const;
 template bool CycleGraph::checkReachable(const Promise *from,
-		const ModelAction *to) const;
+        const ModelAction *to) const;
 template bool CycleGraph::checkReachable(const Promise *from,
-		const Promise *to) const;
+        const Promise *to) const;
 
 /** @return True, if the promise has failed; false otherwise */
 bool CycleGraph::checkPromise(const ModelAction *fromact, Promise *promise) const
 {
-	discovered->reset();
-	queue->clear();
-	CycleNode *from = actionToNode.get(fromact);
+    discovered->reset();
+    queue->clear();
+    CycleNode *from = actionToNode.get(fromact);
 
-	queue->push_back(from);
-	discovered->put(from, from);
-	while (!queue->empty()) {
-		const CycleNode *node = queue->back();
-		queue->pop_back();
+    queue->push_back(from);
+    discovered->put(from, from);
+    while (!queue->empty()) {
+        const CycleNode *node = queue->back();
+        queue->pop_back();
 
-		if (node->getPromise() == promise)
-			return true;
-		if (!node->is_promise())
-			promise->eliminate_thread(node->getAction()->get_tid());
+        if (node->getPromise() == promise)
+            return true;
+        if (!node->is_promise())
+            promise->eliminate_thread(node->getAction()->get_tid());
 
-		for (unsigned int i = 0; i < node->getNumEdges(); i++) {
-			CycleNode *next = node->getEdge(i);
-			if (!discovered->contains(next)) {
-				discovered->put(next, next);
-				queue->push_back(next);
-			}
-		}
-	}
-	return false;
+        for (unsigned int i = 0; i < node->getNumEdges(); i++) {
+            CycleNode *next = node->getEdge(i);
+            if (!discovered->contains(next)) {
+                discovered->put(next, next);
+                queue->push_back(next);
+            }
+        }
+    }
+    return false;
 }
 
 /** @brief Begin a new sequence of graph additions which can be rolled back */
 void CycleGraph::startChanges()
 {
-	ASSERT(rollbackvector.empty());
-	ASSERT(rmwrollbackvector.empty());
-	ASSERT(oldCycles == hasCycles);
+    ASSERT(rollbackvector.empty());
+    ASSERT(rmwrollbackvector.empty());
+    ASSERT(oldCycles == hasCycles);
 }
 
 /** Commit changes to the cyclegraph. */
 void CycleGraph::commitChanges()
 {
-	rollbackvector.clear();
-	rmwrollbackvector.clear();
-	oldCycles = hasCycles;
+    rollbackvector.clear();
+    rmwrollbackvector.clear();
+    oldCycles = hasCycles;
 }
 
 /** Rollback changes to the previous commit. */
 void CycleGraph::rollbackChanges()
 {
-	for (unsigned int i = 0; i < rollbackvector.size(); i++)
-		rollbackvector[i]->removeEdge();
+    for (unsigned int i = 0; i < rollbackvector.size(); i++)
+        rollbackvector[i]->removeEdge();
 
-	for (unsigned int i = 0; i < rmwrollbackvector.size(); i++)
-		rmwrollbackvector[i]->clearRMW();
+    for (unsigned int i = 0; i < rmwrollbackvector.size(); i++)
+        rmwrollbackvector[i]->clearRMW();
 
-	hasCycles = oldCycles;
-	rollbackvector.clear();
-	rmwrollbackvector.clear();
+    hasCycles = oldCycles;
+    rollbackvector.clear();
+    rmwrollbackvector.clear();
 }
 
 /** @returns whether a CycleGraph contains cycles. */
 bool CycleGraph::checkForCycles() const
 {
-	return hasCycles;
+    return hasCycles;
 }
 
 /**
@@ -511,9 +511,9 @@ bool CycleGraph::checkForCycles() const
  * @param act The ModelAction for this node
  */
 CycleNode::CycleNode(const ModelAction *act) :
-	action(act),
-	promise(NULL),
-	hasRMW(NULL)
+    action(act),
+    promise(NULL),
+    hasRMW(NULL)
 {
 }
 
@@ -522,9 +522,9 @@ CycleNode::CycleNode(const ModelAction *act) :
  * @param promise The Promise which was generated
  */
 CycleNode::CycleNode(const Promise *promise) :
-	action(NULL),
-	promise(promise),
-	hasRMW(NULL)
+    action(NULL),
+    promise(promise),
+    hasRMW(NULL)
 {
 }
 
@@ -534,13 +534,13 @@ CycleNode::CycleNode(const Promise *promise) :
  */
 CycleNode * CycleNode::getEdge(unsigned int i) const
 {
-	return edges[i];
+    return edges[i];
 }
 
 /** @returns The number of edges leaving this CycleNode */
 unsigned int CycleNode::getNumEdges() const
 {
-	return edges.size();
+    return edges.size();
 }
 
 /**
@@ -549,13 +549,13 @@ unsigned int CycleNode::getNumEdges() const
  */
 CycleNode * CycleNode::getBackEdge(unsigned int i) const
 {
-	return back_edges[i];
+    return back_edges[i];
 }
 
 /** @returns The number of edges entering this CycleNode */
 unsigned int CycleNode::getNumBackEdges() const
 {
-	return back_edges.size();
+    return back_edges.size();
 }
 
 /**
@@ -567,13 +567,13 @@ unsigned int CycleNode::getNumBackEdges() const
 template <typename T>
 static bool vector_remove_node(SnapVector<T>& v, const T n)
 {
-	for (unsigned int i = 0; i < v.size(); i++) {
-		if (v[i] == n) {
-			v.erase(v.begin() + i);
-			return true;
-		}
-	}
-	return false;
+    for (unsigned int i = 0; i < v.size(); i++) {
+        if (v[i] == n) {
+            v.erase(v.begin() + i);
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -582,13 +582,13 @@ static bool vector_remove_node(SnapVector<T>& v, const T n)
  */
 CycleNode * CycleNode::removeEdge()
 {
-	if (edges.empty())
-		return NULL;
+    if (edges.empty())
+        return NULL;
 
-	CycleNode *ret = edges.back();
-	edges.pop_back();
-	vector_remove_node(ret->back_edges, this);
-	return ret;
+    CycleNode *ret = edges.back();
+    edges.pop_back();
+    vector_remove_node(ret->back_edges, this);
+    return ret;
 }
 
 /**
@@ -597,13 +597,13 @@ CycleNode * CycleNode::removeEdge()
  */
 CycleNode * CycleNode::removeBackEdge()
 {
-	if (back_edges.empty())
-		return NULL;
+    if (back_edges.empty())
+        return NULL;
 
-	CycleNode *ret = back_edges.back();
-	back_edges.pop_back();
-	vector_remove_node(ret->edges, this);
-	return ret;
+    CycleNode *ret = back_edges.back();
+    back_edges.pop_back();
+    vector_remove_node(ret->edges, this);
+    return ret;
 }
 
 /**
@@ -613,18 +613,18 @@ CycleNode * CycleNode::removeBackEdge()
  */
 bool CycleNode::addEdge(CycleNode *node)
 {
-	for (unsigned int i = 0; i < edges.size(); i++)
-		if (edges[i] == node)
-			return false;
-	edges.push_back(node);
-	node->back_edges.push_back(this);
-	return true;
+    for (unsigned int i = 0; i < edges.size(); i++)
+        if (edges[i] == node)
+            return false;
+    edges.push_back(node);
+    node->back_edges.push_back(this);
+    return true;
 }
 
 /** @returns the RMW CycleNode that reads from the current CycleNode */
 CycleNode * CycleNode::getRMW() const
 {
-	return hasRMW;
+    return hasRMW;
 }
 
 /**
@@ -635,10 +635,10 @@ CycleNode * CycleNode::getRMW() const
  */
 bool CycleNode::setRMW(CycleNode *node)
 {
-	if (hasRMW != NULL)
-		return true;
-	hasRMW = node;
-	return false;
+    if (hasRMW != NULL)
+        return true;
+    hasRMW = node;
+    return false;
 }
 
 /**
@@ -650,9 +650,9 @@ bool CycleNode::setRMW(CycleNode *node)
  */
 void CycleNode::resolvePromise(const ModelAction *writer)
 {
-	ASSERT(is_promise());
-	ASSERT(promise->is_compatible(writer));
-	action = writer;
-	promise = NULL;
-	ASSERT(!is_promise());
+    ASSERT(is_promise());
+    ASSERT(promise->is_compatible(writer));
+    action = writer;
+    promise = NULL;
+    ASSERT(!is_promise());
 }

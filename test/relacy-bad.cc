@@ -12,7 +12,10 @@
 
 
 std::atomic<int> a{0};
-librace::var<int> x = 0; // dependent data, check for races
+librace::var<int> x=0, y=1, z=2; // dependent data, check for races
+
+int xx=10, yy=20, zz=30;
+librace::ptr pp(&x); // pp(&xx);
 
 
 void fa(void *obj)

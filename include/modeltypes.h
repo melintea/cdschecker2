@@ -21,7 +21,7 @@
  */
 typedef int thread_id_t;
 
-#define THREAD_ID_T_NONE	-1
+#define THREAD_ID_T_NONE    -1
 
 typedef unsigned int modelclock_t;
 

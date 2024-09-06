@@ -15,38 +15,38 @@ int var = 0;
 
 static void a(void *obj)
 {
-	store_32(&var, 1);
-	atomic_store_explicit(&x, 1, memory_order_release);
-	atomic_store_explicit(&x, 42, memory_order_relaxed);
+    store_32(&var, 1);
+    atomic_store_explicit(&x, 1, memory_order_release);
+    atomic_store_explicit(&x, 42, memory_order_relaxed);
 }
 
 static void b(void *obj)
 {
-	int r = atomic_load_explicit(&x, memory_order_acquire);
-	printf("r = %d\n", r);
-	printf("load %d\n", load_32(&var));
+    int r = atomic_load_explicit(&x, memory_order_acquire);
+    printf("r = %d\n", r);
+    printf("load %d\n", load_32(&var));
 }
 
 static void c(void *obj)
 {
-	atomic_store_explicit(&x, 2, memory_order_relaxed);
+    atomic_store_explicit(&x, 2, memory_order_relaxed);
 }
 
 int user_main(int argc, char **argv)
 {
-	thrd_t t1, t2, t3;
+    thrd_t t1, t2, t3;
 
-	atomic_init(&x, 0);
+    atomic_init(&x, 0);
 
-	printf("Main thread: creating 3 threads\n");
-	thrd_create(&t1, (thrd_start_t)&a, NULL);
-	thrd_create(&t2, (thrd_start_t)&b, NULL);
-	thrd_create(&t3, (thrd_start_t)&c, NULL);
+    printf("Main thread: creating 3 threads\n");
+    thrd_create(&t1, (thrd_start_t)&a, NULL);
+    thrd_create(&t2, (thrd_start_t)&b, NULL);
+    thrd_create(&t3, (thrd_start_t)&c, NULL);
 
-	thrd_join(t1);
-	thrd_join(t2);
-	thrd_join(t3);
-	printf("Main thread is finished\n");
+    thrd_join(t1);
+    thrd_join(t2);
+    thrd_join(t3);
+    printf("Main thread is finished\n");
 
-	return 0;
+    return 0;
 }

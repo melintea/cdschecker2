@@ -17,10 +17,10 @@ static void b(void *obj)
 {
     atomic_store_explicit(&x, 2, memory_order_seq_cst);
     int r1=atomic_load_explicit(&y, memory_order_relaxed);
-	if (r1 == 1) {
-    	int r2=atomic_store_explicit(&x, 1, memory_order_relaxed);
-		printf("r2=%d\n", r2);
-	}
+    if (r1 == 1) {
+        int r2=atomic_store_explicit(&x, 1, memory_order_relaxed);
+        printf("r2=%d\n", r2);
+    }
 }
 
 int user_main(int argc, char **argv)
