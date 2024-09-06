@@ -8,9 +8,9 @@ UNAME := $(shell uname)
 LIB_NAME := model
 LIB_SO := lib$(LIB_NAME).so
 
-CPPFLAGS += -Wall -O3 -g -fno-omit-frame-pointer 
+CPPFLAGS += -Wall -Wno-volatile -O3 -g -fno-omit-frame-pointer 
 
-CFLAGS := $(CPPFLAGS)
+CFLAGS := -Wall -O3 -g -fno-omit-frame-pointer 
 
 # Mac OSX options
 ifeq ($(UNAME), Darwin)
