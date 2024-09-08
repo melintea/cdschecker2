@@ -87,7 +87,7 @@ class shared_lock
 {
 public:
 
-	shared_lock(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock_shared(); }
+	explicit shared_lock(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock_shared(); }
 	shared_lock()                              = delete;
 	~shared_lock() { _mutex.unlock_shared(); }
 

@@ -45,7 +45,7 @@ class lock_guard
 {
 public:
 
-	lock_guard(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock(); }
+	explicit lock_guard(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock(); }
 	lock_guard()                             = delete;
 	~lock_guard() { _mutex.unlock(); }
 
@@ -67,7 +67,7 @@ class unique_lock
 {
 public:
 
-	unique_lock(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock(); }
+	explicit unique_lock(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock(); }
 	unique_lock()                              = delete;
 	~unique_lock() { _mutex.unlock(); }
 
