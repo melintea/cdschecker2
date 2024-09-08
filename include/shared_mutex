@@ -18,7 +18,7 @@
 namespace std {
 
 /*
- * Minimal implementation.
+ * Minimal implementation. Not fully standard compliant.
  */
 class shared_mutex 
 {
@@ -26,7 +26,9 @@ class shared_mutex
     // refcount is 0 if no thread holds the lock.  
     // If > 0, the value represents the number of readers that have access.
     // If -1, a single writer has access.
-    std::atomic<int> refcount{0};
+    static constexpr int LOCK_WRITER = -1;
+    static constexpr int LOCK_FREE   = 0;
+    std::atomic<int> _refcount{LOCK_FREE};
 
 public:
 
@@ -44,12 +46,15 @@ public:
         int val{0};
         do {
             val = 0; // Can only take a write lock when refcount == 0
-        } while ( ! refcount.compare_exchange_weak(val, -1, std::memory_order_acquire));
+        } while ( ! _refcount.compare_exchange_weak(val, LOCK_WRITER, std::memory_order_acquire));
+        MODEL_ASSERT(val == 0);
+        MODEL_ASSERT(_refcount == LOCK_WRITER);
     }
 
     void unlock() // write 
     {
-        refcount.store(0, std::memory_order_release);
+        _refcount.store(LOCK_FREE, std::memory_order_release);
+        MODEL_ASSERT(_refcount >= LOCK_WRITER);
     }
 
     void lock_shared() // read 
@@ -57,22 +62,25 @@ public:
         int val{0};
         do {
             do {
-                val = refcount.load(std::memory_order_relaxed);
+                val = _refcount.load(std::memory_order_relaxed);
+            } while (val == LOCK_WRITER); // spinning until the write lock is released
+            MODEL_ASSERT(val == 0);
 
-            } while (val == -1); // spinning until the write lock is released
-
-        } while ( ! refcount.compare_exchange_weak(val, val+1, std::memory_order_acquire));
+        } while ( ! _refcount.compare_exchange_weak(val, val+1, std::memory_order_acquire));
+        MODEL_ASSERT(val >= 0);
+        MODEL_ASSERT(_refcount > 0);
     }
 
     void unlock_shared() // read 
     {
-        refcount.fetch_sub(1, std::memory_order_release);
+        _refcount.fetch_sub(1, std::memory_order_release);
+        MODEL_ASSERT(_refcount >= LOCK_WRITER);
     }
 };
 
 
 /*
- * Minimal implementation.
+ * Minimal implementation. Not fully standard compliant.
  */
 template <typename MUTEX_T>
 class shared_lock

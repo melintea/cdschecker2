@@ -6,6 +6,7 @@
 #ifndef __CXX_MUTEX__
 #define __CXX_MUTEX__
 
+#include "model-assert.h"
 #include "modeltypes.h"
 
 namespace std {
@@ -37,7 +38,7 @@ private:
 
 
 /*
- * Minimal implementation.
+ * Minimal implementation. Not fully standard compliant.
  */
 template <typename MUTEX_T>
 class lock_guard
@@ -59,7 +60,7 @@ private:
 }; //lock_guard
 
 /*
- * Minimal implementation.
+ * Minimal implementation. Not fully standard compliant.
  */
 template <typename MUTEX_T>
 class unique_lock
