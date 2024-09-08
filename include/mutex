@@ -9,23 +9,56 @@
 #include "modeltypes.h"
 
 namespace std {
-	struct mutex_state {
-		void *locked; /* Thread holding the lock */
-		thread_id_t alloc_tid;
-		modelclock_t alloc_clock;
-	};
 
-	class mutex {
-	public:
-		mutex();
-		~mutex() {}
-		void lock();
-		bool try_lock();
-		void unlock();
-		struct mutex_state * get_state() {return &state;}
-		
-	private:
-		struct mutex_state state;
-	};
-}
+struct mutex_state {
+	void *locked; /* Thread holding the lock */
+	thread_id_t alloc_tid;
+	modelclock_t alloc_clock;
+};
+
+class mutex {
+public:
+	mutex();
+	~mutex() {}
+
+    mutex(const mutex&)            = delete;
+    mutex& operator=(const mutex&) = delete;
+    mutex(mutex&&)                 = delete;
+    mutex& operator=(mutex&&)      = delete;
+
+	void lock();
+	bool try_lock();
+	void unlock();
+	struct mutex_state * get_state() {return &state;}
+	
+private:
+	struct mutex_state state;
+};
+
+
+/*
+ * Minimal implementation.
+ */
+template <typename MUTEX_T>
+class lock_guard
+{
+public:
+
+	lock_guard(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock(); }
+	lock_guard()                             = delete;
+	~lock_guard() { _mutex.unlock(); }
+
+    lock_guard(const lock_guard&)            = delete;
+    lock_guard& operator=(const lock_guard&) = delete;
+    lock_guard(lock_guard&&)                 = delete;
+    lock_guard& operator=(lock_guard&&)      = delete;
+
+private:
+
+    MUTEX_T& _mutex;
+}; //lock_guard
+
+
+} // std
+
 #endif /* __CXX_MUTEX__ */
