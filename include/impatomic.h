@@ -708,6 +708,22 @@ typedef struct atomic_int
     CPP0X( atomic_int( const atomic_int& ) = delete; )
     atomic_int& operator =( const atomic_int& ) CPP0X(=delete);
 
+    bool operator ==( int __v__ ) volatile
+    { return fetch_add( 0 ) ==  __v__; }
+
+    bool operator >( int __v__ ) volatile
+    { return fetch_add( 0 ) >  __v__; }
+
+    bool operator >=( int __v__ ) volatile
+    { return fetch_add( 0 ) >=  __v__; }
+
+    bool operator <( int __v__ ) volatile
+    { return fetch_add( 0 ) <  __v__; }
+
+    bool operator <=( int __v__ ) volatile
+    { return fetch_add( 0 ) <=  __v__; }
+
+
     int operator =( int __v__ ) volatile
     { store( __v__ ); return __v__; }
 
