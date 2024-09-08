@@ -58,6 +58,28 @@ private:
     MUTEX_T& _mutex;
 }; //lock_guard
 
+/*
+ * Minimal implementation.
+ */
+template <typename MUTEX_T>
+class unique_lock
+{
+public:
+
+	unique_lock(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock(); }
+	unique_lock()                              = delete;
+	~unique_lock() { _mutex.unlock(); }
+
+    unique_lock(const unique_lock&)            = delete;
+    unique_lock& operator=(const unique_lock&) = delete;
+    unique_lock(unique_lock&&)                 = delete;
+    unique_lock& operator=(unique_lock&&)      = delete;
+
+private:
+
+    MUTEX_T& _mutex;
+}; //unique_lock
+
 
 } // std
 

@@ -1,0 +1,99 @@
+/*
+ *  $Id: $
+ *
+ *  Copyright 2024 Aurelian Melinte.
+ *  Released under GPL 3.0 or later.
+ *
+ *  You need a C++0x compiler.
+ *
+ */
+
+#ifndef INCLUDED_shared_mutex_hpp_447ff94b_2ce6_4d22_8a20_e5678f4adbc8
+#define INCLUDED_shared_mutex_hpp_447ff94b_2ce6_4d22_8a20_e5678f4adbc8
+
+#pragma once
+
+#include "atomic"
+
+namespace std {
+
+/*
+ * Minimal implementation.
+ */
+class shared_mutex 
+{
+
+    // refcount is 0 if no thread holds the lock.  
+    // If > 0, the value represents the number of readers that have access.
+    // If -1, a single writer has access.
+    std::atomic<int> refcount{0};
+
+public:
+
+    shared_mutex()  = default;
+    ~shared_mutex() = default;
+
+    shared_mutex( const shared_mutex& other )            = delete;
+    shared_mutex& operator=( const shared_mutex& other ) = delete;
+
+    shared_mutex( shared_mutex&& other )                 = delete;
+    shared_mutex& operator=( shared_mutex&& other )      = delete;
+    
+    void lock() // write 
+    {
+        int val{0};
+        do {
+            val = 0; // Can only take a write lock when refcount == 0
+        } while ( ! refcount.compare_exchange_weak(val, -1, std::memory_order_acquire));
+    }
+
+    void unlock() // write 
+    {
+        refcount.store(0, std::memory_order_release);
+    }
+
+    void lock_shared() // read 
+    {
+        int val{0};
+        do {
+            do {
+                val = refcount.load(std::memory_order_relaxed);
+
+            } while (val == -1); // spinning until the write lock is released
+
+        } while ( ! refcount.compare_exchange_weak(val, val+1, std::memory_order_acquire));
+    }
+
+    void unlock_shared() // read 
+    {
+        refcount.fetch_sub(1, std::memory_order_release);
+    }
+};
+
+
+/*
+ * Minimal implementation.
+ */
+template <typename MUTEX_T>
+class shared_lock
+{
+public:
+
+	shared_lock(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock_shared(); }
+	shared_lock()                              = delete;
+	~shared_lock() { _mutex.unlock_shared(); }
+
+    shared_lock(const shared_lock&)            = delete;
+    shared_lock& operator=(const shared_lock&) = delete;
+    shared_lock(shared_lock&&)                 = delete;
+    shared_lock& operator=(shared_lock&&)      = delete;
+
+private:
+
+    MUTEX_T& _mutex;
+}; //shared_lock
+
+} //namespace std
+
+
+#endif //#define INCLUDED_shared_mutex_hpp_447ff94b_2ce6_4d22_8a20_e5678f4adbc8
