@@ -85,18 +85,18 @@ public:
     var(var&&)                 = default;
     var& operator=(var&&)      = default;
 
-    operator T() const {return _value;}
+    operator T() const {return load();}
 
     T load() {
-        constexpr auto sz(sizeof(T));
         static_assert(std::is_integral<T>::value);
+        constexpr auto sz(sizeof(T));
         static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T must be 8/16/32/64 bits");
         return librace::load<T>(&_value);
     }
 
     void store(T val) {
-        constexpr auto sz(sizeof(T));
         static_assert(std::is_integral<T>::value);
+        constexpr auto sz(sizeof(T));
         static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T must be 8/16/32/64 bits");
         return librace::store<T>(&_value, val);
     }
@@ -162,14 +162,15 @@ private:
 
 
 /*
- * Check for access both the pointer and the accessed location
+ * Check for access both the pointer and the accessed location.
+ * TODO: *p = val; would bypass the val store check; to fix: *p should return a librace::val.
  */
 template <class T>
 class ptr
 {
 private:
 
-    T * _ptr = nullptr;
+    T* _ptr = nullptr;
 
 public:
 
@@ -177,35 +178,56 @@ public:
     ptr()                      = delete;
     ~ptr()                     = default;
 
-    ptr(const ptr& other) {}
+    ptr(const ptr& other) { store_as_ptr(other.load_as_ptr()); }
 
-    ptr& operator=(const ptr& other) {}
+    ptr& operator=(const ptr& other) { store_as_ptr(other.load_as_ptr()); }
 
-    ptr(ptr&& other) {}
+    ptr(ptr&& other) { store_as_ptr(other.load_as_ptr()); } 
 
-    void operator=(ptr&& other) {}
+    void operator=(ptr&& other) { store_as_ptr(other.load_as_ptr()); }
 
     void operator=(T* val) {
+        store_as_ptr(val);
     }
 
     T* operator->() {
-        return this->_ptr;
+        return load_as_ptr();
     }
 
     T& operator*() {
-        return *(this->_ptr);
+        return load_as_val();
     }
 
-    T* load() {
+    T* load_as_ptr() {
+        static_assert(std::is_integral<T>::value);
         constexpr auto sz(sizeof(void*));
         static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T* must be 8/16/32/64 bits");
         return librace::load<T>(&_ptr);
     }
 
-    void store(T* val) {
+    void store_as_ptr(T* val) {
+        static_assert(std::is_integral<T>::value);
         constexpr auto sz(sizeof(void*));
         static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T* must be 8/16/32/64 bits");
         return librace::store<T>(&_ptr, val);
+    }
+
+    T load_as_val() {
+        constexpr auto sz(sizeof(T));
+        static_assert(std::is_integral<T>::value);
+        static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T must be 8/16/32/64 bits");
+
+        T* p(load_as_ptr());
+        return librace::load<T>(p);
+    }
+
+    void store_as_val(T val) {
+        constexpr auto sz(sizeof(T));
+        static_assert(std::is_integral<T>::value);
+        static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T must be 8/16/32/64 bits");
+
+        T* p(load_as_ptr());
+        return librace::store<T>(p, val);
     }
 
 private:
