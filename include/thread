@@ -1,0 +1,90 @@
+/*
+ *  $Id: $
+ *
+ *  Copyright 2024 Aurelian Melinte.
+ *  Released under GPL 3.0 or later.
+ *
+ *  You need a C++0x compiler.
+ *
+ */
+
+#ifndef INCLUDED_thread_hpp_ce4b651b_3924_4036_bc03_e9127fe99f94
+#define INCLUDED_thread_hpp_ce4b651b_3924_4036_bc03_e9127fe99f94
+
+#pragma once
+
+#include "model-assert.h"
+#include "threads.h"
+
+#include <cstddef>
+#include <functional>
+
+namespace std {
+
+/*
+ * Minimal implementation. Not fully standard compliant.
+ */
+class thread
+{
+protected:
+
+    thrd_t _tid{0};
+
+    using Func_t = std::function<void(void)>;
+    Func_t _func;
+
+    static void run(void* pv)
+    {
+        thread* p(reinterpret_cast<thread*>(pv));
+        MODEL_ASSERT(p);
+        p->_func();
+    }
+
+public:
+
+    using id = thrd_t;
+
+    template<typename F, typename... ARGS>
+    explicit thread(F&& f, ARGS&&... args)
+    {
+        _func = [&]() { std::forward<F>(f)(std::forward<ARGS...>(args...)); }; 
+        thrd_create(&_tid, &thread::run, this);
+    }
+
+    thread()  = delete;
+    ~thread()
+    {
+        //thrd_join(_tid);
+    }
+
+    thread( const thread& other )            = delete;
+    thread& operator=( const thread& other ) = delete;
+
+    thread( thread&& other )                 = delete;
+    thread& operator=( thread&& other )      = delete;
+
+    id   get_id() const noexcept { return _tid; }
+    void join() { (void)thrd_join(_tid); } 
+    bool joinable() const noexcept { return true; }
+
+}; // thread
+
+/*
+ * Minimal implementation. Not fully standard compliant.
+ */
+class jthread : public thread
+{
+public:
+
+    using std::thread::thread;
+
+    ~jthread()
+    {
+        thrd_join(_tid);
+    }
+}; //jthread
+
+} //namespace std
+
+
+#endif //#define INCLUDED_thread_hpp_ce4b651b_3924_4036_bc03_e9127fe99f94
