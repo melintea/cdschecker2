@@ -10,7 +10,10 @@ The code is forked from [github](https://github.com/bdemsky/cdschecker) and not 
 
 Fork differences:
 - a bug report with callstack traces as I find the plain bug report hard to make sense of. Needs ```libbacktrace```.
-- ```librace2.h``` with ```librace::var<X>``` ```librace::ptr<X>``` API built on top of the ```load_X/store_X``` librace API.
+- ```std::thread```, ```std::jtread```
+- ```std::chared_mutex``` & std lock guards
+- ```librace2.h``` 
+  - ```librace::var<X>``` & ```librace::ptr<X>``` API built on top of the ```load_X/store_X``` librace API.
 - older compilers probably not supported anymore; forcing ```-std=c++20``` in ```common.mk```.
 
 Recipe:
