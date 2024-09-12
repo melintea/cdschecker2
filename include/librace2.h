@@ -163,7 +163,6 @@ private:
 
 /*
  * Check for access both the pointer and the accessed location.
- * TODO: *p = val; would bypass the val store check; to fix: *p should return a librace::val.
  */
 template <class T>
 class ptr
@@ -190,10 +189,13 @@ public:
         store_as_ptr(val);
     }
 
+    // = delete? The returned pointer will now bypass checks
     T* operator->() {
+        load_as_val(); // To check acces to the var as well
         return load_as_ptr();
     }
 
+    // TODO: *p = val; would bypass the val store check; to fix: *p should return a librace::ref(val).
     T& operator*() {
         return load_as_val();
     }
