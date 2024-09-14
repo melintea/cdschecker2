@@ -19,6 +19,8 @@ namespace std {
 
 /*
  * Minimal implementation. Not fully standard compliant.
+ * If SIGSEGV: null model* ModelChecker: this class cannot be used for
+ * global vars.
  */
 class shared_mutex 
 {
@@ -28,11 +30,13 @@ class shared_mutex
     // If -1, a single writer has access.
     static constexpr int LOCK_WRITER = -1;
     static constexpr int LOCK_FREE   = 0;
-    std::atomic<int> _refcount{LOCK_FREE};
+    std::atomic<int> _refcount{LOCK_FREE}; // model bug: initialization not seen
 
 public:
 
-    shared_mutex()  = default;
+    shared_mutex()  { 
+        _refcount.store(LOCK_FREE, std::memory_order_release); 
+    } 
     ~shared_mutex() = default;
 
     shared_mutex( const shared_mutex& other )            = delete;

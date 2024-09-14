@@ -65,6 +65,11 @@ int user_main(int argc, char **argv)
     MODEL_ASSERT(z == 5);
     MODEL_ASSERT(rz == 5);
     MODEL_ASSERT(*pz == 5);
+
+#if 0
+    //
+    // This exposes a relaxed bug with fa & fb
+    //
     
     //sleep(15);
     a.store(0, std::memory_order_release);
@@ -75,6 +80,19 @@ int user_main(int argc, char **argv)
 
     //t1.join();
     t2.join();
+#endif
+
+#if 1
+    //
+    // shaerd_mutex test
+    //
+    
+    std::shared_mutex smtx; //shared_mutex cannot be used as a global var (ModelChecker limitation)
+    librace::var<int> cx=0;
+
+    { std::shared_lock rlock(smtx); }
+    { std::unique_lock wlock(smtx); }
+#endif
     
     printf("Main thread is finished\n");
     return 0;

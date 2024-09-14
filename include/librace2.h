@@ -17,6 +17,7 @@
 #include "librace.h"
 #include "model.h"
 
+#include <cstdint>
 #include <functional>
 #include <type_traits>
 
@@ -203,12 +204,12 @@ public:
     ref(var<T>& v) :_value(v) {
         if (model) { // assert at threads.cc line 37 
             [[maybe_unused]] auto ignored(load()); // mimic ref behavior
-	}
+	    }
     }
     
     ref()                      = delete;
     ~ref()                     = default;
-    ref(const ref&)            = default;
+    ref(const ref&)            = default; // TODO: this implies a read+store
     ref& operator=(const ref&) = default;
     ref(ref&&)                 = default;
     ref& operator=(ref&&)      = default;
@@ -303,14 +304,14 @@ private:
         static_assert(std::is_integral<T>::value);
         constexpr auto sz(sizeof(void*));
         static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T* must be 8/16/32/64 bits");
-        return librace::load<T>(&_ptr);
+        return reinterpret_cast<T*>(librace::load<T>(&_ptr)); 
     }
 
     void store_as_ptr(T* val) {
         static_assert(std::is_integral<T>::value);
         constexpr auto sz(sizeof(void*));
         static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T* must be 8/16/32/64 bits");
-        return librace::store<T>(&_ptr, val);
+        return librace::store<T>(&_ptr, val); 
     }
 
     T load_as_val() const {
@@ -333,7 +334,12 @@ private:
 
 public:
 
-    ptr(var<T>* p) : _ptr(p) {}
+    ptr(var<T>* p) : _ptr(p) {
+        if (model) { // assert at threads.cc line 37 
+            [[maybe_unused]] auto ignored(load_as_ptr()); 
+	    }
+    }
+
     ptr()                      = delete;
     ~ptr()                     = default;
 
