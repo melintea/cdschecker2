@@ -11,7 +11,7 @@
 # default program.
 #
 
-make
+make || exit 1
 
 # Get the directory in which this script and the binaries are located
 BINDIR="${0%/*}"

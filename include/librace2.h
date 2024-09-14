@@ -15,11 +15,16 @@
 
 #include "common.h"
 #include "librace.h"
+#include "model.h"
 
 #include <functional>
 #include <type_traits>
 
 //#include <iostream>
+
+#pragma GCC push_options
+#pragma GCC optimize("O0") // do not discard any of the checks
+
 namespace librace {
 
 /*
@@ -69,25 +74,24 @@ void store(T* addr, T val, typename std::enable_if<(sizeof(T) == 8), bool>::type
 
 /*
  * Check fundamental types for data races.
+ * Usage:
+ *   librace::var<int> x  = 0;   // int  x = 0;
+ *   librace::ref<int> rx = x;   // int& rx = x
+ *   librace::pre<int> px = &x;  // int* px = &x;
  */
+template<typename T> class var;
+template<typename T> class ref;
+template<typename T> class ptr;
+ 
 template<typename T>
 class var {
 
     T _value;
 
-public:
-
-    var(T v) :_value(v) {}
-    var()                      = delete;
-    ~var()                     = default;
-    var(const var&)            = delete;
-    var& operator=(const var&) = delete;
-    var(var&&)                 = default;
-    var& operator=(var&&)      = default;
-
-    operator T() const {return load();}
-
-    T load() {
+    friend class ref<T>;
+    friend class ptr<T>;
+    
+    T load() const {
         static_assert(std::is_integral<T>::value);
         constexpr auto sz(sizeof(T));
         static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T must be 8/16/32/64 bits");
@@ -101,6 +105,22 @@ public:
         return librace::store<T>(&_value, val);
     }
 
+public:
+
+    var(T v) :_value(v) {}
+    var()                      = delete;
+    ~var()                     = default;
+    var(const var&)            = delete;
+    var& operator=(const var&) = delete;
+    var(var&&)                 = default;
+    var& operator=(var&&)      = default;
+
+    explicit constexpr operator T() const {return load();}
+
+    friend bool operator==(const var& lhs, const var& rhs)  {return lhs.load() == rhs.load();}
+    friend bool operator==(const var& lhs, const T&   rhs)  {return lhs.load() == rhs;}
+    friend bool operator==(const T&   lhs, const var& rhs)  {return lhs == rhs.load();}
+
     //modifiers
     var& operator=(T v)   {store(v); return *this;}
     var& operator+=(T v)  {store((load()+v)); return *this;}
@@ -110,8 +130,8 @@ public:
     var& operator%=(T v)  {store((load()%v)); return *this;}
     var& operator++()     {store((load()+1)); return *this;} // ++i
     var& operator--()     {store((load()-1)); return *this;}
-    var operator++(int)   {auto ov(load()); store((ov+1)); return ov;} //i++
-    var operator--(int)   {auto ov(load()); store((ov-1)); return ov;}
+    T    operator++(int)  {auto ov(load()); store((ov+1)); return ov;} //i++
+    T    operator--(int)  {auto ov(load()); store((ov-1)); return ov;}
     var& operator&=(T v)  {store((load()&v)); return *this;}
     var& operator|=(T v)  {store((load()|v)); return *this;}
     var& operator^=(T v)  {store((load()^v)); return *this;}
@@ -119,46 +139,154 @@ public:
     var& operator>>=(T v) {store((load()>>v)); return *this;}
 
     //accessors
-    var operator+() const {return var(+load());}
-    var operator-() const {return var(-load());}
-    var operator!() const {return var(!load());}
-    var operator~() const {return var(~load());}
+    T operator+() const {return +load();}
+    T operator-() const {return -load();}
+    T operator!() const {return !load();}
+    T operator~() const {return ~load();}
 
     //friends
-    friend var operator+(var iw, var v)  {return var(iw.load()+v.load());}
-    friend var operator+(var iw, T v)    {return var(iw.load()+v);}
-    friend var operator+(T v, var iw)    {return var(v+iw.load());}
-    friend var operator-(var iw, var v)  {return var(iw.load()-v.load());}
-    friend var operator-(var iw, T v)    {return var(iw.load()-v);}
-    friend var operator-(T v, var iw)    {return var(v-iw.load());}
-    friend var operator*(var iw, var v)  {return var(iw.load()*v.load());}
-    friend var operator*(var iw, T v)    {return var(iw.load()*v);}
-    friend var operator*(T v, var iw)    {return var(v*iw.load());}
-    friend var operator/(var iw, var v)  {return var(iw.load()/v.load());}
-    friend var operator/(var iw, T v)    {return var(iw.load()/v);}
-    friend var operator/(T v, var iw)    {return var(v/iw.load());}
-    friend var operator%(var iw, var v)  {return var(iw.load()%v.load());}
-    friend var operator%(var iw, T v)    {return var(iw.load()%v);}
-    friend var operator%(T v, var iw)    {return var(v%iw.load());}
-    friend var operator&(var iw, var v)  {return var(iw.load()&v.load());}
-    friend var operator&(var iw, T v)    {return var(iw.load()&v);}
-    friend var operator&(T v, var iw)    {return var(v&iw.load());}
-    friend var operator|(var iw, var v)  {return var(iw.load()|v.load());}
-    friend var operator|(var iw, T v)    {return var(iw.load()|v);}
-    friend var operator|(T v, var iw)    {return var(v|iw.load());}
-    friend var operator^(var iw, var v)  {return var(iw.load()^v.load());}
-    friend var operator^(var iw, T v)    {return var(iw.load()^v);}
-    friend var operator^(T v, var iw)    {return var(v^iw.load());}
-    friend var operator<<(var iw, var v) {return var(iw.load()<<v.load());}
-    friend var operator<<(var iw, T v)   {return var(iw.load()<<v);}
-    friend var operator<<(T v, var iw)   {return var(v<<iw.load());}
-    friend var operator>>(var iw, var v) {return var(iw.load()>>v.load());}
-    friend var operator>>(var iw, T v)   {return var(iw.load()>>v);}
-    friend var operator>>(T v, var iw)   {return var(v>>iw.load());}
-
-private:
+    friend T operator+(var iw, var v)  {return iw.load()+v.load();}
+    friend T operator+(var iw, T v)    {return iw.load()+v;}
+    friend T operator+(T v, var iw)    {return v+iw.load();}
+    friend T operator-(var iw, var v)  {return iw.load()-v.load();}
+    friend T operator-(var iw, T v)    {return iw.load()-v;}
+    friend T operator-(T v, var iw)    {return v-iw.load();}
+    friend T operator*(var iw, var v)  {return iw.load()*v.load();}
+    friend T operator*(var iw, T v)    {return iw.load()*v;}
+    friend T operator*(T v, var iw)    {return v*iw.load();}
+    friend T operator/(var iw, var v)  {return iw.load()/v.load();}
+    friend T operator/(var iw, T v)    {return iw.load()/v;}
+    friend T operator/(T v, var iw)    {return v/iw.load();}
+    friend T operator%(var iw, var v)  {return iw.load()%v.load();}
+    friend T operator%(var iw, T v)    {return iw.load()%v;}
+    friend T operator%(T v, var iw)    {return v%iw.load();}
+    friend T operator&(var iw, var v)  {return iw.load()&v.load();}
+    friend T operator&(var iw, T v)    {return iw.load()&v;}
+    friend T operator&(T v, var iw)    {return v&iw.load();}
+    friend T operator|(var iw, var v)  {return iw.load()|v.load();}
+    friend T operator|(var iw, T v)    {return iw.load()|v;}
+    friend T operator|(T v, var iw)    {return v|iw.load();}
+    friend T operator^(var iw, var v)  {return iw.load()^v.load();}
+    friend T operator^(var iw, T v)    {return iw.load()^v;}
+    friend T operator^(T v, var iw)    {return v^iw.load();}
+    friend T operator<<(var iw, var v) {return iw.load()<<v.load();}
+    friend T operator<<(var iw, T v)   {return iw.load()<<v;}
+    friend T operator<<(T v, var iw)   {return v<<iw.load();}
+    friend T operator>>(var iw, var v) {return iw.load()>>v.load();}
+    friend T operator>>(var iw, T v)   {return iw.load()>>v;}
+    friend T operator>>(T v, var iw)   {return v>>iw.load();}
 
 }; // var
+
+
+template<typename T>
+class ref {
+
+    var<T>& _value;
+
+    T load() const {
+        static_assert(std::is_integral<T>::value);
+        constexpr auto sz(sizeof(T));
+        static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T must be 8/16/32/64 bits");
+        return _value.load();
+    }
+
+    void store(T val) {
+        static_assert(std::is_integral<T>::value);
+        constexpr auto sz(sizeof(T));
+        static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T must be 8/16/32/64 bits");
+        return _value.store(val);
+    }
+
+public:
+
+    ref(var<T>& v) :_value(v) {
+        if (model) { // assert at threads.cc line 37 
+            [[maybe_unused]] auto ignored(load()); // mimic ref behavior
+	}
+    }
+    
+    ref()                      = delete;
+    ~ref()                     = default;
+    ref(const ref&)            = default;
+    ref& operator=(const ref&) = default;
+    ref(ref&&)                 = default;
+    ref& operator=(ref&&)      = default;
+
+    explicit constexpr operator T() const {return load();}
+
+    friend bool operator==(const ref& lhs, const ref& rhs)  {return lhs.load() == rhs.load();}
+    friend bool operator==(const ref& lhs, const T&   rhs)  {return lhs.load() == rhs;}
+    friend bool operator==(const T&   lhs, const ref& rhs)  {return lhs == rhs.load();}
+
+    //modifiers
+    ref& operator=(T v)   {store(v); return *this;}
+    ref& operator+=(T v)  {store((load()+v)); return *this;}
+    ref& operator-=(T v)  {store((load()-v)); return *this;}
+    ref& operator*=(T v)  {store((load()*v)); return *this;}
+    ref& operator/=(T v)  {store((load()/v)); return *this;}
+    ref& operator%=(T v)  {store((load()%v)); return *this;}
+    ref& operator++()     {store((load()+1)); return *this;} // ++i
+    ref& operator--()     {store((load()-1)); return *this;}
+    T    operator++(int)  {auto ov(load()); store((ov+1)); return ov;} //i++
+    T    operator--(int)  {auto ov(load()); store((ov-1)); return ov;}
+    ref& operator&=(T v)  {store((load()&v)); return *this;}
+    ref& operator|=(T v)  {store((load()|v)); return *this;}
+    ref& operator^=(T v)  {store((load()^v)); return *this;}
+    ref& operator<<=(T v) {store((load()<<v)); return *this;}
+    ref& operator>>=(T v) {store((load()>>v)); return *this;}
+
+    //accessors
+    T operator+() const {return +load();}
+    T operator-() const {return -load();}
+    T operator!() const {return !load();}
+    T operator~() const {return ~load();}
+
+    //friends
+    friend T operator+(ref iw, ref v)  {return iw.load()+v.load();}
+    friend T operator+(ref iw, T v)    {return iw.load()+v;}
+    friend T operator+(T v, ref iw)    {return v+iw.load();}
+    friend T operator-(ref iw, ref v)  {return iw.load()-v.load();}
+    friend T operator-(ref iw, T v)    {return iw.load()-v;}
+    friend T operator-(T v, ref iw)    {return v-iw.load();}
+    friend T operator*(ref iw, ref v)  {return iw.load()*v.load();}
+    friend T operator*(ref iw, T v)    {return iw.load()*v;}
+    friend T operator*(T v, ref iw)    {return v*iw.load();}
+    friend T operator/(ref iw, ref v)  {return iw.load()/v.load();}
+    friend T operator/(ref iw, T v)    {return iw.load()/v;}
+    friend T operator/(T v, ref iw)    {return v/iw.load();}
+    friend T operator%(ref iw, ref v)  {return iw.load()%v.load();}
+    friend T operator%(ref iw, T v)    {return iw.load()%v;}
+    friend T operator%(T v, ref iw)    {return v%iw.load();}
+    friend T operator&(ref iw, ref v)  {return iw.load()&v.load();}
+    friend T operator&(ref iw, T v)    {return iw.load()&v;}
+    friend T operator&(T v, ref iw)    {return v&iw.load();}
+    friend T operator|(ref iw, ref v)  {return iw.load()|v.load();}
+    friend T operator|(ref iw, T v)    {return iw.load()|v;}
+    friend T operator|(T v, ref iw)    {return v|iw.load();}
+    friend T operator^(ref iw, ref v)  {return iw.load()^v.load();}
+    friend T operator^(ref iw, T v)    {return iw.load()^v;}
+    friend T operator^(T v, ref iw)    {return v^iw.load();}
+    friend T operator<<(ref iw, ref v) {return iw.load()<<v.load();}
+    friend T operator<<(ref iw, T v)   {return iw.load()<<v;}
+    friend T operator<<(T v, ref iw)   {return v<<iw.load();}
+    friend T operator>>(ref iw, ref v) {return iw.load()>>v.load();}
+    friend T operator>>(ref iw, T v)   {return iw.load()>>v;}
+    friend T operator>>(T v, ref iw)   {return v>>iw.load();}
+
+}; // var
+
+
+template <typename T>
+struct arrow_proxy
+{
+    ref<T> r;
+    
+    ref<T>* operator->() {
+        return &r;
+    }
+    
+}; // arrow_proxy
 
 
 /*
@@ -169,38 +297,9 @@ class ptr
 {
 private:
 
-    T* _ptr = nullptr;
+    var<T>* _ptr = nullptr;
 
-public:
-
-    ptr(T* p) : _ptr(p) {}
-    ptr()                      = delete;
-    ~ptr()                     = default;
-
-    ptr(const ptr& other) { store_as_ptr(other.load_as_ptr()); }
-
-    ptr& operator=(const ptr& other) { store_as_ptr(other.load_as_ptr()); }
-
-    ptr(ptr&& other) { store_as_ptr(other.load_as_ptr()); } 
-
-    void operator=(ptr&& other) { store_as_ptr(other.load_as_ptr()); }
-
-    void operator=(T* val) {
-        store_as_ptr(val);
-    }
-
-    // = delete? The returned pointer will now bypass checks
-    T* operator->() {
-        load_as_val(); // To check acces to the var as well
-        return load_as_ptr();
-    }
-
-    // TODO: *p = val; would bypass the val store check; to fix: *p should return a librace::ref(val).
-    T& operator*() {
-        return load_as_val();
-    }
-
-    T* load_as_ptr() {
+    T* load_as_ptr() const {
         static_assert(std::is_integral<T>::value);
         constexpr auto sz(sizeof(void*));
         static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T* must be 8/16/32/64 bits");
@@ -214,7 +313,7 @@ public:
         return librace::store<T>(&_ptr, val);
     }
 
-    T load_as_val() {
+    T load_as_val() const {
         constexpr auto sz(sizeof(T));
         static_assert(std::is_integral<T>::value);
         static_assert(sz==1 || sz==2 || sz==4 || sz==8, "T must be 8/16/32/64 bits");
@@ -232,7 +331,34 @@ public:
         return librace::store<T>(p, val);
     }
 
-private:
+public:
+
+    ptr(var<T>* p) : _ptr(p) {}
+    ptr()                      = delete;
+    ~ptr()                     = default;
+
+    ptr(const ptr& other) { store_as_ptr(other.load_as_ptr()); }
+
+    ptr& operator=(const ptr& other) { store_as_ptr(other.load_as_ptr());  return *this;}
+
+    ptr(ptr&& other) { store_as_ptr(other.load_as_ptr()); } 
+
+    void operator=(ptr&& other) { store_as_ptr(other.load_as_ptr()); }
+
+    void operator=(T* val) {
+        store_as_ptr(val);
+    }
+
+    // Technically not needed for integral types
+    arrow_proxy<T> operator->() {
+        load_as_val(); // To check acces to the var as well
+        return load_as_ptr();
+    }
+
+    // TODO: *p = val; would bypass the val store check; to fix: *p should return a librace::ref(val).
+    ref<T> operator*() {
+        return ref(*_ptr); //load_as_val();
+    }
 
 }; //ptr
 
@@ -269,6 +395,8 @@ private:
 */
 
 } //namespace librace
+
+#pragma GCC pop_options
 
 
 #endif //#define INCLUDED_librace2_hpp_e8be4557_fdea_42b4_8df5_a1660e69d955
