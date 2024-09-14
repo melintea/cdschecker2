@@ -25,7 +25,8 @@ librace::ptr pp(&x); // pp(&xx);
 
 void fa(void *obj)
 {
-    x = 1; // aka store_32(&x, 1);
+    //x = 1; // aka store_32(&x, 1);
+    rx = 1;
     
     // bug: use rl::mo_relaxed aka std::memory_order_relaxed
     // fix: use rl::mo_release aka std::memory_order_release
@@ -38,7 +39,8 @@ void fb(void *obj)
     // fix: use rl::mo_acquire aka std::memory_order_acquire
     if (1 == a.load(std::memory_order_relaxed))
     {
-        x = 2; //aka store_32(&x, 2);
+        //x = 2; //aka store_32(&x, 2);
+	*px = 2;
     }
 }
 
