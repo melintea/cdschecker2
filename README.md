@@ -17,7 +17,7 @@ Fork differences:
 - older compilers probably not supported anymore; forcing ```-std=c++20``` in ```common.mk```.
 
 Notes:
-- global variables are not checked for initialization. The initialization before ```main``` creates the ```model* ModelChecker```.
+- global variables are not checked for initialization. The initialization happens before ```main``` creates the ```model* ModelChecker```.
   Hence some classes cannot be used for globals, e.g. ```std::shared_mutex```
 
 Recipe:
