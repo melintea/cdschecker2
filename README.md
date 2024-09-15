@@ -19,6 +19,7 @@ Fork differences:
 Notes:
 - global variables are not checked for initialization. The initialization happens before ```main``` creates the ```model* ModelChecker```.
   Hence some classes cannot be used for globals, e.g. ```std::shared_mutex```
+- anything spinlock will hog the machine
 
 Recipe:
 - ```cd libbacktrace```
