@@ -14,6 +14,7 @@
 #pragma once
 
 #include "atomic"
+#include "threads.h"
 
 namespace std {
 
@@ -50,6 +51,7 @@ public:
     {
         int val{0};
         do {
+            thrd_yield();
             val = 0; // Can only take a write lock when refcount == 0
         } while ( ! _refcount.compare_exchange_weak(val, LOCK_WRITER, std::memory_order_acquire));
         MODEL_ASSERT(val == 0);
@@ -66,7 +68,10 @@ public:
     {
         int val{0};
         do {
+            thrd_yield(); 
+            
             do {
+                thrd_yield();
                 val = _refcount.load(std::memory_order_relaxed);
             } while (val == LOCK_WRITER); // spinning until the write lock is released
             MODEL_ASSERT(val == 0);
