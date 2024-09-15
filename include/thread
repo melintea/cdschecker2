@@ -18,17 +18,19 @@
 
 #include <cstddef>
 #include <functional>
+#include <utility>
 
 namespace std {
 
 /*
  * Minimal implementation. Not fully standard compliant.
+ * In particular, not moveable.
  */
 class thread
 {
 protected:
 
-    thrd_t _tid{0};
+    thrd_t _tid{.priv=nullptr};
 
     using Func_t = std::function<void(void)>;
     Func_t _func;
@@ -47,11 +49,13 @@ public:
     template<typename F, typename... ARGS>
     explicit thread(F&& f, ARGS&&... args)
     {
-        _func = [&]() { std::forward<F>(f)(std::forward<ARGS...>(args...)); }; 
+        _func = [&]() { std::forward<F>(f)(std::forward<ARGS>(args)...); }; 
+        // 'this' prevents any move or copy ops
         thrd_create(&_tid, &thread::run, this);
+        MODEL_ASSERT(_tid.priv != nullptr);
     }
 
-    thread()  = delete;
+    thread()  = default;
     ~thread()
     {
         //thrd_join(_tid);
@@ -61,16 +65,40 @@ public:
     thread& operator=( const thread& other ) = delete;
 
     thread( thread&& other )                 = delete;
+    //thread( thread&& other ) {
+    //    MODEL_ASSERT(_tid.priv == nullptr);
+    //    MODEL_ASSERT(other._tid.priv != nullptr);
+    //    std::swap(_tid,  other._tid);
+    //    std::swap(_func, other._func);
+    //    //other._tid.priv = nullptr;
+    //}
+
     thread& operator=( thread&& other )      = delete;
+    //thread& operator=( thread&& other ) {
+    //    if (this != &other) {
+    //        // should std::terminate() current thread but API not supported
+    //        MODEL_ASSERT(_tid.priv == nullptr);
+    //        MODEL_ASSERT(other._tid.priv != nullptr);
+    //        std::swap(_tid,  other._tid);
+    //        std::swap(_func, other._func);
+    //        //other._tid.priv = nullptr;
+    //    }
+    //    return *this;
+    //}
 
     id   get_id() const noexcept { return _tid; }
-    void join() { (void)thrd_join(_tid); } 
-    bool joinable() const noexcept { return true; }
+    void join() { 
+        if  (_tid.priv) {
+            (void)thrd_join(_tid); 
+        }
+    } 
+    bool joinable() const noexcept { return _tid.priv; }
 
 }; // thread
 
 /*
  * Minimal implementation. Not fully standard compliant.
+ * In particular, not moveable.
  */
 class jthread : public thread
 {
@@ -80,7 +108,9 @@ public:
 
     ~jthread()
     {
-        thrd_join(_tid);
+        if (_tid.priv) {
+            thrd_join(_tid);
+        }
     }
 }; //jthread
 

@@ -5,10 +5,12 @@
 #include "common.h"
 #include "librace2.h"
 
+#include <array>
 #include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
+//#include <vector>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -66,7 +68,7 @@ int user_main(int argc, char **argv)
     MODEL_ASSERT(rz == 5);
     MODEL_ASSERT(*pz == 5);
 
-#if 0
+#if 1
     //
     // This exposes a relaxed bug with fa & fb
     //
@@ -82,16 +84,48 @@ int user_main(int argc, char **argv)
     t2.join();
 #endif
 
-#if 1
+#if 0
     //
-    // shaerd_mutex test
+    // shared_mutex test
+    // No error butit will hog the machine.
     //
     
     std::shared_mutex smtx; //shared_mutex cannot be used as a global var (ModelChecker limitation)
     librace::var<int> cx=0;
+    constexpr int NLOOP = 1;
+    constexpr int NTHRD = 1;
 
     { std::shared_lock rlock(smtx); }
     { std::unique_lock wlock(smtx); }
+
+    std::array<std::thread, 2*NTHRD> thrs;
+    for (int i = 0; i < NTHRD; ++i) {
+        //TODO: std::destroy_at / std::construct_at 
+        thrs[i].~thread(); // (&thrs[i])->~thread() 
+        new (&thrs[i]) std::thread([&](){
+            for (int j = 0; j < NLOOP; ++j) {
+                std::shared_lock rlock(smtx);
+                [[maybe_unused]] int val(cx);
+            }
+        });
+    }
+    for (int i = NTHRD; i < 2*NTHRD; ++i) {
+        thrs[i].~thread(); 
+        new (&thrs[i]) std::thread([&](){
+            for (int j = 0; j < NLOOP; ++j) {
+                std::unique_lock wlock(smtx);
+                cx += 1;
+            }
+        });
+    }
+    for (auto& t : thrs) {
+        t.join();
+    }
+    for (auto& t : thrs) {
+        t.~thread();
+    }
+    MODEL_ASSERT( cx == NTHRD*NLOOP );
+
 #endif
     
     printf("Main thread is finished\n");
