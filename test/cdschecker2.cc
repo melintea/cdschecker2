@@ -87,7 +87,7 @@ int user_main(int argc, char **argv)
 #if 0
     //
     // shared_mutex test
-    // No error butit will hog the machine.
+    // No error but it will hog the machine.
     //
     
     std::shared_mutex smtx; //shared_mutex cannot be used as a global var (ModelChecker limitation)
