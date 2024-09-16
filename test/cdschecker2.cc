@@ -68,7 +68,7 @@ int user_main(int argc, char **argv)
     MODEL_ASSERT(rz == 5);
     MODEL_ASSERT(*pz == 5);
 
-#if 1
+#if 0
     //
     // This exposes a relaxed bug with fa & fb
     //
@@ -84,7 +84,7 @@ int user_main(int argc, char **argv)
     t2.join();
 #endif
 
-#if 0
+#if 1
     //
     // shared_mutex test
     // No error but it will hog the machine.
@@ -98,33 +98,58 @@ int user_main(int argc, char **argv)
     { std::shared_lock rlock(smtx); }
     { std::unique_lock wlock(smtx); }
 
-    std::array<std::thread, 2*NTHRD> thrs;
-    for (int i = 0; i < NTHRD; ++i) {
-        //TODO: std::destroy_at / std::construct_at 
-        thrs[i].~thread(); // (&thrs[i])->~thread() 
-        new (&thrs[i]) std::thread([&](){
-            for (int j = 0; j < NLOOP; ++j) {
-                std::shared_lock rlock(smtx);
-                [[maybe_unused]] int val(cx);
-            }
-        });
+    {
+        std::vector<std::thread> thrs; // moveable threads
+        for (int i = 0; i < NTHRD; ++i) {
+            thrs.push_back(std::thread([&](){
+                for (int j = 0; j < NLOOP; ++j) {
+                    std::shared_lock rlock(smtx);
+                    [[maybe_unused]] int val(cx);
+                }
+            }));
+        }
+        for (int i = 0; i < NTHRD; ++i) {
+            thrs.emplace_back([&](){
+                for (int j = 0; j < NLOOP; ++j) {
+                    std::unique_lock wlock(smtx);
+                    cx += 1;
+                }
+            });
+        }
+        for (auto& t : thrs) {
+            t.join();
+        }
+        MODEL_ASSERT( cx == NTHRD*NLOOP );
     }
-    for (int i = NTHRD; i < 2*NTHRD; ++i) {
-        thrs[i].~thread(); 
-        new (&thrs[i]) std::thread([&](){
-            for (int j = 0; j < NLOOP; ++j) {
-                std::unique_lock wlock(smtx);
-                cx += 1;
-            }
-        });
+    {
+        std::array<std::thread, 2*NTHRD> thrs;
+        for (int i = 0; i < NTHRD; ++i) {
+            //TODO: std::destroy_at / std::construct_at 
+            thrs[i].~thread(); // (&thrs[i])->~thread() 
+            new (&thrs[i]) std::thread([&](){
+                for (int j = 0; j < NLOOP; ++j) {
+                    std::shared_lock rlock(smtx);
+                    [[maybe_unused]] int val(cx);
+                }
+            });
+        }
+        for (int i = NTHRD; i < 2*NTHRD; ++i) {
+            thrs[i].~thread(); 
+            new (&thrs[i]) std::thread([&](){
+                for (int j = 0; j < NLOOP; ++j) {
+                    std::unique_lock wlock(smtx);
+                    cx += 1;
+                }
+            });
+        }
+        for (auto& t : thrs) {
+            t.join();
+        }
+        for (auto& t : thrs) {
+            t.~thread();
+        }
+        MODEL_ASSERT( cx == NTHRD*NLOOP );
     }
-    for (auto& t : thrs) {
-        t.join();
-    }
-    for (auto& t : thrs) {
-        t.~thread();
-    }
-    MODEL_ASSERT( cx == NTHRD*NLOOP );
 
 #endif
     

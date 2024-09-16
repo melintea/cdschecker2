@@ -5,6 +5,6 @@ handle SIGSEGV nostop noprint
 set args -m 2 -f 10 
 
 set breakpoint pending on
-b common.cc:45
-b shapshot.cc:110
+b common.cc:45 
+b snapshot.cc:110 
 

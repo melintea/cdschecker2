@@ -34,12 +34,16 @@ public:
     ptr_guard& operator=( const ptr_guard& other ) = delete;
 
     ptr_guard( ptr_guard&& other ) { std::swap(_ptr, other._ptr); }
-    ptr_guard& operator=( ptr_guard&& other ) {
+    ptr_guard& operator=( ptr_guard&& other ) 
+    {
         if (this != &other) {
             std::swap(_ptr, other._ptr);
         }
         return *this;
     }
+
+    const T* ptr() const { return _ptr; }
+    T* ptr() { return _ptr; }
 }; // ptr_guard
 
 } //namespace utils

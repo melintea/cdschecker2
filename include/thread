@@ -15,30 +15,50 @@
 
 #include "model-assert.h"
 #include "threads.h"
+#include "utils.h"
 
 #include <cstddef>
 #include <functional>
 #include <utility>
 
+namespace impl {
+
+struct thread_data
+{
+    thrd_t _tid{.priv=nullptr};
+
+    using func_t = std::function<void(void)>;
+    func_t _func;
+
+    using guard_t = utils::ptr_guard<thread_data>;
+
+    thread_data()  = default;
+    ~thread_data() = default;
+
+    thread_data( const thread_data& other )            = delete;
+    thread_data& operator=( const thread_data& other ) = delete;
+
+    thread_data( thread_data&& other )                 = delete; 
+    thread_data& operator=( thread_data&& other )      = delete;
+}; // thread_data
+
+} // impl
 namespace std {
 
 /*
  * Minimal implementation. Not fully standard compliant.
- * In particular, not moveable.
  */
 class thread
 {
 protected:
 
-    thrd_t _tid{.priv=nullptr};
-
-    using Func_t = std::function<void(void)>;
-    Func_t _func;
+    impl::thread_data* _ptdata{nullptr};
 
     static void run(void* pv)
     {
-        thread* p(reinterpret_cast<thread*>(pv));
+        impl::thread_data* p(reinterpret_cast<impl::thread_data*>(pv));
         MODEL_ASSERT(p);
+        MODEL_ASSERT(p->_func != nullptr);
         p->_func();
     }
 
@@ -48,57 +68,57 @@ public:
 
     template<typename F, typename... ARGS>
     explicit thread(F&& f, ARGS&&... args)
+        : _ptdata(new impl::thread_data())
     {
-        _func = [&]() { std::forward<F>(f)(std::forward<ARGS>(args)...); }; 
-        // 'this' prevents any move or copy ops
-        thrd_create(&_tid, &thread::run, this);
-        MODEL_ASSERT(_tid.priv != nullptr);
+        MODEL_ASSERT(_ptdata);
+        _ptdata->_func = [&]() { std::forward<F>(f)(std::forward<ARGS>(args)...); };
+        thrd_create(&_ptdata->_tid, &thread::run, _ptdata);
     }
 
     thread()  = default;
     ~thread()
     {
-        //thrd_join(_tid);
+        // The leak is intentional - the model checked will barf otherwise
+        //delete _ptdata;
     }
 
     thread( const thread& other )            = delete;
     thread& operator=( const thread& other ) = delete;
 
-    thread( thread&& other )                 = delete;
-    //thread( thread&& other ) {
-    //    MODEL_ASSERT(_tid.priv == nullptr);
-    //    MODEL_ASSERT(other._tid.priv != nullptr);
-    //    std::swap(_tid,  other._tid);
-    //    std::swap(_func, other._func);
-    //    //other._tid.priv = nullptr;
-    //}
+    //thread( thread&& other )                 = delete;
+    thread( thread&& other ) {
+        MODEL_ASSERT(other._ptdata->_tid.priv != nullptr);
+        std::swap(_ptdata,  other._ptdata);
+    }
 
-    thread& operator=( thread&& other )      = delete;
-    //thread& operator=( thread&& other ) {
-    //    if (this != &other) {
-    //        // should std::terminate() current thread but API not supported
-    //        MODEL_ASSERT(_tid.priv == nullptr);
-    //        MODEL_ASSERT(other._tid.priv != nullptr);
-    //        std::swap(_tid,  other._tid);
-    //        std::swap(_func, other._func);
-    //        //other._tid.priv = nullptr;
-    //    }
-    //    return *this;
-    //}
+    //thread& operator=( thread&& other )      = delete;
+    thread& operator=( thread&& other ) {
+        if (this != &other) {
+            // should std::terminate() current thread but API not supported
+            MODEL_ASSERT(_ptdata->_tid.priv == nullptr);
+            MODEL_ASSERT(other._ptdata->_tid.priv != nullptr);
+            std::swap(_ptdata,  other._ptdata);
+        }
+        return *this;
+    }
 
-    id   get_id() const noexcept { return _tid; }
-    void join() { 
-        if  (_tid.priv) {
-            (void)thrd_join(_tid); 
+    id   get_id() const noexcept 
+    { 
+        return _ptdata->_tid; 
+    }
+
+    void join() 
+    { 
+        if  (_ptdata->_tid.priv) {
+            (void)thrd_join(_ptdata->_tid); 
         }
     } 
-    bool joinable() const noexcept { return _tid.priv; }
+    bool joinable() const noexcept { return _ptdata->_tid.priv != nullptr; }
 
 }; // thread
 
 /*
  * Minimal implementation. Not fully standard compliant.
- * In particular, not moveable.
  */
 class jthread : public thread
 {
@@ -108,8 +128,8 @@ public:
 
     ~jthread()
     {
-        if (_tid.priv) {
-            thrd_join(_tid);
+        if (joinable()) {
+            thrd_join(_ptdata->_tid);
         }
     }
 }; //jthread
