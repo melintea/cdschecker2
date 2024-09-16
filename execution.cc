@@ -1087,6 +1087,7 @@ bool ModelExecution::initialize_curr_action(ModelAction **curr)
         ASSERT(  ((*curr)->get_location() == newcurr->get_location())
               || ((*curr)->get_type() == THREAD_START && newcurr->get_type() == THREAD_START)
               || ((*curr)->get_type() == THREAD_CREATE && newcurr->get_type() == THREAD_CREATE)
+              || ((*curr)->get_type() == THREAD_YIELD && newcurr->get_type() == THREAD_YIELD)
               || ((*curr)->get_type() == THREAD_FINISH && newcurr->get_type() == THREAD_FINISH)
               );
         newcurr->copy_from_new(*curr);
