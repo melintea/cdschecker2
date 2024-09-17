@@ -24,6 +24,7 @@ export LD_LIBRARY_PATH=${BINDIR}
 export DYLD_LIBRARY_PATH=${BINDIR}
 
 [ $# -gt 0 ] && [ "$1" = "gdb" ] && PREFIX=gdb && shift
+[ $# -gt 0 ] && [ "$1" = "cgdb" ] && PREFIX=cgdb && shift
 [ $# -gt 0 ] && [ -e "$1" ] && BIN="$1" && shift
 
 set -xe
