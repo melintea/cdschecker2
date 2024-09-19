@@ -13,8 +13,12 @@
 
 #pragma once
 
+#include "common.h"
+
 #include <functional>
+#include <string>
 #include <utility>
+
 namespace utils {
 
 /*
@@ -45,6 +49,24 @@ public:
     const T* ptr() const { return _ptr; }
     T* ptr() { return _ptr; }
 }; // ptr_guard
+
+struct scope_print
+{
+    std::string _str;
+
+    scope_print(const std::string& str) : _str(str) {
+        model_print("\n-[ %s\n" , _str.c_str());
+    }
+    ~scope_print() {
+        model_print("\n-] %s\n" , _str.c_str());
+    }
+
+    scope_print( const scope_print& other )            = delete;
+    scope_print& operator=( const scope_print& other ) = delete;
+
+    scope_print( scope_print&& other )                 = delete;
+    scope_print& operator=( scope_print&& other )      = delete;
+};
 
 } //namespace utils
 
