@@ -76,7 +76,7 @@ protected:
 
     static void run(void* pv)
     {
-        model_print("thread::run %p\n", pv);
+        utils::scope_print s("thread::run %p\n", pv);
         impl::thread_data* p(reinterpret_cast<impl::thread_data*>(pv));
         MODEL_ASSERT(p);
         MODEL_ASSERT(p->_func != nullptr);
@@ -91,20 +91,20 @@ public:
     thread(F&& f, ARGS&&... args)
         : _ptdata(new impl::thread_data())
     {
-        model_print("thread::thread<> %p %p\n", this, _ptdata);
+        utils::scope_print s("thread::thread<> %p %p\n", this, _ptdata);
         MODEL_ASSERT(_ptdata);
 	
-	auto ftemp = impl::wrap(std::forward<F>(f));
+        auto ftemp = impl::wrap(std::forward<F>(f));
         _ptdata->_func = ftemp; //[&]() { std::forward<F>(f)(std::forward<ARGS>(args)...); };
         thrd_create(&_ptdata->_tid, &thread::run, _ptdata);
     }
 
     thread() {
-        model_print("thread::thread() %p\n", this);
+        utils::scope_print s("thread::thread() %p\n", this);
     }
     ~thread()
     {
-        model_print("thread::~thread  %p %p\n", this, _ptdata);
+        utils::scope_print s("thread::~thread  %p %p\n", this, _ptdata);
         // The model checker will barf if the thread was not joined
         MODEL_ASSERT( ! joinable());
         release();
@@ -115,13 +115,13 @@ public:
 
     //thread( thread&& other )                 = delete;
     thread( thread&& other ) noexcept {
-        model_print("thread::thread&& %p %p\n", this, _ptdata);
+        utils::scope_print s("thread::thread&& %p %p\n", this, _ptdata);
         swap(other);
     }
 
     //thread& operator=( thread&& other )      = delete;
     thread& operator=( thread&& other ) noexcept {
-        model_print("thread::=&&\n");
+        utils::scope_print s("thread::=&&\n");
         if (this != &other) {
             // should std::terminate() current thread but API not supported
             swap(other);
@@ -142,7 +142,7 @@ public:
 
     void join() 
     { 
-        utils::scope_print s("thread::join");
+        utils::scope_print s("thread::join %p %p\n", this, _ptdata);
         if  (joinable()) {
             model_print("thread::join %p %p\n", this, _ptdata);
             (void)thrd_join(_ptdata->_tid); 

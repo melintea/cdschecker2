@@ -52,13 +52,19 @@ public:
 
 struct scope_print
 {
-    std::string _str;
+    char _buf[128]{0};
 
-    scope_print(const std::string& str) : _str(str) {
-        model_print("\n-[ %s\n" , _str.c_str());
+    template <typename... ARGS>
+    scope_print(const char* fmt, ARGS... args) {
+        ::snprintf(_buf, 128, fmt, args...);
+        model_print("-[ %s" , _buf);
+    }
+    scope_print(const char* str) {
+        ::snprintf(_buf, 128, "%s", str);
+        model_print("-[ %s" , _buf);
     }
     ~scope_print() {
-        model_print("\n-] %s\n" , _str.c_str());
+        model_print("-] %s" , _buf);
     }
 
     scope_print( const scope_print& other )            = delete;
