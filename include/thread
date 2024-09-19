@@ -54,8 +54,14 @@ protected:
 
     impl::thread_data* _ptdata{nullptr};
 
+    void release()
+    {
+        delete _ptdata; _ptdata = nullptr;
+    }
+
     static void run(void* pv)
     {
+        model_print("thread::run\n");
         impl::thread_data* p(reinterpret_cast<impl::thread_data*>(pv));
         MODEL_ASSERT(p);
         MODEL_ASSERT(p->_func != nullptr);
@@ -67,39 +73,49 @@ public:
     using id = thrd_t;
 
     template<typename F, typename... ARGS>
-    explicit thread(F&& f, ARGS&&... args)
+    thread(F&& f, ARGS&&... args)
         : _ptdata(new impl::thread_data())
     {
+        model_print("thread::thread<>\n");
         MODEL_ASSERT(_ptdata);
         _ptdata->_func = [&]() { std::forward<F>(f)(std::forward<ARGS>(args)...); };
         thrd_create(&_ptdata->_tid, &thread::run, _ptdata);
     }
 
-    thread()  = default;
+    thread() {
+        model_print("thread::thread()\n");
+    }
     ~thread()
     {
-        // The leak is intentional - the model checked will barf otherwise
-        //delete _ptdata;
+        model_print("thread::~thread\n");
+        // The model checker will barf if the thread was not joined
+        MODEL_ASSERT( ! joinable());
+        release();
     }
 
     thread( const thread& other )            = delete;
     thread& operator=( const thread& other ) = delete;
 
     //thread( thread&& other )                 = delete;
-    thread( thread&& other ) {
-        MODEL_ASSERT(other._ptdata->_tid.priv != nullptr);
-        std::swap(_ptdata,  other._ptdata);
+    thread( thread&& other ) noexcept {
+        model_print("thread::thread&&\n");
+        swap(other);
     }
 
     //thread& operator=( thread&& other )      = delete;
-    thread& operator=( thread&& other ) {
+    thread& operator=( thread&& other ) noexcept {
+        model_print("thread::=&&\n");
         if (this != &other) {
             // should std::terminate() current thread but API not supported
-            MODEL_ASSERT(_ptdata->_tid.priv == nullptr);
-            MODEL_ASSERT(other._ptdata->_tid.priv != nullptr);
-            std::swap(_ptdata,  other._ptdata);
+            swap(other);
         }
         return *this;
+    }
+
+    void swap(thread& other) noexcept {
+        MODEL_ASSERT(_ptdata == nullptr);
+        MODEL_ASSERT(other._ptdata->_tid.priv != nullptr);
+        std::swap(_ptdata,  other._ptdata);
     }
 
     id   get_id() const noexcept 
@@ -109,11 +125,12 @@ public:
 
     void join() 
     { 
-        if  (_ptdata->_tid.priv) {
+        if  (joinable()) {
             (void)thrd_join(_ptdata->_tid); 
+            release();
         }
     } 
-    bool joinable() const noexcept { return _ptdata->_tid.priv != nullptr; }
+    bool joinable() const noexcept { return _ptdata && _ptdata->_tid.priv != nullptr; }
 
 }; // thread
 
@@ -125,6 +142,16 @@ class jthread : public thread
 public:
 
     using std::thread::thread;
+
+    jthread( jthread&& other ) noexcept {
+        thread::swap(other);
+    }
+    jthread& operator=( jthread&& other ) noexcept {
+        if (this != &other) {
+            thread::swap(other);
+        }
+        return *this;
+    }
 
     ~jthread()
     {
