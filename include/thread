@@ -71,6 +71,7 @@ protected:
 
     void release()
     {
+        model_print("thread::release %p\n", _ptdata);
         delete _ptdata; _ptdata = nullptr;
     }
 
