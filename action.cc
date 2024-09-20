@@ -51,6 +51,7 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
 
     Thread *t = thread ? thread : thread_current();
     this->tid = t->get_id();
+    DEBUG("ModelAction t=%p thread=%p tid=%d\n", t, thread, tid);
 
     //callstack.dump();
 }

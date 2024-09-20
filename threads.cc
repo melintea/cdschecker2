@@ -171,6 +171,7 @@ Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread
         model_print("Error in create_context\n");
 
     user_thread->priv = this;
+    DEBUG("Thread %p parent=%p tid=%d\n", this, parent, tid);
 }
 
 /** Destructor */
