@@ -143,9 +143,6 @@ Thread::Thread(thread_id_t tid) : parent(NULL),
 {
     memset(&context, 0, sizeof(context));
     DEBUG("Model checker Thread %p tid=%d\n", this, tid);
-#ifdef CONFIG_DEBUG
-    print_stacktrace(model_out);
-#endif // CONFIG_DEBUG
 }
 
 /**
@@ -174,9 +171,6 @@ Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread
 
     user_thread->priv = this;
     DEBUG("Thread %p parent=%p tid=%d\n", this, parent, tid);
-#ifdef CONFIG_DEBUG
-    print_stacktrace(model_out);
-#endif // CONFIG_DEBUG
 }
 
 /** Destructor */
