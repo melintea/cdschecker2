@@ -9,12 +9,13 @@
 #include "common.h"
 #include "threads-model.h"
 #include "action.h"
+#include "stacktrace.h"
 
 /* global "model" object */
 #include "model.h"
 
 /** Allocate a stack for a new thread. */
-static void * stack_allocate(size_t size)
+static void *stack_allocate(size_t size)
 {
     return Thread_malloc(size);
 }
@@ -32,7 +33,7 @@ static void stack_free(void *stack)
  *
  * @return The currently executing thread
  */
-Thread * thread_current(void)
+Thread *thread_current(void)
 {
     ASSERT(model);
     return model->get_current_thread();
@@ -45,7 +46,7 @@ Thread * thread_current(void)
  */
 void thread_startup()
 {
-    Thread * curr_thread = thread_current();
+    Thread *curr_thread = thread_current();
 
     /* Add dummy "start" action, just to create a first clock vector */
     model->switch_to_master(new ModelAction(THREAD_START, std::memory_order_seq_cst, curr_thread));
@@ -110,7 +111,6 @@ int Thread::swap(ucontext_t *ctxt, Thread *t)
     return model_swapcontext(ctxt, &t->context);
 }
 
-
 /** Terminate a thread and free its stack. */
 void Thread::complete()
 {
@@ -129,20 +129,23 @@ void Thread::complete()
  *
  * @param tid The thread ID to assign
  */
-Thread::Thread(thread_id_t tid) :
-    parent(NULL),
-    creation(NULL),
-    pending(NULL),
-    start_routine(NULL),
-    arg(NULL),
-    stack(NULL),
-    user_thread(NULL),
-    id(tid),
-    state(THREAD_READY), /* Thread is always ready? */
-    last_action_val(0),
-    model_thread(true)
+Thread::Thread(thread_id_t tid) : parent(NULL),
+                                  creation(NULL),
+                                  pending(NULL),
+                                  start_routine(NULL),
+                                  arg(NULL),
+                                  stack(NULL),
+                                  user_thread(NULL),
+                                  id(tid),
+                                  state(THREAD_READY), /* Thread is always ready? */
+                                  last_action_val(0),
+                                  model_thread(true)
 {
     memset(&context, 0, sizeof(context));
+    DEBUG("Model checker Thread %p tid=%d\n", this, tid);
+#ifdef CONFIG_DEBUG
+    print_stacktrace(model_out);
+#endif // CONFIG_DEBUG
 }
 
 /**
@@ -151,17 +154,16 @@ Thread::Thread(thread_id_t tid) :
  * @param func The function that the thread will call.
  * @param a The parameter to pass to this function.
  */
-Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread *parent) :
-    parent(parent),
-    creation(NULL),
-    pending(NULL),
-    start_routine(func),
-    arg(a),
-    user_thread(t),
-    id(tid),
-    state(THREAD_CREATED),
-    last_action_val(VALUE_NONE),
-    model_thread(false)
+Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread *parent) : parent(parent),
+                                                                                            creation(NULL),
+                                                                                            pending(NULL),
+                                                                                            start_routine(func),
+                                                                                            arg(a),
+                                                                                            user_thread(t),
+                                                                                            id(tid),
+                                                                                            state(THREAD_CREATED),
+                                                                                            last_action_val(VALUE_NONE),
+                                                                                            model_thread(false)
 {
     int ret;
 
@@ -172,6 +174,9 @@ Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread
 
     user_thread->priv = this;
     DEBUG("Thread %p parent=%p tid=%d\n", this, parent, tid);
+#ifdef CONFIG_DEBUG
+    print_stacktrace(model_out);
+#endif // CONFIG_DEBUG
 }
 
 /** Destructor */
@@ -201,7 +206,7 @@ void Thread::set_state(thread_state s)
  * Get the Thread that this Thread is immediately waiting on
  * @return The thread we are waiting on, if any; otherwise NULL
  */
-Thread * Thread::waiting_on() const
+Thread *Thread::waiting_on() const
 {
     if (!pending)
         return NULL;

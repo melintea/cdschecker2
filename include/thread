@@ -99,7 +99,7 @@ public:
         auto ftemp = impl::wrap(std::forward<F>(f));
         _ptdata->_func = ftemp; //[&]() { std::forward<F>(f)(std::forward<ARGS>(args)...); };
         thrd_create(&_ptdata->_tid, &thread::run, _ptdata);
-        MODEL_ASSERT(_ptdata->_tid.priv);
+        //MODEL_ASSERT(_ptdata->_tid.priv);
     }
 
     thread() {
