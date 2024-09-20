@@ -15,6 +15,7 @@
 
 #include "atomic"
 #include "threads.h"
+#include "utils.h"
 
 namespace std {
 
@@ -49,6 +50,7 @@ public:
     
     void lock() // write 
     {
+        utils::scope_debug s("shared_mutex::lock\n");
         int val{0};
         do {
             thrd_yield();
@@ -60,12 +62,14 @@ public:
 
     void unlock() // write 
     {
+        utils::scope_debug s("shared_mutex::unlock\n");
         _refcount.store(LOCK_FREE, std::memory_order_release);
         MODEL_ASSERT(_refcount >= LOCK_WRITER);
     }
 
     void lock_shared() // read 
     {
+        utils::scope_debug s("shared_mutex::lock_shared\n");
         int val{0};
         do {
             thrd_yield(); 
@@ -83,6 +87,7 @@ public:
 
     void unlock_shared() // read 
     {
+        utils::scope_debug s("shared_mutex::unlock_shared\n");
         _refcount.fetch_sub(1, std::memory_order_release);
         MODEL_ASSERT(_refcount >= LOCK_WRITER);
     }

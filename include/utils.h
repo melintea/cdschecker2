@@ -74,6 +74,30 @@ struct scope_print
     scope_print& operator=( scope_print&& other )      = delete;
 };
 
+struct scope_debug
+{
+    char _buf[128]{0};
+
+    template <typename... ARGS>
+    scope_debug(const char* fmt, ARGS... args) {
+        ::snprintf(_buf, 128, fmt, args...);
+        DEBUG("-[ %s" , _buf);
+    }
+    scope_debug(const char* str) {
+        ::snprintf(_buf, 128, "%s", str);
+        DEBUG("-[ %s" , _buf);
+    }
+    ~scope_debug() {
+        model_print("-] %s" , _buf);
+    }
+
+    scope_debug( const scope_debug& other )            = delete;
+    scope_debug& operator=( const scope_debug& other ) = delete;
+
+    scope_debug( scope_debug&& other )                 = delete;
+    scope_debug& operator=( scope_debug&& other )      = delete;
+};
+
 } //namespace utils
 
 
