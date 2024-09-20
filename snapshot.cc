@@ -12,6 +12,7 @@
 #include "mymemory.h"
 #include "common.h"
 #include "context.h"
+#include "stacktrace.h"
 
 /** PageAlignedAdressUpdate return a page aligned address for the
  * address being added as a side effect the numBytes are also changed.
@@ -110,6 +111,7 @@ static void mprot_handle_pf(int sig, siginfo_t *si, void *unused)
         model_print("For debugging, place breakpoint at: %s:%d\n",
                 __FILE__, __LINE__);
         // print_trace(); // Trace printing may cause dynamic memory allocation
+        print_stacktrace(model_out);
         exit(EXIT_FAILURE);
     }
     void* addr = ReturnPageAlignedAddress(si->si_addr);
