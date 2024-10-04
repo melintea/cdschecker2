@@ -5,6 +5,8 @@ handle SIGSEGV nostop noprint
 set args -m 2 -f 10 
 
 set breakpoint pending on
+b user_main
 b common.cc:45 
-b snapshot.cc:110 
+b snapshot.cc:111 
+rbreak Thread::Thread*
 

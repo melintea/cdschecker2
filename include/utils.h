@@ -88,7 +88,7 @@ struct scope_debug
         DEBUG("-[ %s" , _buf);
     }
     ~scope_debug() {
-        model_print("-] %s" , _buf);
+        DEBUG("-] %s" , _buf);
     }
 
     scope_debug( const scope_debug& other )            = delete;

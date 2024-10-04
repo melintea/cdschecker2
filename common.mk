@@ -13,10 +13,10 @@ CDSDIR               := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))
 LIBBACKTRACE_INCLUDE := -I $(CDSDIR)/libbacktrace/libbacktrace
 LIBBACKTRACE_LIB     := -L $(CDSDIR)/libbacktrace/libbacktrace/.libs -lbacktrace
 
+# -DCONFIG_DEBUG 
+CPPFLAGS += -Wall -Wno-volatile -O0 -g -fno-omit-frame-pointer -std=c++20
 
-CPPFLAGS += -Wall -Wno-volatile -O3 -g -fno-omit-frame-pointer -std=c++20
-
-CFLAGS := -Wall -O3 -g -fno-omit-frame-pointer 
+CFLAGS := -Wall -O0 -g -fno-omit-frame-pointer 
 
 # Mac OSX options
 ifeq ($(UNAME), Darwin)

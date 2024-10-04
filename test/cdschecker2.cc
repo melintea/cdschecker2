@@ -69,7 +69,7 @@ int user_main(int argc, char **argv)
     MODEL_ASSERT(rz == 5);
     MODEL_ASSERT(*pz == 5);
 
-#if 0
+#if 1
     //
     // This exposes a relaxed bug with fa & fb
     //
@@ -78,8 +78,8 @@ int user_main(int argc, char **argv)
     a.store(0, std::memory_order_release);
     
     printf("Main thread: creating 2 threads\n");
-    auto t1(std::jthread(fa, nullptr));
-    auto t2(std::thread(fb, nullptr));
+    auto t1(std::jthread(fa, (void*)nullptr)); // FIXME: -fpermissive instead of casting?
+    auto t2(std::thread(fb, (void*)nullptr));
 
     //t1.join();
     t2.join();

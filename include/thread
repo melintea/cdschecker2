@@ -13,7 +13,9 @@
 
 #pragma once
 
+#include "function_impl.h"
 #include "model-assert.h"
+#include "stdatomic.h"
 #include "threads.h"
 #include "utils.h"
 
@@ -24,37 +26,113 @@
 
 namespace impl {
 
-template <typename T> struct deduct_type;
+//==============================================================================
+// task<> stuff
+//==============================================================================
 
-template <typename RET, typename CLASS, typename... ARGS> 
-struct deduct_type< RET(CLASS::*)(ARGS...) const>
-{
-    using type = std::function<RET(ARGS...)>;
-};
-
-template <typename CLOSURE> auto wrap(const CLOSURE& fn)
-{
-    return typename impl::deduct_type< decltype(&CLOSURE::operator()) >::type(fn);
-}
-
-struct thread_data
+struct task_base
 {
     thrd_t _tid{.priv=nullptr};
+    bool   _done{false};
 
-    using func_t = std::function<void(void)>;
-    func_t _func;
+    using guard_t = utils::ptr_guard<task_base>;
+    
+    virtual ~task_base() {}
+    
+    virtual void operator()() = 0; 
 
-    using guard_t = utils::ptr_guard<thread_data>;
+    static void run(void* pTask)
+    {
+        utils::scope_print s("thread::run %p\n", pTask);
 
-    thread_data()  = default;
-    ~thread_data() = default;
+        task_base* p(reinterpret_cast<task_base*>(pTask));
+        MODEL_ASSERT(p);
+        p->operator()();
+        p->_done = true;
+    }   
+};
 
-    thread_data( const thread_data& other )            = delete;
-    thread_data& operator=( const thread_data& other ) = delete;
 
-    thread_data( thread_data&& other )                 = delete; 
-    thread_data& operator=( thread_data&& other )      = delete;
-}; // thread_data
+// Canned fuction<> + args template catch-all
+template <typename FUNCTION>
+class task
+    : public task<decltype(&FUNCTION::operator())>
+{
+};
+
+// Canned (function || lambda || functor) + args for a thread
+template <typename RET, typename... ARGS>
+class task<RET(*)(ARGS...)> 
+    : public task_base
+{
+
+public:
+
+    using ret_t         = RET;
+    using signature_t   = ret_t (*)(ARGS...);
+    using function_t    = function<signature_t> ;
+    
+    callable<ret_t, ARGS...>* _callableClosure;
+    std::tuple<ARGS...>       _args;
+
+    task(RET(*func)(ARGS...), ARGS&&... args)
+        : _callableClosure(new closure<signature_t, ret_t, ARGS...>(func))
+        , _args(std::forward<ARGS>(args)...)
+    {}
+    
+    // Captured lambda specialization
+    template<typename CLOSURE>
+    task(const CLOSURE& func)
+        : _callableClosure(new closure<decltype(func), ret_t, ARGS...>(func))
+    {}
+    
+    ~task()
+    {
+        delete _callableClosure;
+    }
+
+    ret_t operator()()
+    {
+        if constexpr (is_void<ret_t>::value == true) {
+            (void)std::apply(*_callableClosure, std::move(_args));
+        } else {
+            return std::apply<ret_t>(*_callableClosure, std::move(_args));
+        }
+    }
+    
+    /*
+    void run(void* pTask)
+    {
+        task* p(reinterpret_cast<task*>(pTask));
+        assert(p);
+        p->operator()();
+    }
+    */
+};
+
+
+
+template <typename FUNC, typename ... ARGS>
+auto /* task<RET(*)(ARGS...)> */
+create_task(FUNC&& func, ARGS&& ... args) // -> decltype(func(args...))
+{
+    using ret_t         = decltype(func(args...));
+    using signature_t   = ret_t (*)(ARGS...);
+    //using function_t    = function<signature_t> ;
+    
+    return task<signature_t>(std::forward<FUNC>(func), std::forward<ARGS>(args)...);
+}
+
+template <typename FUNC, typename ... ARGS>
+task_base* /* task<RET(*)(ARGS...)>* */
+create_task_ptr(FUNC&& func, ARGS&& ... args)
+{
+    using ret_t         = decltype(func(args...));
+    using signature_t   = ret_t (*)(ARGS...);
+    using function_t    = function<signature_t> ;
+    
+    return new task<signature_t>(std::forward<FUNC>(func), std::forward<ARGS>(args)...);
+}
 
 } // impl
 
@@ -67,22 +145,12 @@ class thread
 {
 protected:
 
-    impl::thread_data* _ptdata{nullptr};
+    impl::task_base* _ptdata{nullptr};
 
     void release()
     {
-        model_print("thread::release %p %p\n", this, _ptdata);
+        model_print("thread::release %p %p\n", (void*)this, (void*)_ptdata);
         delete _ptdata; _ptdata = nullptr;
-    }
-
-    static void run(void* pv)
-    {
-        utils::scope_print s("thread::run %p\n", pv);
-        impl::thread_data* p(reinterpret_cast<impl::thread_data*>(pv));
-        MODEL_ASSERT(p);
-        MODEL_ASSERT(p->_func != nullptr);
-        //std::invoke(p->_func);
-        p->_func();
     }
 
 public:
@@ -91,15 +159,11 @@ public:
 
     template<typename F, typename... ARGS>
     thread(F&& f, ARGS&&... args)
-        : _ptdata(new impl::thread_data())
     {
         utils::scope_print s("thread::thread<> %p %p\n", this, _ptdata);
-        MODEL_ASSERT(_ptdata);
-	
-        auto ftemp = impl::wrap(std::forward<F>(f));
-        _ptdata->_func = ftemp; //[&]() { std::forward<F>(f)(std::forward<ARGS>(args)...); };
-        thrd_create(&_ptdata->_tid, &thread::run, _ptdata);
-        //MODEL_ASSERT(_ptdata->_tid.priv);
+    
+        _ptdata = impl::create_task_ptr(std::forward<F>(f), std::forward<ARGS>(args)...);
+        thrd_create(&_ptdata->_tid, (thrd_start_t)&impl::task_base::run, _ptdata);
     }
 
     thread() {
@@ -147,9 +211,17 @@ public:
     { 
         utils::scope_print s("thread::join %p %p\n", this, _ptdata);
         if  (joinable()) {
-            model_print("thread::join %p %p\n", this, _ptdata);
-            (void)thrd_join(_ptdata->_tid); 
-            release();
+            model_print("thread::join %p %p\n", (void*)this, (void*)_ptdata);
+            // Strange but thrd_join() is non-blocking
+            // Nor is a Thread created upon thrd_create()
+            //while ( ! _ptdata->_tid.priv ) {
+            //    thrd_yield();
+            //}
+            //(void)thrd_join(_ptdata->_tid); 
+            while ( ! _ptdata->_done) {
+                thrd_yield();
+            }
+            //release();
         }
     } 
     //bool joinable() const noexcept { return (_ptdata && _ptdata->_tid.priv); }
