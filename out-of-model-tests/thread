@@ -186,9 +186,10 @@ public:
     template<typename F, typename... ARGS>
     thread(F&& f, ARGS&&... args)
     {
-        utils::scope_print s("thread::thread<> %p %p\n", this, _ptdata);
+        //utils::scope_print s("thread::thread<> %p %p\n", this, _ptdata);
     
         _ptdata = impl::create_task_ptr(std::forward<F>(f), std::forward<ARGS>(args)...);
+        model_print("thread::thread<> %p %p\n", this, _ptdata);
         thrd_create(&_ptdata->_tid, (thrd_start_t)&impl::task_base::run, _ptdata);
     }
 
@@ -199,7 +200,7 @@ public:
     {
         utils::scope_print s("thread::~thread  %p %p\n", this, _ptdata);
         // The model checker will barf if the thread was not joined
-//        MODEL_ASSERT( ! joinable());
+        MODEL_ASSERT( ! joinable());
         release();
     }
 
@@ -237,17 +238,17 @@ public:
     { 
         utils::scope_print s("thread::join %p %p\n", this, _ptdata);
         if  (joinable()) {
-            model_print("thread::join %p %p\n", (void*)this, (void*)_ptdata);
+            model_print("  thread::join %p %p\n", (void*)this, (void*)_ptdata);
             // Strange but thrd_join() is non-blocking
             // Nor is a Thread created upon thrd_create()
             //while ( ! _ptdata->_tid.priv ) {
             //    thrd_yield();
             //}
-            //(void)thrd_join(_ptdata->_tid); 
+            (void)thrd_join(_ptdata->_tid); 
             while ( ! _ptdata->_done) {
                 thrd_yield();
             }
-            //release();
+            release();
         }
     } 
     //bool joinable() const noexcept { return (_ptdata && _ptdata->_tid.priv); }
