@@ -1,0 +1,286 @@
+/*
+ *  $Id: $
+ *
+ *  Copyright 2024 Aurelian Melinte.
+ *  Released under GPL 3.0 or later.
+ *
+ *  You need a C++0x compiler.
+ *
+ */
+
+#ifndef INCLUDED_thread_hpp_ce4b651b_3924_4036_bc03_e9127fe99f94
+#define INCLUDED_thread_hpp_ce4b651b_3924_4036_bc03_e9127fe99f94
+
+#pragma once
+
+#include "function_impl.h"
+#include "utils.h"
+
+#include <cstddef>
+#include <functional>
+#include <type_traits>
+#include <utility>
+
+
+static int check{101};
+struct thrd_t
+{
+    int* priv{nullptr};
+};
+
+extern "C" {
+typedef void (*thrd_start_t)(void *);
+int thrd_create(thrd_t *t, thrd_start_t start_routine, void *arg)
+{
+    t->priv = &check;
+    start_routine(arg);
+    return 0;
+}
+
+int thrd_join(thrd_t)
+{
+    return 0;
+}
+
+void thrd_yield(void)
+{
+}
+
+} // "C"
+
+
+
+namespace impl {
+
+//==============================================================================
+// task<> stuff
+//==============================================================================
+
+struct task_base
+{
+    thrd_t _tid{.priv=nullptr};
+    bool   _done{false};
+
+    using guard_t = utils::ptr_guard<task_base>;
+    
+    virtual ~task_base() {}
+    
+    virtual void operator()() = 0; 
+
+    static void run(void* pTask)
+    {
+        utils::scope_print s("thread::run %p\n", pTask);
+
+        task_base* p(reinterpret_cast<task_base*>(pTask));
+        MODEL_ASSERT(p);
+        p->operator()();
+        p->_done = true;
+    }   
+};
+
+
+// Canned fuction<> + args template catch-all
+template <typename FUNCTION>
+class task
+    : public task<decltype(&FUNCTION::operator())>
+{
+};
+
+// Canned (function || lambda || functor) + args for a thread
+template <typename RET, typename... ARGS>
+class task<RET(*)(ARGS...)> 
+    : public task_base
+{
+
+public:
+
+    using ret_t         = RET;
+    using signature_t   = ret_t (*)(ARGS...);
+    using function_t    = function<signature_t> ;
+    
+    callable<ret_t, ARGS...>* _callableClosure;
+    std::tuple<ARGS...>       _args;
+
+    task(RET(*func)(ARGS...), ARGS&&... args)
+        : _callableClosure(new closure<signature_t, ret_t, ARGS...>(func))
+        , _args(std::forward<ARGS>(args)...)
+    {}
+    
+    // Captured lambda specialization
+    template<typename CLOSURE>
+    task(const CLOSURE& func)
+        : _callableClosure(new closure<decltype(func), ret_t, ARGS...>(func))
+    {}
+    
+    ~task()
+    {
+        delete _callableClosure;
+    }
+
+    ret_t operator()()
+    {
+        if constexpr (is_void<ret_t>::value == true) {
+            (void)std::apply(*_callableClosure, std::move(_args));
+        } else {
+            return std::apply<ret_t>(*_callableClosure, std::move(_args));
+        }
+    }
+    
+    /*
+    void run(void* pTask)
+    {
+        task* p(reinterpret_cast<task*>(pTask));
+        assert(p);
+        p->operator()();
+    }
+    */
+};
+
+
+
+template <typename FUNC, typename ... ARGS>
+auto /* task<RET(*)(ARGS...)> */
+create_task(FUNC&& func, ARGS&& ... args) // -> decltype(func(args...))
+{
+    using ret_t         = decltype(func(args...));
+    using signature_t   = ret_t (*)(ARGS...);
+    //using function_t    = function<signature_t> ;
+    
+    return task<signature_t>(std::forward<FUNC>(func), std::forward<ARGS>(args)...);
+}
+
+template <typename FUNC, typename ... ARGS>
+task_base* /* task<RET(*)(ARGS...)>* */
+create_task_ptr(FUNC&& func, ARGS&& ... args)
+{
+    using ret_t         = decltype(func(args...));
+    using signature_t   = ret_t (*)(ARGS...);
+    using function_t    = function<signature_t> ;
+    
+    return new task<signature_t>(std::forward<FUNC>(func), std::forward<ARGS>(args)...);
+}
+
+} // impl
+
+namespace std {
+
+/*
+ * Minimal implementation. Not fully standard compliant.
+ */
+class thread
+{
+protected:
+
+    impl::task_base* _ptdata{nullptr};
+
+    void release()
+    {
+        model_print("thread::release %p %p\n", (void*)this, (void*)_ptdata);
+        delete _ptdata; _ptdata = nullptr;
+    }
+
+public:
+
+    using id = thrd_t;
+
+    template<typename F, typename... ARGS>
+    thread(F&& f, ARGS&&... args)
+    {
+        utils::scope_print s("thread::thread<> %p %p\n", this, _ptdata);
+    
+        _ptdata = impl::create_task_ptr(std::forward<F>(f), std::forward<ARGS>(args)...);
+        thrd_create(&_ptdata->_tid, (thrd_start_t)&impl::task_base::run, _ptdata);
+    }
+
+    thread() {
+        utils::scope_print s("thread::thread() %p\n", this);
+    }
+    ~thread()
+    {
+        utils::scope_print s("thread::~thread  %p %p\n", this, _ptdata);
+        // The model checker will barf if the thread was not joined
+//        MODEL_ASSERT( ! joinable());
+        release();
+    }
+
+    thread( const thread& other )            = delete;
+    thread& operator=( const thread& other ) = delete;
+
+    //thread( thread&& other )                 = delete;
+    thread( thread&& other ) noexcept {
+        utils::scope_print s("thread::thread&& %p %p\n", this, _ptdata);
+        swap(other);
+    }
+
+    //thread& operator=( thread&& other )      = delete;
+    thread& operator=( thread&& other ) noexcept {
+        utils::scope_print s("thread::=&&\n");
+        if (this != &other) {
+            // should std::terminate() current thread but API not supported
+            swap(other);
+        }
+        return *this;
+    }
+
+    void swap(thread& other) noexcept {
+        MODEL_ASSERT(_ptdata == nullptr);
+        MODEL_ASSERT(other._ptdata != nullptr);
+        std::swap(_ptdata,  other._ptdata);
+    }
+
+    id   get_id() const noexcept 
+    { 
+        return _ptdata->_tid; 
+    }
+
+    void join() 
+    { 
+        utils::scope_print s("thread::join %p %p\n", this, _ptdata);
+        if  (joinable()) {
+            model_print("thread::join %p %p\n", (void*)this, (void*)_ptdata);
+            // Strange but thrd_join() is non-blocking
+            // Nor is a Thread created upon thrd_create()
+            //while ( ! _ptdata->_tid.priv ) {
+            //    thrd_yield();
+            //}
+            //(void)thrd_join(_ptdata->_tid); 
+            while ( ! _ptdata->_done) {
+                thrd_yield();
+            }
+            //release();
+        }
+    } 
+    //bool joinable() const noexcept { return (_ptdata && _ptdata->_tid.priv); }
+    bool joinable() const noexcept { return _ptdata; }
+
+}; // thread
+
+/*
+ * Minimal implementation. Not fully standard compliant.
+ */
+class jthread : public thread
+{
+public:
+
+    using std::thread::thread;
+
+    jthread( jthread&& other ) noexcept {
+        thread::swap(other);
+    }
+    jthread& operator=( jthread&& other ) noexcept {
+        if (this != &other) {
+            thread::swap(other);
+        }
+        return *this;
+    }
+
+    ~jthread()
+    {
+        join();
+    }
+}; //jthread
+
+} //namespace std
+
+
+#endif //#define INCLUDED_thread_hpp_ce4b651b_3924_4036_bc03_e9127fe99f94

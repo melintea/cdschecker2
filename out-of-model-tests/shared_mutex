@@ -1,0 +1,122 @@
+/*
+ *  $Id: $
+ *
+ *  Copyright 2024 Aurelian Melinte.
+ *  Released under GPL 3.0 or later.
+ *
+ *  You need a C++0x compiler.
+ *
+ */
+
+#ifndef INCLUDED_shared_mutex_hpp_447ff94b_2ce6_4d22_8a20_e5678f4adbc8
+#define INCLUDED_shared_mutex_hpp_447ff94b_2ce6_4d22_8a20_e5678f4adbc8
+
+#pragma once
+
+#include "atomic"
+//#include "threads.h"
+#include "utils.h"
+
+namespace std {
+
+/*
+ * Minimal implementation. Not fully standard compliant.
+ * If SIGSEGV because of a null model* ModelChecker: this class cannot be used for
+ * global vars.
+ * Might hog the machine because of the while loops in the implementation.
+ */
+class shared_mutex 
+{
+
+    // refcount is 0 if no thread holds the lock.  
+    // If > 0, the value represents the number of readers that have access.
+    // If -1, a single writer has access.
+    static constexpr int LOCK_WRITER = -1;
+    static constexpr int LOCK_FREE   = 0;
+    std::atomic<int> _refcount{LOCK_FREE}; // model bug: initialization not seen
+
+public:
+
+    shared_mutex()  { 
+        _refcount.store(LOCK_FREE, std::memory_order_release); 
+    } 
+    ~shared_mutex() = default;
+
+    shared_mutex( const shared_mutex& other )            = delete;
+    shared_mutex& operator=( const shared_mutex& other ) = delete;
+
+    shared_mutex( shared_mutex&& other )                 = delete;
+    shared_mutex& operator=( shared_mutex&& other )      = delete;
+    
+    void lock() // write 
+    {
+        utils::scope_debug s("shared_mutex::lock\n");
+        int val{0};
+        do {
+            //thrd_yield();
+            val = 0; // Can only take a write lock when refcount == 0
+        } while ( ! _refcount.compare_exchange_weak(val, LOCK_WRITER, std::memory_order_acquire));
+        MODEL_ASSERT(val == 0);
+        MODEL_ASSERT(_refcount == LOCK_WRITER);
+    }
+
+    void unlock() // write 
+    {
+        utils::scope_debug s("shared_mutex::unlock\n");
+        _refcount.store(LOCK_FREE, std::memory_order_release);
+        MODEL_ASSERT(_refcount >= LOCK_WRITER);
+    }
+
+    void lock_shared() // read 
+    {
+        utils::scope_debug s("shared_mutex::lock_shared\n");
+        int val{0};
+        do {
+            //thrd_yield(); 
+            
+            do {
+                //thrd_yield();
+                val = _refcount.load(std::memory_order_relaxed);
+            } while (val == LOCK_WRITER); // spinning until the write lock is released
+            MODEL_ASSERT(val == 0);
+
+        } while ( ! _refcount.compare_exchange_weak(val, val+1, std::memory_order_acquire));
+        MODEL_ASSERT(val >= 0);
+        MODEL_ASSERT(_refcount > 0);
+    }
+
+    void unlock_shared() // read 
+    {
+        utils::scope_debug s("shared_mutex::unlock_shared\n");
+        _refcount.fetch_sub(1, std::memory_order_release);
+        MODEL_ASSERT(_refcount >= LOCK_WRITER);
+    }
+};
+
+
+/*
+ * Minimal implementation. Not fully standard compliant.
+ */
+template <typename MUTEX_T>
+class shared_lock
+{
+public:
+
+	explicit shared_lock(MUTEX_T& mtx) : _mutex(mtx) { _mutex.lock_shared(); }
+	shared_lock()                              = delete;
+	~shared_lock() { _mutex.unlock_shared(); }
+
+    shared_lock(const shared_lock&)            = delete;
+    shared_lock& operator=(const shared_lock&) = delete;
+    shared_lock(shared_lock&&)                 = delete;
+    shared_lock& operator=(shared_lock&&)      = delete;
+
+private:
+
+    MUTEX_T& _mutex;
+}; //shared_lock
+
+} //namespace std
+
+
+#endif //#define INCLUDED_shared_mutex_hpp_447ff94b_2ce6_4d22_8a20_e5678f4adbc8
