@@ -218,7 +218,7 @@ public:
             //while ( ! _ptdata->_tid.priv ) {
             //    thrd_yield();
             //}
-            //(void)thrd_join(_ptdata->_tid); 
+            (void)thrd_join(_ptdata->_tid); 
             while ( ! _ptdata->_done) {
                 thrd_yield();
             }

@@ -87,7 +87,7 @@ int user_main(int argc, char **argv)
     }
 #endif
 
-#if 0
+#if 1
     {
         utils::scope_print s("=== well behaved threads\n");
 
