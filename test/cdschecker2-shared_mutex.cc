@@ -105,7 +105,7 @@ int user_main(int argc, char **argv)
 
 #if 0
     {
-        utils::scope_print s("emplace/move\n");
+        utils::scope_print s("=== buggy emplace/move\n");
 
         std::vector<std::thread> thrs; // moveable threads
         thrs.reserve(2*NTHRD);
@@ -125,7 +125,7 @@ int user_main(int argc, char **argv)
         for (int i = 0; i < NTHRD; ++i) {
             thrs.emplace_back([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("emplace_back lambda2 %p\n", &smtx);
+                    model_print("emplace_back lambda2 %p\n", &smtx); //BUG: addr  of smtx
                     std::unique_lock wlock(smtx);
                     model_print("l2\n");
                     cx += 1;
@@ -142,9 +142,9 @@ int user_main(int argc, char **argv)
     }
 #endif
 
-#if 0
+#if 1
     {
-        utils::scope_print s("placement new\n");
+        utils::scope_print s("=== placement new\n");
 
         std::array<std::thread, 2*NTHRD> thrs;
         for (int i = 0; i < NTHRD; ++i) {
