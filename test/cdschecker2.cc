@@ -129,7 +129,24 @@ int user_main(int argc, char **argv)
     }
 #endif
 
-#if 0
+#if 1
+    {
+        utils::scope_print s("=== lambda and move \n");
+        std::jthread ta([&](){
+                model_print("ta lambda\n");
+             });
+        std::jthread tb(std::move(ta));
+
+        std::jthread tc([&](){
+                model_print("tc lambda\n");
+             });
+        tb.join();
+        ta.join();
+        tc.join();
+    }
+#endif
+
+#if 1
     //
     // shared_mutex test
     // No error but it will hog the machine.
@@ -144,18 +161,7 @@ int user_main(int argc, char **argv)
     { std::shared_lock rlock(smtx); }
     { std::unique_lock wlock(smtx); }
 
-    {
-        std::jthread ta([&](){
-                for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda1 %p\n", &smtx);
-                }
-             });
-        std::jthread tb(std::move(ta));
-        tb.join();
-        ta.join();
-    }
-
-    #if 1
+    #if 0
     {
         utils::scope_print s("emplace/move\n");
 
@@ -194,7 +200,7 @@ int user_main(int argc, char **argv)
     }
     #endif
 
-    #if 1
+    #if 0
     {
         utils::scope_print s("placement new\n");
 
