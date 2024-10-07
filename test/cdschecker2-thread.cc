@@ -146,24 +146,12 @@ int user_main(int argc, char **argv)
     }
 #endif
 
-#if 1
-    //
-    // shared_mutex test
-    // No error but it will hog the machine.
-    //
-    
-    std::shared_mutex smtx; //shared_mutex cannot be used as a global var (ModelChecker limitation)
-    model_print("smtx %p\n", &smtx);
-    librace::var<int> cx=0;
     constexpr int NLOOP = 1;
     constexpr int NTHRD = 1;
 
-    { std::shared_lock rlock(smtx); }
-    { std::unique_lock wlock(smtx); }
-
-    #if 0
+#if 1
     {
-        utils::scope_print s("emplace/move\n");
+        utils::scope_print s("=== emplace/move\n");
 
         std::vector<std::thread> thrs; // moveable threads
         thrs.reserve(2*NTHRD);
@@ -172,9 +160,7 @@ int user_main(int argc, char **argv)
         for (int i = 0; i < NTHRD; ++i) {
             thrs.push_back(std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda1 %p\n", &smtx);
-                    std::shared_lock rlock(smtx);
-                    [[maybe_unused]] int val(cx);
+                    model_print("lambda1 \n");
                 }
             }));
         }
@@ -183,10 +169,7 @@ int user_main(int argc, char **argv)
         for (int i = 0; i < NTHRD; ++i) {
             thrs.emplace_back([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("emplace_back lambda2 %p\n", &smtx);
-                    std::unique_lock wlock(smtx);
-                    model_print("l2\n");
-                    cx += 1;
+                    model_print("emplace_back lambda2 \n");
                 }
             });
         }
@@ -195,12 +178,10 @@ int user_main(int argc, char **argv)
         for (auto& t : thrs) {
             t.join();
         }
-        MODEL_ASSERT( cx == NTHRD*NLOOP );
-        cx = 0;
     }
-    #endif
+#endif
 
-    #if 0
+#if 1
     {
         utils::scope_print s("placement new\n");
 
@@ -210,9 +191,7 @@ int user_main(int argc, char **argv)
             thrs[i].~thread(); // (&thrs[i])->~thread() 
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda3 %p\n", &smtx);
-                    std::shared_lock rlock(smtx);
-                    [[maybe_unused]] int val(cx);
+                    model_print("lambda3 \n");
                 }
             });
         }
@@ -220,9 +199,7 @@ int user_main(int argc, char **argv)
             thrs[i].~thread(); 
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda4 %p\n", &smtx);
-                    std::unique_lock wlock(smtx);
-                    cx += 1;
+                    model_print("lambda4 \n");
                 }
             });
         }
@@ -232,13 +209,9 @@ int user_main(int argc, char **argv)
         for (auto& t : thrs) {
             t.~thread();
         }
-        MODEL_ASSERT( cx == NTHRD*NLOOP );
-        cx = 0;
     }
-    #endif
-
 #endif
-    
+
     printf("Main thread is finished\n");
     return 0;
 }
