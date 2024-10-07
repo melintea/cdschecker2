@@ -69,23 +69,67 @@ int user_main(int argc, char **argv)
     MODEL_ASSERT(rz == 5);
     MODEL_ASSERT(*pz == 5);
 
-#if 1
-    //
-    // This exposes a relaxed bug with fa & fb
-    //
-    
-    //sleep(15);
-    a.store(0, std::memory_order_release);
-    
-    printf("Main thread: creating 2 threads\n");
-    auto t1(std::jthread(fa, (void*)nullptr)); // FIXME: -fpermissive instead of casting?
-    auto t2(std::thread(fb, (void*)nullptr));
+#if 0
+    {
+        utils::scope_print s("=== fa/fb relaxed bug\n");
+        //
+        // This exposes a relaxed bug with fa & fb
+        //
+        
+        a.store(0, std::memory_order_release);
+        
+        printf("Main thread: creating 2 threads\n");
+        auto t1(std::jthread(fa, (void*)nullptr)); // FIXME: -fpermissive instead of casting?
+        auto t2(std::thread(fb, (void*)nullptr));
 
-    //t1.join();
-    t2.join();
+        t1.join();
+        t2.join();
+    }
 #endif
 
-#if 1
+#if 0
+    {
+        utils::scope_print s("=== well behaved threads\n");
+
+        std::thread ta([&](){
+                model_print("ta\n");
+             });
+        std::thread tb([&](){
+                model_print("tb\n");
+             });
+
+        ta.join();
+        tb.join();
+    }
+    {
+        utils::scope_print s("=== well behaved threads\n");
+
+        std::jthread ta([&](){
+                model_print("jta\n");
+             });
+        std::jthread tb([&](){
+                model_print("jtb\n");
+             });
+    }
+#endif
+
+#if 0
+    {
+        utils::scope_print s("=== buggy:not joined thread \n");
+
+        std::thread ta([&](){
+                model_print("ta not joined\n");
+             });
+        std::thread tb([&](){
+                model_print("tb\n");
+             });
+
+        //ta.join();
+        tb.join();
+    }
+#endif
+
+#if 0
     //
     // shared_mutex test
     // No error but it will hog the machine.
