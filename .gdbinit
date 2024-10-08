@@ -8,5 +8,6 @@ set breakpoint pending on
 b user_main
 b common.cc:45 
 b snapshot.cc:111 
+b ModelChecker::print_bugs() const
 rbreak Thread::Thread*
 
