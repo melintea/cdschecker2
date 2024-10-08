@@ -32,6 +32,7 @@ namespace impl {
 
 struct task_base
 {
+    int    _sig{0xc0ffee};
     thrd_t _tid{.priv=nullptr};
     bool   _done{false};
 
@@ -45,8 +46,8 @@ struct task_base
     {
         utils::scope_print s("thread::run %p\n", pTask);
 
-        task_base* p(reinterpret_cast<task_base*>(pTask));
-        MODEL_ASSERT(p);
+        task_base* p = (task_base*)pTask;
+        MODEL_ASSERT(p && p->_sig == 0xc0ffee);
         p->operator()();
         p->_done = true;
     }   
@@ -91,12 +92,13 @@ public:
         delete _callableClosure;
     }
 
-    ret_t operator()()
+    ret_t operator()() override
     {
+        model_print("task::operator()() %p\n", (void*)_callableClosure);
         if constexpr (is_void<ret_t>::value == true) {
-            (void)std::apply(*_callableClosure, std::move(_args));
+            (void)std::apply(*_callableClosure, _args);
         } else {
-            return std::apply<ret_t>(*_callableClosure, std::move(_args));
+            return std::apply<ret_t>(*_callableClosure, _args);
         }
     }
     
@@ -129,7 +131,7 @@ create_task_ptr(FUNC&& func, ARGS&& ... args)
 {
     using ret_t         = decltype(func(args...));
     using signature_t   = ret_t (*)(ARGS...);
-    using function_t    = function<signature_t> ;
+    //using function_t    = function<signature_t> ;
     
     return new task<signature_t>(std::forward<FUNC>(func), std::forward<ARGS>(args)...);
 }
@@ -214,13 +216,15 @@ public:
         if  (joinable()) {
             model_print("  thread::join %p %p\n", (void*)this, (void*)_ptdata);
             // Strange but thrd_join() is non-blocking
-            // Nor is a Thread created upon thrd_create()
+            // Nor is a Thread created upon calling thrd_create()
             //while ( ! _ptdata->_tid.priv ) {
             //    thrd_yield();
             //}
-            (void)thrd_join(_ptdata->_tid); 
-            while ( ! _ptdata->_done) {
-                thrd_yield();
+            if (_ptdata->_tid.priv) {
+                (void)thrd_join(_ptdata->_tid); 
+                while ( ! _ptdata->_done) {
+                    thrd_yield();
+                }
             }
             release();
         }
