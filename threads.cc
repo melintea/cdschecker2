@@ -63,6 +63,19 @@ void thread_startup()
  * setcontext/getcontext/swapcontext to swap it out.
  * @return 0 on success; otherwise, non-zero error condition
  */
+ /*
+    // Dubious lambda/anything wrapper
+    template<typename FUNCTOR, typename ...ARGS>
+    void wrapper(FUNCTOR *ker, ARGS*... args)
+    {
+        (*ker)(*args...);
+    }
+    template<typename FUNCTOR, typename ...ARGS>
+    void makectx(FUNCTOR ker, ARGS... args)
+    {
+        makecontext(&ctx, (void (*)(void))wrapper<FUNCTOR, ARGS...>, sizeof...(ARGS) + 1, &ker, &args...);
+    }
+*/
 int Thread::create_context()
 {
     int ret;
