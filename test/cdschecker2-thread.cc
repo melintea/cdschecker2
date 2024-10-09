@@ -24,6 +24,7 @@ librace::ptr<int> px=&x, py=&y, pz=&z;
 int xx=10, yy=20, zz=30;
 librace::ptr pp(&x); // pp(&xx);
 
+int global_var{-321};
 
 void fa(void *obj)
 {
@@ -69,6 +70,8 @@ int user_main(int argc, char **argv)
     MODEL_ASSERT(rz == 5);
     MODEL_ASSERT(*pz == 5);
 
+    int local_var{-123};
+
 #if 0
     {
         utils::scope_print s("=== fa/fb relaxed bug\n");
@@ -93,9 +96,13 @@ int user_main(int argc, char **argv)
 
         std::thread ta([&](){
                 model_print("ta\n");
+                MODEL_ASSERT(global_var == -321);
+                MODEL_ASSERT(local_var  == -123);
              });
         std::thread tb([&](){
                 model_print("tb\n");
+                MODEL_ASSERT(global_var == -321);
+                MODEL_ASSERT(local_var  == -123);
              });
 
         ta.join();
@@ -106,9 +113,13 @@ int user_main(int argc, char **argv)
 
         std::jthread ta([&](){
                 model_print("jta\n");
+                MODEL_ASSERT(global_var == -321);
+                MODEL_ASSERT(local_var  == -123);
              });
         std::jthread tb([&](){
                 model_print("jtb\n");
+                MODEL_ASSERT(global_var == -321);
+                MODEL_ASSERT(local_var  == -123);
              });
     }
 #endif
@@ -124,7 +135,7 @@ int user_main(int argc, char **argv)
                 model_print("tb\n");
              });
 
-        //ta.join();
+        //ta.join(); // will report an error
         tb.join();
     }
 #endif
@@ -134,11 +145,15 @@ int user_main(int argc, char **argv)
         utils::scope_print s("=== lambda and move \n");
         std::jthread ta([&](){
                 model_print("ta lambda\n");
+                MODEL_ASSERT(global_var == -321);
+                MODEL_ASSERT(local_var  == -123);
              });
         std::jthread tb(std::move(ta));
 
         std::jthread tc([&](){
                 model_print("tc lambda\n");
+                MODEL_ASSERT(global_var == -321);
+                MODEL_ASSERT(local_var  == -123);
              });
         tb.join();
         ta.join();
@@ -161,6 +176,8 @@ int user_main(int argc, char **argv)
             thrs.push_back(std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
                     model_print("lambda1 \n");
+                    MODEL_ASSERT(global_var == -321);
+                    MODEL_ASSERT(local_var  == -123);
                 }
             }));
         }
@@ -170,6 +187,15 @@ int user_main(int argc, char **argv)
             thrs.emplace_back([&](){
                 for (int j = 0; j < NLOOP; ++j) {
                     model_print("emplace_back lambda2 \n");
+                    MODEL_ASSERT(global_var == -321);
+
+                    // Captured by ref local var: address is off by +4 bytes, 
+                    // likely due to ucontext_t plays in the Model's Thread's.
+                    // Moral: do not emplace_back threads for now.
+
+                    //MODEL_ASSERT(local_var  == -123);
+                    //std::reference_wrapper r_local_var(local_var);
+                    //MODEL_ASSERT(r_local_var.get()  == -123);
                 }
             });
         }
@@ -192,6 +218,8 @@ int user_main(int argc, char **argv)
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
                     model_print("lambda3 \n");
+                    MODEL_ASSERT(global_var == -321);
+                    MODEL_ASSERT(local_var  == -123);
                 }
             });
         }
@@ -200,6 +228,8 @@ int user_main(int argc, char **argv)
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
                     model_print("lambda4 \n");
+                    MODEL_ASSERT(global_var == -321);
+                    MODEL_ASSERT(local_var  == -123);
                 }
             });
         }
