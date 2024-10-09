@@ -47,6 +47,41 @@ void fb(void *obj)
     }
 }
 
+struct mtx_test_data
+{
+    librace::var<int>* _cx{nullptr};
+    std::shared_mutex* _smtx{nullptr};
+};
+
+void freader(void *obj)
+{
+    utils::scope_print um("freader\n");
+
+    mtx_test_data* pdata((mtx_test_data*)obj);
+    MODEL_ASSERT(pdata && pdata->_cx);
+    MODEL_ASSERT(pdata && pdata->_smtx);
+
+    librace::ptr<int> pcx(pdata->_cx);
+
+    std::shared_lock rlock(*pdata->_smtx);
+    [[maybe_unused]] int val(*pcx);
+}
+
+
+void fwriter(void *obj)
+{
+    utils::scope_print um("fwriter\n");
+
+    mtx_test_data* pdata((mtx_test_data*)obj);
+    MODEL_ASSERT(pdata && pdata->_cx);
+    MODEL_ASSERT(pdata && pdata->_smtx);
+
+    librace::ptr<int> pcx(pdata->_cx);
+
+    std::unique_lock wlock(*pdata->_smtx);
+    *pcx += 1;
+}
+
 int user_main(int argc, char **argv)
 {
     utils::scope_print um("user_main\n");
@@ -109,6 +144,27 @@ int user_main(int argc, char **argv)
 
 #if 1
     {
+        utils::scope_print s("=== old type functions\n");
+        cx = 0;
+
+        mtx_test_data testdata{
+            ._cx = &cx,
+            ._smtx = &smtx
+        };
+
+        auto t1(std::thread(freader, (void*)&testdata)); 
+        auto t2(std::thread(fwriter, (void*)&testdata));
+
+        t1.join();
+        t2.join();
+
+        MODEL_ASSERT( cx == NTHRD*NLOOP );
+        cx = 0;
+    }
+#endif
+
+#if 0
+    {
         utils::scope_print s("=== buggy emplace/move\n");
 
         std::vector<std::thread> thrs; // moveable threads
@@ -151,7 +207,7 @@ int user_main(int argc, char **argv)
     }
 #endif
 
-#if 1
+#if 0
     {
         utils::scope_print s("=== placement new\n");
 
