@@ -24,6 +24,7 @@ librace::ptr<int> px=&x, py=&y, pz=&z;
 int xx=10, yy=20, zz=30;
 librace::ptr pp(&x); // pp(&xx);
 
+int global_var{-321};
 
 void fa(void *obj)
 {
@@ -92,8 +93,8 @@ int user_main(int argc, char **argv)
     // No error but it will hog the machine.
     //
     
-    int addr{-1};
-    model_print("int addr %p\n", &addr);
+    int local_var{-123};
+    model_print("int local_var %p\n", &local_var);
 
     std::shared_mutex smtx; //shared_mutex cannot be used as a global var (ModelChecker limitation)
     model_print("smtx %p\n", &smtx);
@@ -106,7 +107,7 @@ int user_main(int argc, char **argv)
     { std::shared_lock rlock(smtx); }
     { std::unique_lock wlock(smtx); }
 
-#if 0
+#if 1
     {
         utils::scope_print s("=== buggy emplace/move\n");
 
@@ -117,25 +118,28 @@ int user_main(int argc, char **argv)
         for (int i = 0; i < NTHRD; ++i) {
             thrs.push_back(std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda1 addr=%p\n", &addr);
                     model_print("lambda1 smtx=%p\n", &smtx);
+                    MODEL_ASSERT(global_var == -321);
+                    model_print("lambda1 local_var=%p\n", &local_var);
+                    MODEL_ASSERT(local_var  == -123);
                     std::shared_lock rlock(smtx);
                     [[maybe_unused]] int val(cx);
                 }
             }));
         }
 
-        model_print("--emplace_back\n");
+        model_print("--NO emplace_back: buggy\n");
         for (int i = 0; i < NTHRD; ++i) {
-            thrs.emplace_back([&](){
+            thrs.push_back(std::thread([&](){ //emplace_back([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    //model_print("emplace_back lambda2 addr=%p\n", &addr); //BUG: segfault if uncommented
-                    model_print("emplace_back lambda2 smtx=%p\n", &smtx); //BUG: addr  of smtx cound be wrong
+                    model_print("emplace_back lambda2 smtx=%p\n", &smtx); 
+                    MODEL_ASSERT(global_var == -321);
+                    MODEL_ASSERT(local_var  == -123);
                     std::unique_lock wlock(smtx);
                     model_print("l2\n");
                     cx += 1;
                 }
-            });
+            }) );
         }
 
         model_print("--cleanup\n");
@@ -157,8 +161,9 @@ int user_main(int argc, char **argv)
             thrs[i].~thread(); // (&thrs[i])->~thread() 
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda3 addr=%p\n", &addr);
                     model_print("lambda3 smtx=%p\n", &smtx);
+                    MODEL_ASSERT(global_var == -321);
+                    MODEL_ASSERT(local_var  == -123);
                     std::shared_lock rlock(smtx);
                     [[maybe_unused]] int val(cx);
                 }
@@ -168,8 +173,9 @@ int user_main(int argc, char **argv)
             thrs[i].~thread(); 
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda4 addr=%p\n", &addr);
                     model_print("lambda4 smtx=%p\n", &smtx);
+                    MODEL_ASSERT(global_var == -321);
+                    MODEL_ASSERT(local_var  == -123);
                     std::unique_lock wlock(smtx);
                     cx += 1;
                 }
