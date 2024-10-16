@@ -467,7 +467,7 @@ void ModelChecker::do_restart()
 /** @brief Run ModelChecker for the user program */
 void ModelChecker::run()
 {
-    bool has_next;
+    bool has_next{false};
     do {
         thrd_t user_thread;
         Thread *t = new Thread(execution->get_next_id(), &user_thread, &user_main_wrapper, NULL, NULL);
@@ -514,6 +514,7 @@ void ModelChecker::run()
             t->set_pending(NULL);
             t = execution->take_step(curr);
         } while (!should_terminate_execution());
+        model_print("******* Execution %d terminated\n", get_execution_number());
 
         has_next = next_execution();
         if (inspect_plugin != NULL && !has_next) {
