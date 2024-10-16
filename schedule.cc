@@ -94,7 +94,9 @@ bool Scheduler::is_enabled(const Thread *t) const
 bool Scheduler::is_enabled(thread_id_t tid) const
 {
     int i = id_to_int(tid);
-    return (i >= enabled_len) ? false : (enabled[i] != THREAD_DISABLED);
+    bool ret = (i >= enabled_len) ? false : (enabled[i] != THREAD_DISABLED);
+    DEBUG("thread %d is enabled %d\n", i, ret);
+    return ret;
 }
 
 /**

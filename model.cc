@@ -422,15 +422,20 @@ void user_main_wrapper(void *)
 bool ModelChecker::should_terminate_execution()
 {
     /* Infeasible -> don't take any more steps */
-    if (execution->is_infeasible())
+    if (execution->is_infeasible()) {
+        DEBUG("should_terminate_execution: infeasible\n");
         return true;
-    else if (execution->isfeasibleprefix() && execution->have_bug_reports()) {
+    } else if (execution->isfeasibleprefix() && execution->have_bug_reports()) {
+        DEBUG("should_terminate_execution: have_bug_reports\n");
         execution->set_assert();
         return true;
     }
 
-    if (execution->too_many_steps())
+    if (execution->too_many_steps()) {
+        DEBUG("should_terminate_execution: too_many_steps\n");
         return true;
+    }
+
     return false;
 }
 

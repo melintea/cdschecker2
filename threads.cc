@@ -155,7 +155,7 @@ Thread::Thread(thread_id_t tid) : parent(NULL),
                                   model_thread(true)
 {
     memset(&context, 0, sizeof(context));
-    DEBUG("Model checker Thread %p tid=%d\n", this, tid);
+    DEBUG("Model checker Thread %p tid=%d context=%p\n", this, tid, &context);
 }
 
 /**
@@ -183,7 +183,7 @@ Thread::Thread(thread_id_t tid, thrd_t *t, void (*func)(void *), void *a, Thread
         model_print("Error in create_context\n");
 
     user_thread->priv = this;
-    DEBUG("Thread %p parent=%p tid=%d\n", this, parent, tid);
+    DEBUG("Thread %p parent=%p tid=%d context=%p\n", this, parent, tid, &context);
 }
 
 /** Destructor */

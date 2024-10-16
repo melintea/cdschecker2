@@ -3,8 +3,8 @@ set auto-load safe-path /
 handle SIGSEGV nostop noprint
 
 # fairness
-#set args -m 2 -f 10 
-set args -m 2 -y 
+set args -m 2 -f 10 
+#set args -m 2 -y 
 
 set breakpoint pending on
 b user_main

@@ -6,6 +6,7 @@
 #ifndef __CONTEXT_H__
 #define __CONTEXT_H__
 
+#include "common.h"
 #include <ucontext.h>
 
 #ifdef MAC
@@ -16,6 +17,7 @@ int model_swapcontext(ucontext_t *oucp, ucontext_t *ucp);
 
 static inline int model_swapcontext(ucontext_t *oucp, ucontext_t *ucp)
 {
+    DEBUG("swapcontext %p => %p\n", oucp, ucp);
     return swapcontext(oucp, ucp);
 }
 
