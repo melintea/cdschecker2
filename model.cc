@@ -515,6 +515,7 @@ void ModelChecker::run()
             t = execution->take_step(curr);
         } while (!should_terminate_execution());
         model_print("******* Execution %d terminated\n", get_execution_number());
+        //execution->print_summary();
 
         has_next = next_execution();
         if (inspect_plugin != NULL && !has_next) {

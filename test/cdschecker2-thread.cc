@@ -1,5 +1,6 @@
 //
 // Test additions to cdschecker2.
+//  ./run.sh test/cdschecker2-thread.o -m 2 -f 5 -b 9
 //
 
 #include "common.h"
