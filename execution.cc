@@ -1412,7 +1412,7 @@ void ModelExecution::print_infeasibility(const char *prefix) const
     if (promises.size() != 0)
         ptr += sprintf(ptr, "[unresolved promise]");
     if (ptr != buf)
-        model_print("%s: %s", prefix ? prefix : "Infeasible", buf);
+        model_print("%s: %s\n", prefix ? prefix : "Infeasible", buf);
 }
 
 /**
@@ -2808,8 +2808,9 @@ void ModelExecution::print_summary() const
             model_print(" SLEEP-SET REDUNDANT");
         if (have_bug_reports())
             model_print(" DETECTED BUG(S)");
-    } else
+    } else {
         print_infeasibility(" INFEASIBLE");
+    }
     model_print("\n");
 
     print_list(&action_trace);
