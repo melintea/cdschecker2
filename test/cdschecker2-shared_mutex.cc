@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "librace2.h"
+#include "stacktrace.h"
 
 #include <array>
 #include <atomic>
@@ -55,7 +56,7 @@ struct mtx_test_data
 
 void freader(void *obj)
 {
-    utils::scope_print um("freader\n");
+    utils::scope_debug um("freader\n");
 
     mtx_test_data* pdata((mtx_test_data*)obj);
     MODEL_ASSERT(pdata && pdata->_cx);
@@ -70,7 +71,7 @@ void freader(void *obj)
 
 void fwriter(void *obj)
 {
-    utils::scope_print um("fwriter\n");
+    utils::scope_debug um("fwriter\n");
 
     mtx_test_data* pdata((mtx_test_data*)obj);
     MODEL_ASSERT(pdata && pdata->_cx);
@@ -84,8 +85,10 @@ void fwriter(void *obj)
 
 int user_main(int argc, char **argv)
 {
-    utils::scope_print um("user_main\n");
+    utils::scope_debug um("user_main\n");
+    //print_stacktrace();
 
+#if 0
     MODEL_ASSERT(z == 2);
     MODEL_ASSERT(rz == 2);
     MODEL_ASSERT(*pz == 2);
@@ -104,10 +107,11 @@ int user_main(int argc, char **argv)
     MODEL_ASSERT(z == 5);
     MODEL_ASSERT(rz == 5);
     MODEL_ASSERT(*pz == 5);
+#endif
 
 #if 0
     {
-        utils::scope_print s("=== fa/fb relaxed bug\n");
+        utils::scope_debug s("=== fa/fb relaxed bug\n");
         //
         // This exposes a relaxed bug with fa & fb
         //
@@ -129,22 +133,22 @@ int user_main(int argc, char **argv)
     //
     
     int local_var{-123};
-    model_print("int local_var %p\n", &local_var);
+    //model_print("int local_var %p\n", &local_var);
 
     std::shared_mutex smtx; //shared_mutex cannot be used as a global var (ModelChecker limitation)
-    model_print("smtx %p\n", &smtx);
+    //model_print("smtx %p\n", &smtx);
     
     librace::var<int> cx=0;
 
     constexpr int NLOOP = 1;
     constexpr int NTHRD = 1;
 
-    { std::shared_lock rlock(smtx); }
-    { std::unique_lock wlock(smtx); }
+//    { std::shared_lock rlock(smtx); }
+//    { std::unique_lock wlock(smtx); }
 
 #if 1
     {
-        utils::scope_print s("=== old type functions\n");
+        utils::scope_debug s("=== old type functions\n");
         cx = 0;
 
         mtx_test_data testdata{
@@ -165,7 +169,7 @@ int user_main(int argc, char **argv)
 
 #if 0
     {
-        utils::scope_print s("=== buggy emplace/move\n");
+        utils::scope_debug s("=== buggy emplace/move\n");
 
         std::vector<std::thread> thrs; // moveable threads
         thrs.reserve(2*NTHRD);
@@ -174,9 +178,9 @@ int user_main(int argc, char **argv)
         for (int i = 0; i < NTHRD; ++i) {
             thrs.push_back(std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda1 smtx=%p\n", &smtx);
+                    //model_print("lambda1 smtx=%p\n", &smtx);
                     MODEL_ASSERT(global_var == -321);
-                    model_print("lambda1 local_var=%p\n", &local_var);
+                    //model_print("lambda1 local_var=%p\n", &local_var);
                     MODEL_ASSERT(local_var  == -123);
                     std::shared_lock rlock(smtx);
                     [[maybe_unused]] int val(cx);
@@ -188,17 +192,17 @@ int user_main(int argc, char **argv)
         for (int i = 0; i < NTHRD; ++i) {
             thrs.push_back(std::thread([&](){ //emplace_back([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("emplace_back lambda2 smtx=%p\n", &smtx); 
+                    //model_print("emplace_back lambda2 smtx=%p\n", &smtx); 
                     MODEL_ASSERT(global_var == -321);
                     MODEL_ASSERT(local_var  == -123);
                     std::unique_lock wlock(smtx);
-                    model_print("l2\n");
+                    //model_print("l2\n");
                     cx += 1;
                 }
             }) );
         }
 
-        model_print("--cleanup\n");
+        //model_print("--cleanup\n");
         for (auto& t : thrs) {
             t.join();
         }
@@ -209,7 +213,7 @@ int user_main(int argc, char **argv)
 
 #if 0
     {
-        utils::scope_print s("=== placement new\n");
+        utils::scope_debug s("=== placement new\n");
 
         std::array<std::thread, 2*NTHRD> thrs;
         for (int i = 0; i < NTHRD; ++i) {
@@ -217,7 +221,7 @@ int user_main(int argc, char **argv)
             thrs[i].~thread(); // (&thrs[i])->~thread() 
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda3 smtx=%p\n", &smtx);
+                    //model_print("lambda3 smtx=%p\n", &smtx);
                     MODEL_ASSERT(global_var == -321);
                     MODEL_ASSERT(local_var  == -123);
                     std::shared_lock rlock(smtx);
@@ -229,7 +233,7 @@ int user_main(int argc, char **argv)
             thrs[i].~thread(); 
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda4 smtx=%p\n", &smtx);
+                    //model_print("lambda4 smtx=%p\n", &smtx);
                     MODEL_ASSERT(global_var == -321);
                     MODEL_ASSERT(local_var  == -123);
                     std::unique_lock wlock(smtx);

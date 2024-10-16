@@ -44,7 +44,7 @@ struct task_base
 
     static void run(void* pTask)
     {
-        utils::scope_print s("thread::run %p\n", pTask);
+        utils::scope_debug s("thread::run %p\n", pTask);
 
         task_base* p = (task_base*)pTask;
         MODEL_ASSERT(p && p->_sig == 0xc0ffee);
@@ -94,7 +94,7 @@ public:
 
     ret_t operator()() override
     {
-        model_print("task::operator()() %p\n", (void*)_callableClosure);
+        //model_print("task::operator()() %p\n", (void*)_callableClosure);
         if constexpr (is_void<ret_t>::value == true) {
             (void)std::apply(*_callableClosure, _args);
         } else {
@@ -151,7 +151,7 @@ protected:
 
     void release()
     {
-        model_print("thread::release %p %p\n", (void*)this, (void*)_ptdata);
+        //model_print("thread::release %p %p\n", (void*)this, (void*)_ptdata);
         delete _ptdata; _ptdata = nullptr;
     }
 
@@ -162,19 +162,19 @@ public:
     template<typename F, typename... ARGS>
     thread(F&& f, ARGS&&... args)
     {
-        //utils::scope_print s("thread::thread<> %p %p\n", this, _ptdata);
+        //utils::scope_debug s("thread::thread<> %p %p\n", this, _ptdata);
     
         _ptdata = impl::create_task_ptr(std::forward<F>(f), std::forward<ARGS>(args)...);
-        model_print("thread::thread<> %p %p\n", this, _ptdata);
+        //model_print("thread::thread<> %p %p\n", this, _ptdata);
         thrd_create(&_ptdata->_tid, (thrd_start_t)&impl::task_base::run, _ptdata);
     }
 
     thread() {
-        utils::scope_print s("thread::thread() %p\n", this);
+        utils::scope_debug s("thread::thread() %p\n", this);
     }
     ~thread()
     {
-        utils::scope_print s("thread::~thread  %p %p\n", this, _ptdata);
+        utils::scope_debug s("thread::~thread  %p %p\n", this, _ptdata);
         // The model checker will barf if the thread was not joined
         MODEL_ASSERT( ! joinable());
         release();
@@ -185,13 +185,13 @@ public:
 
     //thread( thread&& other )                 = delete;
     thread( thread&& other ) noexcept {
-        utils::scope_print s("thread::thread&& %p %p\n", this, _ptdata);
+        utils::scope_debug s("thread::thread&& %p %p\n", this, _ptdata);
         swap(other);
     }
 
     //thread& operator=( thread&& other )      = delete;
     thread& operator=( thread&& other ) noexcept {
-        utils::scope_print s("thread::=&&\n");
+        utils::scope_debug s("thread::=&&\n");
         if (this != &other) {
             // should std::terminate() current thread but API not supported
             swap(other);
@@ -212,9 +212,9 @@ public:
 
     void join() 
     { 
-        utils::scope_print s("thread::join %p %p\n", this, _ptdata);
+        utils::scope_debug s("thread::join %p %p\n", this, _ptdata);
         if  (joinable()) {
-            model_print("  thread::join %p %p\n", (void*)this, (void*)_ptdata);
+            //model_print("  thread::join %p %p\n", (void*)this, (void*)_ptdata);
             // Strange but thrd_join() is non-blocking
             // Nor is a Thread created upon calling thrd_create()
             //while ( ! _ptdata->_tid.priv ) {

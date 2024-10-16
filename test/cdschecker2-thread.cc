@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "librace2.h"
+#include "stacktrace.h"
 
 #include <array>
 #include <atomic>
@@ -49,7 +50,8 @@ void fb(void *obj)
 
 int user_main(int argc, char **argv)
 {
-    utils::scope_print um("user_main\n");
+    utils::scope_debug um("user_main\n");
+    //print_stacktrace();
 
     MODEL_ASSERT(z == 2);
     MODEL_ASSERT(rz == 2);
@@ -74,7 +76,7 @@ int user_main(int argc, char **argv)
 
 #if 0
     {
-        utils::scope_print s("=== fa/fb relaxed bug\n");
+        utils::scope_debug s("=== fa/fb relaxed bug\n");
         //
         // This exposes a relaxed bug with fa & fb
         //
@@ -92,15 +94,15 @@ int user_main(int argc, char **argv)
 
 #if 1
     {
-        utils::scope_print s("=== well behaved threads\n");
+        utils::scope_debug s("=== well behaved threads\n");
 
         std::thread ta([&](){
-                model_print("ta\n");
+                //model_print("ta\n");
                 MODEL_ASSERT(global_var == -321);
                 MODEL_ASSERT(local_var  == -123);
              });
         std::thread tb([&](){
-                model_print("tb\n");
+                //model_print("tb\n");
                 MODEL_ASSERT(global_var == -321);
                 MODEL_ASSERT(local_var  == -123);
              });
@@ -109,15 +111,15 @@ int user_main(int argc, char **argv)
         tb.join();
     }
     {
-        utils::scope_print s("=== well behaved threads\n");
+        utils::scope_debug s("=== well behaved threads\n");
 
         std::jthread ta([&](){
-                model_print("jta\n");
+                //model_print("jta\n");
                 MODEL_ASSERT(global_var == -321);
                 MODEL_ASSERT(local_var  == -123);
              });
         std::jthread tb([&](){
-                model_print("jtb\n");
+                //model_print("jtb\n");
                 MODEL_ASSERT(global_var == -321);
                 MODEL_ASSERT(local_var  == -123);
              });
@@ -126,7 +128,7 @@ int user_main(int argc, char **argv)
 
 #if 0
     {
-        utils::scope_print s("=== buggy:not joined thread \n");
+        utils::scope_debug s("=== buggy:not joined thread \n");
 
         std::thread ta([&](){
                 model_print("ta not joined\n");
@@ -142,16 +144,16 @@ int user_main(int argc, char **argv)
 
 #if 1
     {
-        utils::scope_print s("=== lambda and move \n");
+        utils::scope_debug s("=== lambda and move \n");
         std::jthread ta([&](){
-                model_print("ta lambda\n");
+                //model_print("ta lambda\n");
                 MODEL_ASSERT(global_var == -321);
                 MODEL_ASSERT(local_var  == -123);
              });
         std::jthread tb(std::move(ta));
 
         std::jthread tc([&](){
-                model_print("tc lambda\n");
+                //model_print("tc lambda\n");
                 MODEL_ASSERT(global_var == -321);
                 MODEL_ASSERT(local_var  == -123);
              });
@@ -166,27 +168,27 @@ int user_main(int argc, char **argv)
 
 #if 1
     {
-        utils::scope_print s("=== emplace/move\n");
+        utils::scope_debug s("=== emplace/move\n");
 
         std::vector<std::thread> thrs; // moveable threads
         thrs.reserve(2*NTHRD);
 
-        model_print("--push_back\n");
+        //model_print("--push_back\n");
         for (int i = 0; i < NTHRD; ++i) {
             thrs.push_back(std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda1 \n");
+                    //model_print("lambda1 \n");
                     MODEL_ASSERT(global_var == -321);
                     MODEL_ASSERT(local_var  == -123);
                 }
             }));
         }
 
-        model_print("--emplace_back\n");
+        //model_print("--emplace_back\n");
         for (int i = 0; i < NTHRD; ++i) {
             thrs.emplace_back([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("emplace_back lambda2 \n");
+                    //model_print("emplace_back lambda2 \n");
                     MODEL_ASSERT(global_var == -321);
 
                     // Captured by ref local var: address is off by +4 bytes, 
@@ -200,7 +202,7 @@ int user_main(int argc, char **argv)
             });
         }
 
-        model_print("--cleanup\n");
+        //model_print("--cleanup\n");
         for (auto& t : thrs) {
             t.join();
         }
@@ -209,7 +211,7 @@ int user_main(int argc, char **argv)
 
 #if 1
     {
-        utils::scope_print s("placement new\n");
+        utils::scope_debug s("placement new\n");
 
         std::array<std::thread, 2*NTHRD> thrs;
         for (int i = 0; i < NTHRD; ++i) {
@@ -217,7 +219,7 @@ int user_main(int argc, char **argv)
             thrs[i].~thread(); // (&thrs[i])->~thread() 
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda3 \n");
+                    //model_print("lambda3 \n");
                     MODEL_ASSERT(global_var == -321);
                     MODEL_ASSERT(local_var  == -123);
                 }
@@ -227,7 +229,7 @@ int user_main(int argc, char **argv)
             thrs[i].~thread(); 
             new (&thrs[i]) std::thread([&](){
                 for (int j = 0; j < NLOOP; ++j) {
-                    model_print("lambda4 \n");
+                    //model_print("lambda4 \n");
                     MODEL_ASSERT(global_var == -321);
                     MODEL_ASSERT(local_var  == -123);
                 }
