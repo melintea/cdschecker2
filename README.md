@@ -13,7 +13,6 @@ Fork differences:
 - ```std::thread```, ```std::jtread```
   - threading on a member function likely not supported
   - for now, must cast nullptr to the proper pointer type: ```(void*)nullptr```
-  - do not ```emplace_back``` threads that capture local variables by ref in a lambda.
 - ```std::shared_mutex``` & std lock guards
 - ```librace2.h``` 
   - ```librace::var<X>```, ```librace::ref<X>``` & ```librace::ptr<X>``` API built on top of the ```load_X/store_X``` librace API.
@@ -24,6 +23,7 @@ Notes:
   Hence some classes cannot be used for globals, e.g. ```std::shared_mutex```
 - anything spinlock will hog the machine. Use ```-b num```
 - always run with fairness, e.g. ```-m 2 -y``` or ```-m 2 -f 10```
+- a lot of false positives; always compare with relacy to weed them out
 
 Recipe:
 - ```cd libbacktrace```
