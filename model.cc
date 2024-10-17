@@ -423,16 +423,16 @@ bool ModelChecker::should_terminate_execution()
 {
     /* Infeasible -> don't take any more steps */
     if (execution->is_infeasible()) {
-        DEBUG("should_terminate_execution: infeasible\n");
+        model_print("sModelChecker::hould_terminate_execution(%d): infeasible\n", get_execution_number());
         return true;
     } else if (execution->isfeasibleprefix() && execution->have_bug_reports()) {
-        DEBUG("should_terminate_execution: have_bug_reports\n");
+        model_print("ModelChecker::should_terminate_execution(%d): have_bug_reports\n", get_execution_number());
         execution->set_assert();
         return true;
     }
 
     if (execution->too_many_steps()) {
-        DEBUG("should_terminate_execution: too_many_steps\n");
+        model_print("ModelChecker::should_terminate_execution(%d): too_many_steps\n", get_execution_number());
         return true;
     }
 
@@ -473,6 +473,7 @@ void ModelChecker::run()
         Thread *t = new Thread(execution->get_next_id(), &user_thread, &user_main_wrapper, NULL, NULL);
         execution->add_thread(t);
 
+        model_print("\n******* Execution %d ...\n", get_execution_number());
         do {
             /*
              * Stash next pending action(s) for thread(s). There
@@ -531,7 +532,7 @@ void ModelChecker::run()
 
     execution->fixup_release_sequences();
 
-    model_print("******* Model-checking complete: *******\n");
+    model_print("\n******* Model-checking complete: *******\n");
     print_stats();
 
     /* Have the trace analyses dump their output. */
